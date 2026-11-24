@@ -70,6 +70,12 @@
   .btn-open-yt { background: #ff0000; color: #fff; }
   .btn-open-nf { background: #e50914; color: #fff; }
 
+  /* Drive mode tile */
+  .tile-drive { background: #0d1a12; border-color: #14532d; grid-column: 1 / -1; min-height: 0; }
+  .brand-drive { color: #4ade80; }
+  .btn-open-drive { background: #22c55e; color: #0b0b0d; }
+  .actions-single { grid-template-columns: 1fr; }
+
   /* How fullscreen works */
   .section-title { font-size: 24px; margin: 36px 0 6px; font-weight: 800; letter-spacing: -0.01em; }
   .section-sub { color: #b8b8b3; margin: 0 0 16px; font-size: 16px; max-width: 760px; }
@@ -210,6 +216,15 @@
       <div class="actions">
         <a class="btn btn-open-nf" href="https://www.netflix.com" target="_blank" rel="noopener">Open Netflix</a>
         <a class="btn btn-ghost fs-link" href="#" data-target="https://www.netflix.com" target="_blank" rel="noopener">Fullscreen &#8599;</a>
+      </div>
+    </section>
+
+    <section class="tile tile-drive" aria-label="Drive mode player">
+      <div class="tag">New &mdash; for the passenger seat</div>
+      <div class="brand brand-drive">Drive mode &#9654;</div>
+      <p>The apps above use the car&rsquo;s own video player, which Tesla pauses the moment the car leaves Park. This player is different: it draws the picture itself, frame by frame, so your Plex library and direct streams keep playing for the passenger while the car is moving. Same passenger check on the door.</p>
+      <div class="actions actions-single">
+        <a class="btn btn-open-drive" href="player.html">Open Drive Mode Player</a>
       </div>
     </section>
 
