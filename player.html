@@ -318,6 +318,13 @@ function dmAvcCodecString(sps) {
   return 'avc1.' + dmHex2(sps[1]) + dmHex2(sps[2]) + dmHex2(sps[3]);
 }
 
+function dmFirstMbInSlice(nal) {
+  // First ue(v) of a slice header = first_mb_in_slice; 0 marks the
+  // first slice of a picture. Used to find AU boundaries in streams
+  // without access unit delimiters. -1 when unparsable.
+  try { return new DmBitReader(dmRbsp(nal)).ue(); } catch (e) { return -1; }
+}
+
 /* ---------------- HLS playlist parsing ---------------- */
 
 function dmParseAttrs(str) {
@@ -427,6 +434,7 @@ DmTsDemuxer.prototype.push = function (chunk) {
 
 DmTsDemuxer.prototype.flush = function () {
   for (var pid in this.pes) this._flushPes(parseInt(pid, 10));
+  if (this._vstream) this._drainVideo(true); // end of stream: emit the trailing NAL/AU
 };
 
 DmTsDemuxer.prototype._packet = function (p) {
@@ -547,31 +555,117 @@ DmTsDemuxer.prototype._splitNals = function (es) {
   return nals;
 };
 
+/* Video ES handling is STREAMING, not per-PES. PES packets do not
+   align with access units — or even with NAL units: Apple's bipbop
+   muxer (and others) splits the elementary stream at arbitrary byte
+   offsets, so a NAL, often the big IDR, straddles two PES packets.
+   Parsing each PES in isolation truncates every straddling NAL and
+   the decoder rejects the damaged slices ("Decoding error"). So the
+   payloads are treated as one continuous byte stream: NALs are split
+   incrementally as bytes arrive, and each PES packet's PTS is kept
+   as a timestamp mark for the bytes that arrived in it. An access
+   unit takes the PTS of the PES packet in which its first NAL began. */
 DmTsDemuxer.prototype._videoPes = function (payload, pts) {
-  var nals = this._splitNals(payload);
-  if (nals.length === 0) return;
-  // Split into access units at AUDs if the stream uses them.
-  var aus = [], cur = [];
-  var i, nal, type;
-  for (i = 0; i < nals.length; i++) {
-    nal = nals[i]; type = nal[0] & 0x1f;
-    if (type === 9) { this.hasAUD = true; if (cur.length) { aus.push(cur); cur = []; } continue; }
-    cur.push(nal);
+  if (!this._vstream) {
+    this._vstream = { buf: new Uint8Array(0), marks: [], au: [], auPts: null, auHasVcl: false, scLen: 0 };
   }
-  if (cur.length) aus.push(cur);
-  if (!this.hasAUD && aus.length > 1) { /* shouldn't happen */ }
-  for (i = 0; i < aus.length; i++) {
-    var auPts;
-    if (pts !== null && i === 0) auPts = pts;
-    else auPts = this.lastVideoPts + this.lastVideoDur;
-    this._emitAu(aus[i], auPts);
-    if (pts !== null && i === 0 && aus.length === 1) {
-      // update running duration estimate
-      var d = auPts - this.lastVideoPts;
-      if (d > 0.001 && d < 0.25) this.lastVideoDur = d;
+  var vs = this._vstream;
+  if (pts !== null && pts !== undefined) vs.marks.push({ off: vs.buf.length, pts: pts });
+  vs.buf = dmConcat(vs.buf, payload);
+  this._drainVideo(false);
+};
+
+DmTsDemuxer.prototype._vsPtsAt = function (vs, off) {
+  var pts = null;
+  for (var i = 0; i < vs.marks.length; i++) {
+    if (vs.marks[i].off <= off) pts = vs.marks[i].pts; else break;
+  }
+  return pts;
+};
+
+DmTsDemuxer.prototype._drainVideo = function (force) {
+  var vs = this._vstream;
+  if (!vs) return;
+  var buf = vs.buf;
+  function findSC(from) {
+    for (var j = from; j + 2 < buf.length; j++) {
+      if (buf[j] === 0 && buf[j + 1] === 0) {
+        if (buf[j + 2] === 1) return { at: j, len: 3 };
+        if (j + 3 < buf.length && buf[j + 2] === 0 && buf[j + 3] === 1) return { at: j, len: 4 };
+      }
     }
-    this.lastVideoPts = auPts;
+    return null;
   }
+  var sc = findSC(0);
+  if (!sc) {
+    if (force) { vs.buf = new Uint8Array(0); vs.marks = []; this._flushAu(); }
+    return;
+  }
+  var nalStart = sc.at + sc.len; // data offset of the pending NAL
+  var nalScAt = sc.at;           // start-code offset of the pending NAL
+  var nalPts = this._vsPtsAt(vs, nalStart);
+  while (true) {
+    var nxt = findSC(nalStart);
+    if (!nxt) break;
+    // NAL data runs from nalStart to the next start code. No trailing
+    // zero trimming: cabac_zero_bytes at the end of a slice are part
+    // of the NAL as encoded (ffmpeg's extraction keeps them too).
+    this._videoNal(buf.subarray(nalStart, nxt.at), nalPts);
+    nalScAt = nxt.at;
+    nalStart = nxt.at + nxt.len;
+    nalPts = this._vsPtsAt(vs, nalStart);
+  }
+  if (force) {
+    if (buf.length > nalStart) this._videoNal(buf.subarray(nalStart), nalPts);
+    vs.buf = new Uint8Array(0);
+    vs.marks = [];
+    this._flushAu();
+    return;
+  }
+  // Keep the pending (incomplete) NAL, from its start code onward.
+  vs.buf = buf.slice(nalScAt);
+  var kept = [];
+  var floor = null;
+  for (var i = 0; i < vs.marks.length; i++) {
+    var m = { off: vs.marks[i].off - nalScAt, pts: vs.marks[i].pts };
+    if (m.off < 0) floor = m; else kept.push(m);
+  }
+  if (floor) { floor.off = 0; kept.unshift(floor); }
+  vs.marks = kept;
+};
+
+DmTsDemuxer.prototype._videoNal = function (nal, pts) {
+  if (!nal || nal.length === 0) return;
+  var vs = this._vstream;
+  var type = nal[0] & 0x1f;
+  if (type === 9) { // access unit delimiter: hard AU boundary
+    this.hasAUD = true;
+    this._flushAu();
+    vs.auPts = pts;
+    return;
+  }
+  if (!this.hasAUD && vs.auHasVcl) {
+    // No AUDs in this stream: a new picture starts at a slice with
+    // first_mb_in_slice == 0, or at SPS/PPS following a picture.
+    if (((type === 1 || type === 5) && dmFirstMbInSlice(nal) === 0) || type === 7 || type === 8) {
+      this._flushAu();
+    }
+  }
+  if (vs.auPts === null && vs.au.length === 0) vs.auPts = pts;
+  vs.au.push(new Uint8Array(nal));
+  if (type === 1 || type === 5) vs.auHasVcl = true;
+};
+
+DmTsDemuxer.prototype._flushAu = function () {
+  var vs = this._vstream;
+  if (!vs || vs.au.length === 0) return;
+  var au = vs.au, pts = vs.auPts;
+  vs.au = []; vs.auPts = null; vs.auHasVcl = false;
+  if (pts === null || pts === undefined) pts = this.lastVideoPts + this.lastVideoDur;
+  this._emitAu(au, pts);
+  var d = pts - this.lastVideoPts;
+  if (d > 0.001 && d < 0.25) this.lastVideoDur = d;
+  this.lastVideoPts = pts;
 };
 
 DmTsDemuxer.prototype._emitAu = function (nals, pts) {
@@ -663,7 +757,16 @@ DmTsDemuxer.prototype._audioPes = function (payload, pts) {
 };
 
 DmTsDemuxer.prototype._adtsScan = function (payload, pts) {
-  var off = 0, framePts = pts;
+  // An ADTS frame can straddle a PES (or segment) boundary just like
+  // a video NAL can: carry the incomplete tail over to the next call
+  // instead of dropping it, keeping the PTS it started with.
+  var framePts = pts;
+  if (this._adtsLeft) {
+    payload = dmConcat(this._adtsLeft, payload);
+    if (this._adtsLeftPts !== null && this._adtsLeftPts !== undefined) framePts = this._adtsLeftPts;
+    this._adtsLeft = null; this._adtsLeftPts = null;
+  }
+  var off = 0;
   while (off + 7 <= payload.length) {
     if (payload[off] !== 0xff || (payload[off + 1] & 0xf0) !== 0xf0) { off++; continue; }
     var b2 = payload[off + 2], b3 = payload[off + 3];
@@ -689,6 +792,10 @@ DmTsDemuxer.prototype._adtsScan = function (payload, pts) {
     }
     if (framePts !== null) framePts += 1024 / sampleRate;
     off += frameLen;
+  }
+  if (off < payload.length) {
+    this._adtsLeft = payload.slice(off);
+    this._adtsLeftPts = framePts;
   }
 };
 
@@ -1121,7 +1228,20 @@ if (typeof module !== 'undefined' && module.exports) {
         if (dec !== S.adec) { try { buf.close(); } catch (e) {} return; } // stale codec's data
         S.adecFailures = 0;
         var pts = S.audioPtsQueue.length ? S.audioPtsQueue.shift() : S.mediaTarget;
-        scheduleAudio(buf, pts);
+        // `buf` is an AudioData, NOT an AudioBuffer — assigning it to a
+        // source node's .buffer throws in a real browser. Convert it
+        // (channel data copied out as f32-planar), then close it.
+        var abuf = null;
+        if (S.ctx) {
+          try {
+            abuf = S.ctx.createBuffer(buf.numberOfChannels, buf.numberOfFrames, buf.sampleRate);
+            for (var ch = 0; ch < buf.numberOfChannels; ch++) {
+              buf.copyTo(abuf.getChannelData(ch), { planeIndex: ch, format: 'f32-planar' });
+            }
+          } catch (e) { abuf = null; }
+        }
+        try { buf.close(); } catch (e) {}
+        if (abuf) scheduleAudio(abuf, pts);
       },
       error: function (e) { onAudioDecoderError(dec, e); }
     });
