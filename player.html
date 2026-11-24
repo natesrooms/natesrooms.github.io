@@ -988,6 +988,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isLive: false, duration: 0,
     ctx: null, ctxEpoch: 0, mediaTarget: 0,
     vdec: null, adec: null, vdecReady: false, adecReady: false,
+    vdecRetryAt: 0, adecRetryAt: 0, vdecFailures: 0, adecFailures: 0,
     vConfig: null, aConfig: null,
     frames: [], drawnFrame: null, lastFrameDur: 1 / 30,
     audioPtsQueue: [], audioSources: new Set(), nextAudioWhen: 0,
@@ -1002,6 +1003,15 @@ if (typeof module !== 'undefined' && module.exports) {
     statusEl.className = 'status' + (isErr ? ' err' : '');
   }
   function onEngineError(msg) { setStatus(msg, true); }
+  var errLatch = {};
+  function latchedError(key, msg) {
+    // Report a recurring failure once (until it changes or clears), so a
+    // dead codec can't repaint the status line every pump tick and bury
+    // the codec's own original error message under repeat spam.
+    if (errLatch[key] === msg) return;
+    errLatch[key] = msg;
+    onEngineError(msg);
+  }
   function fmt(t) {
     if (!isFinite(t) || t < 0) t = 0;
     t = Math.floor(t);
@@ -1033,54 +1043,124 @@ if (typeof module !== 'undefined' && module.exports) {
     updatePlayBtn();
   }
 
-  /* ---------- Decoders ---------- */
+  /* ---------- Decoders ----------
+     Single-owner lifecycle: setupXDecoder() is the only place a codec
+     is created and configured; destroyXDecoder() is the only place one
+     is closed. decode() is only ever called while the codec's live
+     state is 'configured' — checked at every call site, every time.
+     If a codec dies on its own (a fatal decode error moves it to
+     'closed'), its error handler tears the dead instance down and the
+     pump rebuilds a fresh one after a short backoff; feeding then
+     resumes at the next keyframe. Samples already handed to a dead
+     codec are dropped with it, never re-sent to the new one. */
+  function vdecUsable() { return !!(S.vdec && S.vdec.state === 'configured'); }
+  function adecUsable() { return !!(S.adec && S.adec.state === 'configured'); }
+
+  function destroyVideoDecoder() {
+    var d = S.vdec;
+    S.vdec = null; S.vdecReady = false;
+    if (d && d.state !== 'closed') { try { d.close(); } catch (e) {} }
+  }
+  function destroyAudioDecoder() {
+    var d = S.adec;
+    S.adec = null; S.adecReady = false;
+    S.audioPtsQueue = []; // queued timestamps belonged to the dead codec
+    if (d && d.state !== 'closed') { try { d.close(); } catch (e) {} }
+  }
+  function onVideoDecoderError(dec, e) {
+    if (dec !== S.vdec) return; // callback from a stale, replaced codec
+    destroyVideoDecoder();
+    S.vdecFailures++;
+    S.vdecRetryAt = performance.now() + 800;
+    S.needKey = true; // resume at the next keyframe after the rebuild
+    latchedError('vdec', 'Video decoder error: ' + (e && e.message ? e.message : e) + ' — restarting it…');
+  }
+  function onAudioDecoderError(dec, e) {
+    if (dec !== S.adec) return;
+    destroyAudioDecoder();
+    S.adecFailures++;
+    S.adecRetryAt = performance.now() + 800;
+    latchedError('adec', 'Audio decoder error: ' + (e && e.message ? e.message : e) + ' — restarting it…');
+  }
   function setupVideoDecoder() {
+    destroyVideoDecoder();
     if (!S.vConfig || !hasWC) return;
-    if (!S.vdec) {
-      S.vdec = new VideoDecoder({
-        output: function (frame) {
-          if (S.frames.length > 150) { frame.close(); return; }
-          S.frames.push(frame);
-        },
-        error: function (e) { onEngineError('Video decoder error: ' + e.message); }
-      });
-    } else { try { S.vdec.reset(); } catch (e) {} }
+    var dec = new VideoDecoder({
+      output: function (frame) {
+        if (dec !== S.vdec) { try { frame.close(); } catch (e) {} return; } // stale codec's frame
+        S.vdecFailures = 0; // a frame out means the codec is healthy
+        if (S.frames.length > 150) { frame.close(); return; }
+        S.frames.push(frame);
+      },
+      error: function (e) { onVideoDecoderError(dec, e); }
+    });
+    S.vdec = dec;
     var cfg = { codec: S.vConfig.codec, description: S.vConfig.description };
     if (S.vConfig.width) { cfg.codedWidth = S.vConfig.width; cfg.codedHeight = S.vConfig.height; }
     if (VideoDecoder.isConfigSupported) {
       VideoDecoder.isConfigSupported(cfg).then(function (res) {
-        if (!res.supported) onEngineError('This browser cannot decode ' + cfg.codec + ' video with WebCodecs.');
+        if (!res.supported) latchedError('vdec-unsupported', 'This browser cannot decode ' + cfg.codec + ' video with WebCodecs.');
       }).catch(function () {});
     }
-    try { S.vdec.configure(cfg); S.vdecReady = true; }
-    catch (e) { onEngineError('Video decoder setup failed: ' + e.message); }
+    try {
+      dec.configure(cfg);
+      S.vdecReady = (dec.state === 'configured');
+      if (S.vdecReady) errLatch.vdec = null;
+    } catch (e) {
+      S.vdecReady = false;
+      S.vdecFailures++;
+      S.vdecRetryAt = performance.now() + 2000;
+      latchedError('vdec', 'Video decoder setup failed: ' + e.message);
+    }
   }
   function setupAudioDecoder() {
+    destroyAudioDecoder();
     if (!S.aConfig || !hasWC) return;
-    if (!S.adec) {
-      S.adec = new AudioDecoder({
-        output: function (buf) {
-          var pts = S.audioPtsQueue.length ? S.audioPtsQueue.shift() : S.mediaTarget;
-          scheduleAudio(buf, pts);
-        },
-        error: function (e) { onEngineError('Audio decoder error: ' + e.message); }
-      });
-    } else { try { S.adec.reset(); } catch (e) {} }
+    var dec = new AudioDecoder({
+      output: function (buf) {
+        if (dec !== S.adec) { try { buf.close(); } catch (e) {} return; } // stale codec's data
+        S.adecFailures = 0;
+        var pts = S.audioPtsQueue.length ? S.audioPtsQueue.shift() : S.mediaTarget;
+        scheduleAudio(buf, pts);
+      },
+      error: function (e) { onAudioDecoderError(dec, e); }
+    });
+    S.adec = dec;
     var cfg = {
       codec: S.aConfig.codec, description: S.aConfig.description,
       sampleRate: S.aConfig.sampleRate, numberOfChannels: S.aConfig.channels
     };
-    try { S.adec.configure(cfg); S.adecReady = true; }
-    catch (e) { onEngineError('Audio decoder setup failed: ' + e.message); }
+    try {
+      dec.configure(cfg);
+      S.adecReady = (dec.state === 'configured');
+      if (S.adecReady) errLatch.adec = null;
+    } catch (e) {
+      S.adecReady = false;
+      S.adecFailures++;
+      S.adecRetryAt = performance.now() + 2000;
+      latchedError('adec', 'Audio decoder setup failed: ' + e.message);
+    }
+  }
+  function maybeRecoverDecoders() {
+    // Rebuild a codec that died (or failed to configure) — throttled by
+    // the retry timestamps and capped at 6 consecutive failures so an
+    // unsupported codec can't spin the pump; a fresh config, a seek, or
+    // frames flowing again resets the count.
+    if (!hasWC || !S.loaded) return;
+    var now = performance.now();
+    if (S.vConfig && !vdecUsable() && S.vdecFailures < 6 && now >= S.vdecRetryAt) setupVideoDecoder();
+    if (S.aConfig && !adecUsable() && S.adecFailures < 6 && now >= S.adecRetryAt) setupAudioDecoder();
   }
   function onVideoConfig(cfg) {
     if (S.vConfig && S.vConfig.codec === cfg.codec && S.vConfig.width === cfg.width && S.vConfig.height === cfg.height) return;
     S.vConfig = cfg;
+    S.vdecFailures = 0; S.vdecRetryAt = 0;
     setupVideoDecoder();
   }
   function onAudioConfig(cfg) {
     if (S.aConfig && S.aConfig.codec === cfg.codec && S.aConfig.sampleRate === cfg.sampleRate) return;
     S.aConfig = cfg;
+    S.adecFailures = 0; S.adecRetryAt = 0;
     setupAudioDecoder();
   }
   function scheduleAudio(buf, pts) {
@@ -1109,6 +1189,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function decodeVideoSample(s, nextPts) {
+    if (!vdecUsable()) { S.needKey = true; return; } // never decode on an unconfigured/closed codec
     var dur = (nextPts !== null && nextPts > s.pts) ? nextPts - s.pts : S.lastFrameDur;
     if (dur > 0 && dur < 0.5) S.lastFrameDur = dur;
     try {
@@ -1118,15 +1199,16 @@ if (typeof module !== 'undefined' && module.exports) {
         duration: Math.round(dur * 1000000),
         data: s.data
       }));
-    } catch (e) { onEngineError('Video decode failed: ' + e.message); }
+    } catch (e) { onVideoDecoderError(S.vdec, e); }
   }
   function decodeAudioSample(a) {
+    if (!adecUsable()) return; // never decode on an unconfigured/closed codec
     S.audioPtsQueue.push(a.pts);
     try {
       S.adec.decode(new EncodedAudioChunk({
         type: 'key', timestamp: Math.round(a.pts * 1000000), data: a.data
       }));
-    } catch (e) { S.audioPtsQueue.pop(); }
+    } catch (e) { S.audioPtsQueue.pop(); onAudioDecoderError(S.adec, e); }
   }
 
   /* ---------- HLS tracks ---------- */
@@ -1248,12 +1330,14 @@ if (typeof module !== 'undefined' && module.exports) {
     if (S.mode === 'hls') {
       for (i = 0; i < S.tracks.length; i++) maybeFetch(S.tracks[i]);
     }
+    maybeRecoverDecoders();
     if (!S.started) return;
     if (!S.playing) return; // paused: keep fetching ahead, but don't feed decoders into a frozen clock
-    // Feed video decoder
-    if (S.vdec && S.vdecReady) {
+    // Feed video decoder (loop re-checks usability: a codec that dies
+    // mid-loop nulls S.vdec, and the loop must stop, not throw)
+    if (vdecUsable()) {
       if (S.mode === 'hls') {
-        while (S.vdec.decodeQueueSize < 6 && vSamples.length) {
+        while (vdecUsable() && S.vdec.decodeQueueSize < 6 && vSamples.length) {
           var s = vSamples[0];
           if (S.needKey && !s.keyframe) { vSamples.shift(); continue; }
           S.needKey = false;
@@ -1262,7 +1346,7 @@ if (typeof module !== 'undefined' && module.exports) {
         }
       } else if (S.mode === 'mp4' && S.mp4 && S.mp4.video) {
         var vs = S.mp4.video.samples;
-        while (S.vdec.decodeQueueSize < 6 && S.mp4VIdx < vs.length) {
+        while (vdecUsable() && S.vdec.decodeQueueSize < 6 && S.mp4VIdx < vs.length) {
           var ms = vs[S.mp4VIdx++];
           if (S.needKey && !ms.keyframe) continue;
           S.needKey = false;
@@ -1273,16 +1357,16 @@ if (typeof module !== 'undefined' && module.exports) {
       }
     }
     // Feed audio decoder
-    if (S.adec && S.adecReady) {
+    if (adecUsable()) {
       if (S.mode === 'hls') {
-        while (S.adec.decodeQueueSize < 12 && aSamples.length) {
+        while (adecUsable() && S.adec.decodeQueueSize < 12 && aSamples.length) {
           var a = aSamples.shift();
           if (a.pts < S.dropAudioBefore - 0.05) continue;
           decodeAudioSample(a);
         }
       } else if (S.mode === 'mp4' && S.mp4 && S.mp4.audio) {
         var as = S.mp4.audio.samples;
-        while (S.adec.decodeQueueSize < 12 && S.mp4AIdx < as.length) {
+        while (adecUsable() && S.adec.decodeQueueSize < 12 && S.mp4AIdx < as.length) {
           var ma = as[S.mp4AIdx++];
           if (ma.pts < S.dropAudioBefore - 0.05) continue;
           decodeAudioSample({ data: ma.data, pts: ma.pts });
@@ -1305,7 +1389,7 @@ if (typeof module !== 'undefined' && module.exports) {
       drained = (!S.mp4.video || S.mp4VIdx >= S.mp4.video.samples.length) &&
                 (!S.mp4.audio || S.mp4AIdx >= S.mp4.audio.samples.length);
     } else return;
-    if (drained && S.frames.length <= 1 && (!S.vdec || S.vdec.decodeQueueSize === 0) && t >= S.duration - 0.6) {
+    if (drained && S.frames.length <= 1 && (!vdecUsable() || S.vdec.decodeQueueSize === 0) && t >= S.duration - 0.6) {
       S.ended = true;
       S.playing = false;
       updatePlayBtn();
@@ -1353,8 +1437,10 @@ if (typeof module !== 'undefined' && module.exports) {
     vSamples = []; aSamples = []; S.audioPtsQueue = [];
     closeFrames();
     stopAudioSources();
-    if (S.vdec) { try { S.vdec.close(); } catch (e) {} S.vdec = null; S.vdecReady = false; }
-    if (S.adec) { try { S.adec.close(); } catch (e) {} S.adec = null; S.adecReady = false; }
+    destroyVideoDecoder();
+    destroyAudioDecoder();
+    S.vdecRetryAt = 0; S.adecRetryAt = 0; S.vdecFailures = 0; S.adecFailures = 0;
+    errLatch.vdec = null; errLatch.adec = null;
     S.vConfig = null; S.aConfig = null;
     S.needKey = true; S.dropAudioBefore = 0; S.mediaTarget = 0;
     btnPlay.disabled = true; seek.disabled = true;
@@ -1473,8 +1559,8 @@ if (typeof module !== 'undefined' && module.exports) {
     vSamples = []; aSamples = []; S.audioPtsQueue = [];
     closeFrames();
     stopAudioSources();
-    if (S.vdec && S.vConfig) setupVideoDecoder();
-    if (S.adec && S.aConfig) setupAudioDecoder();
+    if (S.vConfig) setupVideoDecoder(); // fresh codec for the new position (also revives a dead one)
+    if (S.aConfig) setupAudioDecoder();
     S.ended = false;
     S.dropAudioBefore = t;
     S.needKey = true;
