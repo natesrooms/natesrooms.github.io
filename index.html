@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>Nate's Theater</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #0b0b0d;
+    color: #f2f2f0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: inherit; }
+  button, a.btn { min-height: 52px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 40px; }
+
+  /* Header */
+  .head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+  .head h1 { font-size: 40px; line-height: 1.05; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+  .head h1 .accent { color: #e50914; }
+  .head p { margin: 10px 0 0; color: #b8b8b3; font-size: 18px; max-width: 560px; }
+  .parked {
+    display: inline-block; border: 1px solid #3a3a3e; background: #17171a;
+    color: #ffd166; padding: 10px 14px; border-radius: 999px; font-size: 14px; font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* Fullscreen bar */
+  .fsbar {
+    margin: 22px 0 26px; background: #17171a; border: 1px solid #2b2b2f; border-radius: 16px;
+    padding: 18px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
+  }
+  .fsbar strong { font-size: 19px; display: block; }
+  .fsbar span { color: #b8b8b3; font-size: 15px; display: block; margin-top: 3px; max-width: 640px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 12px;
+    padding: 14px 20px; border: 1px solid transparent; cursor: pointer; text-align: center;
+  }
+  .btn-red { background: #e50914; color: #fff; }
+  .btn-red:active { background: #b80710; }
+  .btn-ghost { background: #232327; color: #f2f2f0; border-color: #3a3a3e; }
+  .btn-ghost:active { background: #2e2e33; }
+
+  /* Main tiles */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .tile {
+    border-radius: 18px; padding: 22px; min-height: 240px;
+    display: flex; flex-direction: column; border: 1px solid #2b2b2f;
+  }
+  .tile-plex { background: #1a1405; border-color: #4a3808; }
+  .tile-yt { background: #1c0a0a; border-color: #4d1414; }
+  .tile-nf { background: #140708; border-color: #451013; }
+  .brand { font-size: 34px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+  .plex .brand, .brand-plex { color: #e5a00d; }
+  .brand-yt { color: #ff3b30; }
+  .brand-nf { color: #e50914; }
+  .tile p { color: #c9c9c4; font-size: 16px; margin: 12px 0 0; flex: 1; }
+  .tile .tag { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #9a9a95; margin-bottom: 12px; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+  .actions .btn { width: 100%; font-size: 15px; padding: 14px 10px; }
+  .btn-open-plex { background: #e5a00d; color: #111; }
+  .btn-open-yt { background: #ff0000; color: #fff; }
+  .btn-open-nf { background: #e50914; color: #fff; }
+
+  /* How fullscreen works */
+  .section-title { font-size: 24px; margin: 36px 0 6px; font-weight: 800; letter-spacing: -0.01em; }
+  .section-sub { color: #b8b8b3; margin: 0 0 16px; font-size: 16px; max-width: 760px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .step { background: #141416; border: 1px solid #2b2b2f; border-radius: 14px; padding: 18px; }
+  .step b.num {
+    display: inline-flex; width: 36px; height: 36px; border-radius: 50%;
+    background: #e50914; color: #fff; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 10px;
+  }
+  .step h3 { margin: 0 0 6px; font-size: 17px; }
+  .step p { margin: 0; color: #b8b8b3; font-size: 15px; }
+  .step code { background: #232327; padding: 2px 6px; border-radius: 6px; font-size: 13px; word-break: break-all; }
+
+  /* More services */
+  .more { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .mini {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+    background: #141416; border: 1px solid #2b2b2f; border-radius: 14px;
+    padding: 16px; min-height: 120px;
+  }
+  .mini strong { font-size: 18px; }
+  .mini span { color: #9a9a95; font-size: 13px; }
+  .mini .links { margin-top: auto; display: flex; gap: 14px; padding-top: 10px; }
+  .mini .links a { color: #fff; font-weight: 700; font-size: 14px; text-decoration: none; padding: 10px 4px; min-height: 44px; display: inline-flex; align-items: center; }
+  .mini .links a.fs-link { color: #ffb3b8; }
+
+  /* Notes */
+  .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .note { background: #141416; border: 1px solid #2b2b2f; border-radius: 14px; padding: 18px; }
+  .note h3 { margin: 0 0 8px; font-size: 17px; }
+  .note p { margin: 0; color: #b8b8b3; font-size: 15px; }
+  .note p + p { margin-top: 8px; }
+
+  footer { margin-top: 36px; color: #77776f; font-size: 13px; border-top: 1px solid #232327; padding-top: 16px; }
+  footer p { margin: 4px 0; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .tile { min-height: 0; }
+    .steps { grid-template-columns: 1fr; }
+    .more { grid-template-columns: repeat(2, 1fr); }
+    .notes { grid-template-columns: 1fr; }
+    .head h1 { font-size: 34px; }
+    .wrap { padding: 20px 16px 32px; }
+  }
+  @media (min-width: 901px) and (max-width: 1050px) {
+    .more { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Passenger attestation gate */
+  body.gated { overflow: hidden; }
+  .gate {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(5, 5, 7, 0.97);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; overflow-y: auto;
+  }
+  .gate-card { max-width: 560px; width: 100%; text-align: center; }
+  .gate-card .gate-icon { font-size: 44px; line-height: 1; }
+  .gate-card h2 { font-size: 32px; margin: 16px 0 10px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+  .gate-card p { color: #c9c9c4; font-size: 17px; margin: 0 0 14px; }
+  .gate-card p strong { color: #f2f2f0; }
+  .gate-btn {
+    display: block; width: 100%; margin-top: 22px;
+    background: #e50914; color: #fff; border: 1px solid transparent;
+    font-size: 20px; font-weight: 800; border-radius: 14px;
+    padding: 18px 20px; min-height: 64px; cursor: pointer;
+  }
+  .gate-btn:active { background: #b80710; }
+  .gate-driver {
+    display: block; width: 100%; margin-top: 12px;
+    background: none; border: none; color: #9a9a95;
+    font-size: 15px; font-weight: 600; text-decoration: underline;
+    padding: 12px; min-height: 48px; cursor: pointer;
+  }
+  .gate[hidden] { display: none; }
+</style>
+</head>
+<body class="gated">
+
+  <!-- Passenger attestation gate: tiles stay covered until one tap. -->
+  <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="gate-card">
+      <div class="gate-icon" aria-hidden="true">&#128186;</div>
+      <h2 id="gateTitle">Passenger check</h2>
+      <p>This theater is for the <strong>passenger seat</strong>. While the car is moving, only a passenger should be watching &mdash; even with Full Self-Driving on, the driver&rsquo;s eyes stay on the road.</p>
+      <p>Driving? Everything here works the same once you&rsquo;re parked.</p>
+      <button class="gate-btn" id="gatePassenger" type="button">I&rsquo;m a passenger</button>
+      <button class="gate-driver" id="gateDriver" type="button">I&rsquo;m the driver &mdash; I&rsquo;ll only use this while parked</button>
+    </div>
+  </div>
+
+<main class="wrap">
+
+  <div class="head">
+    <div>
+      <h1>Nate&rsquo;s <span class="accent">Theater</span></h1>
+      <p>Your library and your channels, one tap away on the big screen. No account, no subscription &mdash; just the apps, launched straight from here.</p>
+    </div>
+    <span class="parked">&#9646;&#9646; Parked only &mdash; video locks while driving</span>
+  </div>
+
+  <div class="fsbar">
+    <div>
+      <strong>Want this page itself fullscreen?</strong>
+      <span>On a phone or computer this button uses the browser&rsquo;s Fullscreen API. In the Tesla, use the &ldquo;Fullscreen &#8599;&rdquo; button on each app below instead &mdash; that&rsquo;s the trick that actually fills the car screen.</span>
+    </div>
+    <button class="btn btn-red" id="fsBtn" type="button">&#9974; Make this page fullscreen</button>
+  </div>
+
+  <!-- Primary apps -->
+  <div class="grid">
+
+    <section class="tile tile-plex" aria-label="Plex">
+      <div class="tag">Your library</div>
+      <div class="brand brand-plex">PLEX</div>
+      <p>Stream your own Plex library &mdash; movies, shows, and the family collection from home. Sign in once and it stays signed in.</p>
+      <div class="actions">
+        <a class="btn btn-open-plex" href="https://app.plex.tv/desktop" target="_blank" rel="noopener">Open Plex</a>
+        <a class="btn btn-ghost fs-link" href="#" data-target="https://app.plex.tv/desktop" target="_blank" rel="noopener">Fullscreen &#8599;</a>
+      </div>
+    </section>
+
+    <section class="tile tile-yt" aria-label="YouTube">
+      <div class="tag">Video</div>
+      <div class="brand brand-yt">YouTube</div>
+      <p>Full YouTube &mdash; your subscriptions, watch history, and channels, not the stripped-down car version.</p>
+      <div class="actions">
+        <a class="btn btn-open-yt" href="https://www.youtube.com" target="_blank" rel="noopener">Open YouTube</a>
+        <a class="btn btn-ghost fs-link" href="#" data-target="https://www.youtube.com" target="_blank" rel="noopener">Fullscreen &#8599;</a>
+      </div>
+    </section>
+
+    <section class="tile tile-nf" aria-label="Netflix">
+      <div class="tag">Streaming</div>
+      <div class="brand brand-nf">NETFLIX</div>
+      <p>Netflix on the full screen while you&rsquo;re parked, charging, or waiting on a pickup.</p>
+      <div class="actions">
+        <a class="btn btn-open-nf" href="https://www.netflix.com" target="_blank" rel="noopener">Open Netflix</a>
+        <a class="btn btn-ghost fs-link" href="#" data-target="https://www.netflix.com" target="_blank" rel="noopener">Fullscreen &#8599;</a>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- How fullscreen works -->
+  <h2 class="section-title">How fullscreen works in the Tesla</h2>
+  <p class="section-sub">The car&rsquo;s browser normally sits in half the screen and won&rsquo;t expand on its own. The workaround every launcher site uses &mdash; including the paid ones &mdash; is a YouTube redirect: YouTube is allowed to open fullscreen in the car, and its redirect link carries you onward to the app you actually want, still fullscreen.</p>
+
+  <div class="steps">
+    <div class="step">
+      <b class="num">1</b>
+      <h3>Open this page in the car</h3>
+      <p>Load Nate&rsquo;s Theater in the Tesla browser and bookmark it, so it&rsquo;s always one tap from the browser&rsquo;s favorites.</p>
+    </div>
+    <div class="step">
+      <b class="num">2</b>
+      <h3>Tap &ldquo;Fullscreen&rdquo; on an app</h3>
+      <p>That button routes through <code>youtube.com/redirect</code> to the app&rsquo;s real address. You may see a brief YouTube &ldquo;leave site&rdquo; prompt &mdash; confirm it.</p>
+    </div>
+    <div class="step">
+      <b class="num">3</b>
+      <h3>Watch on the whole screen</h3>
+      <p>The app opens filling the display. To get back, use the browser&rsquo;s back button or re-open this bookmark. Use &ldquo;Open&rdquo; instead when you want the normal split view.</p>
+    </div>
+  </div>
+
+  <!-- More services -->
+  <h2 class="section-title">More on the marquee</h2>
+  <p class="section-sub">Extra services, same deal &mdash; every one has both an Open link and a Fullscreen link using the same YouTube redirect route:</p>
+
+  <div class="more">
+    <div class="mini"><strong>Disney+</strong><span>Family &amp; Marvel</span><span class="links"><a href="https://www.disneyplus.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.disneyplus.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Prime Video</strong><span>Amazon streaming</span><span class="links"><a href="https://www.amazon.com/gp/video" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.amazon.com/gp/video" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Max</strong><span>HBO &amp; more</span><span class="links"><a href="https://play.max.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://play.max.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Hulu</strong><span>TV &amp; movies</span><span class="links"><a href="https://www.hulu.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.hulu.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Apple TV+</strong><span>Apple originals</span><span class="links"><a href="https://tv.apple.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://tv.apple.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Twitch</strong><span>Live streams</span><span class="links"><a href="https://www.twitch.tv" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.twitch.tv" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Spotify</strong><span>Music &amp; podcasts</span><span class="links"><a href="https://open.spotify.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://open.spotify.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>YouTube TV</strong><span>Live TV</span><span class="links"><a href="https://www.youtube.com/tv" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.youtube.com/tv" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Paramount+</strong><span>Shows &amp; sport</span><span class="links"><a href="https://www.paramountplus.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.paramountplus.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Peacock</strong><span>NBC streaming</span><span class="links"><a href="https://www.peacocktv.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.peacocktv.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+  </div>
+
+  <!-- On the road -->
+  <h2 class="section-title">On the road</h2>
+  <p class="section-sub">The other workarounds Tesla owners keep bookmarked — navigation, trip planning, charging, and a few things for the passenger seat while you charge. Same deal: Open for the normal view, Fullscreen for the whole screen.</p>
+
+  <div class="more">
+    <div class="mini"><strong>Waze</strong><span>Live map, traffic &amp; alerts</span><span class="links"><a href="https://teslawaze.azurewebsites.net/" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://teslawaze.azurewebsites.net/" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Google Maps</strong><span>Search &amp; directions</span><span class="links"><a href="https://www.google.com/maps" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.google.com/maps" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>ABRP</strong><span>A Better Route Planner</span><span class="links"><a href="https://abetterrouteplanner.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://abetterrouteplanner.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>PlugShare</strong><span>Find any charger</span><span class="links"><a href="https://www.plugshare.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.plugshare.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Xbox Cloud</strong><span>Xbox Cloud Gaming</span><span class="links"><a href="https://www.xbox.com/play" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.xbox.com/play" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>GeForce NOW</strong><span>PC games, streamed</span><span class="links"><a href="https://play.geforcenow.com" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://play.geforcenow.com" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+    <div class="mini"><strong>Speedtest</strong><span>Check the car&rsquo;s connection</span><span class="links"><a href="https://www.speedtest.net" target="_blank" rel="noopener">Open &rarr;</a><a class="fs-link" href="#" data-target="https://www.speedtest.net" target="_blank" rel="noopener">Fullscreen &#8599;</a></span></div>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>&#128241; About iPhone screen mirroring</h3>
+      <p>Honest answer: a web page can&rsquo;t mirror your iPhone to the Tesla screen. Tesla doesn&rsquo;t support AirPlay, and mirroring apps work by running their own receiver software &mdash; not something a bookmark can do.</p>
+      <p>What does work is what&rsquo;s on this page: open the service directly in the car browser. For anything that lives only on your phone, the car browser is the workaround, not the mirror.</p>
+    </div>
+    <div class="note">
+      <h3>&#128272; Signing in</h3>
+      <p>Plex, YouTube, and Netflix each ask you to sign in the first time, right inside the car browser. That sign-in goes straight to their own sites &mdash; this page never sees or stores your passwords.</p>
+      <p>Supercharging and school-pickup waits are what this is built for: park, tap Fullscreen, and the wait watches itself.</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>Nate&rsquo;s Theater &mdash; a personal launcher for one car and one family. Built light on purpose, so it loads fast even on older Tesla hardware.</p>
+    <p>Video playback is blocked by Tesla while the car is in motion. Use while parked.</p>
+  </footer>
+
+</main>
+
+<script>
+// Passenger attestation gate: one tap dismisses it for this visit only.
+// Nothing is stored — reload the page and the check comes back.
+(function () {
+  var gate = document.getElementById('gate');
+  function dismiss() {
+    gate.hidden = true;
+    document.body.classList.remove('gated');
+  }
+  document.getElementById('gatePassenger').addEventListener('click', dismiss);
+  document.getElementById('gateDriver').addEventListener('click', dismiss);
+})();
+</script>
+
+<script>
+// Fullscreen launch via the YouTube redirect trick used by Tesla launcher sites:
+// youtube.com/redirect?q=<target> opens fullscreen-capable in the car browser.
+(function () {
+  var links = document.querySelectorAll('.fs-link');
+  for (var i = 0; i < links.length; i++) {
+    var target = links[i].getAttribute('data-target');
+    links[i].href = 'https://www.youtube.com/redirect?q=' + encodeURIComponent(target);
+  }
+
+  // Fullscreen API for this page itself (works on phone/desktop browsers).
+  var btn = document.getElementById('fsBtn');
+  btn.addEventListener('click', function () {
+    var el = document.documentElement;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (el.requestFullscreen) {
+      el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    }
+  });
+})();
+</script>
+</body>
+</html>
