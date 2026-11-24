@@ -1,0 +1,1712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>Drive Mode Player — Nate's Theater</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #0b0b0d; color: #f2f2f0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.45; -webkit-text-size-adjust: 100%;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 40px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 32px; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+  .topbar h1 .accent { color: #e50914; }
+  .backlink { color: #b8b8b3; text-decoration: none; font-weight: 700; font-size: 16px; padding: 12px 8px; min-height: 48px; display: inline-flex; align-items: center; }
+  .sub { color: #b8b8b3; font-size: 16px; margin: 8px 0 18px; max-width: 820px; }
+  .sub strong { color: #f2f2f0; }
+
+  .warn {
+    background: #3a2403; border: 1px solid #8a5a00; color: #ffd166;
+    border-radius: 14px; padding: 16px 18px; font-size: 16px; margin-bottom: 18px;
+  }
+  .warn[hidden] { display: none; }
+
+  /* Stage */
+  .stage {
+    background: #000; border: 1px solid #2b2b2f; border-radius: 16px;
+    aspect-ratio: 16 / 9; width: 100%; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stage canvas { width: 100%; height: 100%; display: block; background: #000; }
+  .stage:fullscreen { border: none; border-radius: 0; }
+
+  /* Controls */
+  .controls { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .cbtn {
+    background: #232327; color: #f2f2f0; border: 1px solid #3a3a3e;
+    border-radius: 12px; font-size: 18px; font-weight: 700;
+    min-height: 60px; min-width: 76px; padding: 10px 18px; cursor: pointer;
+  }
+  .cbtn:active { background: #2e2e33; }
+  .cbtn-main { background: #e50914; border-color: transparent; color: #fff; min-width: 110px; }
+  .cbtn-main:active { background: #b80710; }
+  .cbtn[disabled] { opacity: 0.45; cursor: default; }
+  .timelabel { font-size: 16px; color: #c9c9c4; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  input[type="range"].seek { flex: 1; min-width: 160px; height: 44px; accent-color: #e50914; }
+  .status { color: #b8b8b3; font-size: 15px; margin-top: 10px; min-height: 22px; }
+  .status.err { color: #ff8080; }
+
+  /* Panels */
+  .panel { background: #141416; border: 1px solid #2b2b2f; border-radius: 16px; padding: 20px; margin-top: 22px; }
+  .panel h2 { margin: 0 0 6px; font-size: 21px; font-weight: 800; }
+  .panel p { color: #b8b8b3; font-size: 15px; margin: 0 0 14px; }
+  .panel label { display: block; font-size: 14px; font-weight: 700; color: #9a9a95; margin: 12px 0 6px; letter-spacing: .04em; text-transform: uppercase; }
+  .panel input[type="text"], .panel input[type="password"] {
+    width: 100%; background: #0b0b0d; color: #f2f2f0; border: 1px solid #3a3a3e;
+    border-radius: 10px; font-size: 17px; padding: 14px; min-height: 54px;
+  }
+  .panel .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .panel .row .grow { flex: 1; min-width: 220px; }
+  .abtn {
+    background: #e50914; color: #fff; border: 1px solid transparent; border-radius: 12px;
+    font-size: 17px; font-weight: 700; padding: 14px 22px; min-height: 56px; cursor: pointer;
+  }
+  .abtn:active { background: #b80710; }
+  .abtn-ghost { background: #232327; color: #f2f2f0; border-color: #3a3a3e; }
+  .abtn[disabled] { opacity: 0.45; cursor: default; }
+
+  .liblist { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; max-height: 480px; overflow-y: auto; }
+  .liblist .libhead { font-size: 15px; font-weight: 800; color: #9a9a95; text-transform: uppercase; letter-spacing: .06em; margin: 12px 0 2px; }
+  .libitem {
+    text-align: left; background: #1b1b1e; color: #f2f2f0; border: 1px solid #2b2b2f;
+    border-radius: 12px; padding: 16px; font-size: 17px; min-height: 58px; cursor: pointer; width: 100%;
+  }
+  .libitem:active { background: #26262b; }
+  .libitem .yr { color: #9a9a95; font-size: 15px; }
+  .libitem .meta { display: block; color: #9a9a95; font-size: 13px; margin-top: 2px; }
+
+  footer { margin-top: 32px; color: #77776f; font-size: 13px; border-top: 1px solid #232327; padding-top: 16px; }
+  footer p { margin: 4px 0; }
+
+  /* Passenger attestation gate (same pattern as the theater page) */
+  body.gated { overflow: hidden; }
+  .gate {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(5, 5, 7, 0.97);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; overflow-y: auto;
+  }
+  .gate-card { max-width: 560px; width: 100%; text-align: center; }
+  .gate-card .gate-icon { font-size: 44px; line-height: 1; }
+  .gate-card h2 { font-size: 32px; margin: 16px 0 10px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+  .gate-card p { color: #c9c9c4; font-size: 17px; margin: 0 0 14px; }
+  .gate-card p strong { color: #f2f2f0; }
+  .gate-btn {
+    display: block; width: 100%; margin-top: 22px;
+    background: #e50914; color: #fff; border: 1px solid transparent;
+    font-size: 20px; font-weight: 800; border-radius: 14px;
+    padding: 18px 20px; min-height: 64px; cursor: pointer;
+  }
+  .gate-btn:active { background: #b80710; }
+  .gate-driver {
+    display: block; width: 100%; margin-top: 12px;
+    background: none; border: none; color: #9a9a95;
+    font-size: 15px; font-weight: 600; text-decoration: underline;
+    padding: 12px; min-height: 48px; cursor: pointer;
+  }
+  .gate[hidden] { display: none; }
+</style>
+</head>
+<body class="gated">
+
+  <!-- Passenger attestation gate: same per-visit check as the theater page. -->
+  <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+    <div class="gate-card">
+      <div class="gate-icon" aria-hidden="true">&#128186;</div>
+      <h2 id="gateTitle">Passenger check</h2>
+      <p>This player is for the <strong>passenger seat</strong>. While the car is moving, only a passenger should be watching &mdash; even with Full Self-Driving on, the driver&rsquo;s eyes stay on the road.</p>
+      <p>Driving? Everything here works the same once you&rsquo;re parked.</p>
+      <button class="gate-btn" id="gatePassenger" type="button">I&rsquo;m a passenger</button>
+      <button class="gate-driver" id="gateDriver" type="button">I&rsquo;m the driver &mdash; I&rsquo;ll only use this while parked</button>
+    </div>
+  </div>
+
+<main class="wrap">
+
+  <div class="topbar">
+    <h1>Drive Mode <span class="accent">Player</span></h1>
+    <a class="backlink" href="index.html">&larr; Nate&rsquo;s Theater</a>
+  </div>
+  <p class="sub">This player draws the picture itself instead of using the car&rsquo;s built-in video player &mdash; the part Tesla pauses when the car leaves Park. <strong>For the passenger while the car is moving.</strong> Works with HLS streams and MP4 files (H.264 + AAC). Encrypted services like Netflix can&rsquo;t run through any player like this.</p>
+
+  <div class="warn" id="wcWarn" hidden>
+    <strong>This browser can&rsquo;t run the drive-mode player.</strong>
+    It doesn&rsquo;t have WebCodecs (the video-decoding API this page needs). There&rsquo;s no fallback player here on purpose &mdash; a regular video player would just freeze when the car moves. Try this page in the Tesla browser; if you see this message there too, the car&rsquo;s current software can&rsquo;t do it.
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="screen" width="1280" height="720"></canvas>
+  </div>
+
+  <div class="controls">
+    <button class="cbtn cbtn-main" id="btnPlay" type="button" disabled>&#9654; Play</button>
+    <span class="timelabel" id="timeLabel">0:00 / 0:00</span>
+    <input type="range" class="seek" id="seek" min="0" max="1000" value="0" disabled aria-label="Seek" />
+    <button class="cbtn" id="btnFs" type="button">&#9974; Fullscreen</button>
+  </div>
+  <div class="status" id="status">Load a stream below to start.</div>
+
+  <section class="panel" aria-label="Direct stream">
+    <h2>Direct stream</h2>
+    <p>Paste an HLS stream address (ends in .m3u8, MPEG-TS segments) or a direct MP4 file address, then tap Play stream.</p>
+    <div class="row">
+      <div class="grow"><input type="text" id="urlIn" placeholder="https://example.com/stream.m3u8" autocomplete="off" autocapitalize="off" spellcheck="false" /></div>
+      <button class="abtn" id="btnUrlPlay" type="button">Play stream</button>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Plex">
+    <h2>Your Plex library</h2>
+    <p>Enter your Plex server address and token once &mdash; they&rsquo;re saved <strong>only in this browser</strong> (local storage), never in this page. Use the address that works away from home (a plex.direct address if Remote Access is on, or your home address on home Wi-Fi).</p>
+    <label for="plexBase">Plex server address</label>
+    <input type="text" id="plexBase" placeholder="https://xxxxxxxx.plex.direct:32400" autocomplete="off" autocapitalize="off" spellcheck="false" />
+    <label for="plexToken">X-Plex-Token</label>
+    <input type="password" id="plexToken" placeholder="Your Plex token" autocomplete="off" autocapitalize="off" spellcheck="false" />
+    <div class="row" style="margin-top:16px;">
+      <button class="abtn" id="btnPlexLoad" type="button">Load library</button>
+      <button class="abtn abtn-ghost" id="btnPlexForget" type="button">Forget saved details</button>
+    </div>
+    <div class="status" id="plexMsg"></div>
+    <div class="liblist" id="plexList"></div>
+  </section>
+
+  <footer>
+    <p>Drive Mode Player &mdash; part of Nate&rsquo;s Theater. Video: H.264 only, decoded on this page with WebCodecs and painted to a canvas. Audio: AAC through Web Audio. HLS must use MPEG-TS segments (not fMP4) and be unencrypted; MP4 must be a single non-fragmented file.</p>
+    <p>While the car is moving, this screen is for the passenger only.</p>
+  </footer>
+
+</main>
+
+<script>
+/* =====================================================================
+   Drive Mode core — pure parsing logic (no DOM / browser APIs used).
+   HLS playlist parsing, MPEG-TS demuxing (H.264 + AAC), SPS parsing,
+   and a minimal MP4 demuxer. Shared by player.html and Node tests.
+   ===================================================================== */
+
+function dmConcat(a, b) {
+  if (!a || a.length === 0) return b;
+  if (!b || b.length === 0) return a;
+  var out = new Uint8Array(a.length + b.length);
+  out.set(a, 0); out.set(b, a.length);
+  return out;
+}
+function dmHex2(n) { return ('0' + (n & 0xff).toString(16)).slice(-2); }
+
+/* ---------------- Bit reader + H.264 SPS parsing ---------------- */
+
+function DmBitReader(bytes) { this.b = bytes; this.pos = 0; }
+DmBitReader.prototype.bit = function () {
+  var byte = this.b[this.pos >> 3] || 0;
+  var v = (byte >> (7 - (this.pos & 7))) & 1;
+  this.pos++; return v;
+};
+DmBitReader.prototype.bits = function (n) {
+  var v = 0;
+  for (var i = 0; i < n; i++) v = v * 2 + this.bit();
+  return v;
+};
+DmBitReader.prototype.ue = function () {
+  var zeros = 0;
+  while (this.bit() === 0 && zeros < 31) zeros++;
+  if (zeros === 0) return 0;
+  return Math.pow(2, zeros) - 1 + this.bits(zeros);
+};
+DmBitReader.prototype.se = function () {
+  var v = this.ue();
+  return (v & 1) ? (v + 1) >> 1 : -(v >> 1);
+};
+
+function dmRbsp(nal) {
+  // nal includes the 1-byte NAL header; returns RBSP bytes after the header
+  // with emulation-prevention bytes (00 00 03 -> 00 00) removed.
+  var out = [];
+  var zeros = 0;
+  for (var i = 1; i < nal.length; i++) {
+    var c = nal[i];
+    if (zeros >= 2 && c === 3 && i + 1 < nal.length) { zeros = 0; continue; }
+    out.push(c);
+    zeros = (c === 0) ? zeros + 1 : 0;
+  }
+  return new Uint8Array(out);
+}
+
+function dmSkipScalingList(r, size) {
+  var lastScale = 8, nextScale = 8;
+  for (var j = 0; j < size; j++) {
+    if (nextScale !== 0) {
+      var delta = r.se();
+      nextScale = (lastScale + delta + 256) % 256;
+    }
+    lastScale = (nextScale === 0) ? lastScale : nextScale;
+  }
+}
+
+function dmParseSPS(nal) {
+  // nal = full SPS NAL unit including header byte. Returns {width,height,profile,level}.
+  var r = new DmBitReader(dmRbsp(nal));
+  var profile = r.bits(8);
+  r.bits(8); // constraint flags + reserved
+  var level = r.bits(8);
+  r.ue(); // seq_parameter_set_id
+  var chroma = 1;
+  if ([100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135].indexOf(profile) >= 0) {
+    chroma = r.ue();
+    if (chroma === 3) r.bit(); // separate_colour_plane_flag
+    r.ue(); r.ue(); // bit_depth_luma/chroma_minus8
+    r.bit(); // qpprime_y_zero_transform_bypass_flag
+    if (r.bit()) { // seq_scaling_matrix_present_flag
+      var n = (chroma !== 3) ? 8 : 12;
+      for (var i = 0; i < n; i++) {
+        if (r.bit()) dmSkipScalingList(r, i < 6 ? 16 : 64);
+      }
+    }
+  }
+  r.ue(); // log2_max_frame_num_minus4
+  var pocType = r.ue();
+  if (pocType === 0) { r.ue(); }
+  else if (pocType === 1) {
+    r.bit(); r.se(); r.se();
+    var cyc = r.ue();
+    for (var k = 0; k < cyc; k++) r.se();
+  }
+  r.ue(); // max_num_ref_frames
+  r.bit(); // gaps_in_frame_num_value_allowed_flag
+  var wMbs = r.ue() + 1;
+  var hMap = r.ue() + 1;
+  var frameMbsOnly = r.bit();
+  if (!frameMbsOnly) r.bit(); // mb_adaptive_frame_field_flag
+  r.bit(); // direct_8x8_inference_flag
+  var cropL = 0, cropR = 0, cropT = 0, cropB = 0;
+  if (r.bit()) { cropL = r.ue(); cropR = r.ue(); cropT = r.ue(); cropB = r.ue(); }
+  var subW = 1, subH = 1;
+  if (chroma === 1) { subW = 2; subH = 2; }
+  else if (chroma === 2) { subW = 2; subH = 1; }
+  else if (chroma === 3) { subW = 1; subH = 1; }
+  var cropUnitX = (chroma === 0) ? 1 : subW;
+  var cropUnitY = (chroma === 0) ? (2 - frameMbsOnly) : subH * (2 - frameMbsOnly);
+  var width = wMbs * 16 - (cropL + cropR) * cropUnitX;
+  var height = (2 - frameMbsOnly) * hMap * 16 - (cropT + cropB) * cropUnitY;
+  return { width: width, height: height, profile: profile, level: level };
+}
+
+function dmBuildAvcc(sps, pps) {
+  var out = new Uint8Array(11 + sps.length + pps.length);
+  var o = 0;
+  out[o++] = 1;                 // version
+  out[o++] = sps[1];            // profile
+  out[o++] = sps[2];            // compatibility
+  out[o++] = sps[3];            // level
+  out[o++] = 0xff;              // 6 bits reserved + lengthSizeMinusOne(3) => 4-byte lengths
+  out[o++] = 0xe1;              // 3 bits reserved + numSPS(1)
+  out[o++] = (sps.length >> 8) & 0xff; out[o++] = sps.length & 0xff;
+  out.set(sps, o); o += sps.length;
+  out[o++] = 1;                 // numPPS
+  out[o++] = (pps.length >> 8) & 0xff; out[o++] = pps.length & 0xff;
+  out.set(pps, o);
+  return out;
+}
+function dmAvcCodecString(sps) {
+  return 'avc1.' + dmHex2(sps[1]) + dmHex2(sps[2]) + dmHex2(sps[3]);
+}
+
+/* ---------------- HLS playlist parsing ---------------- */
+
+function dmParseAttrs(str) {
+  var attrs = {}, re = /([A-Z0-9-]+)=("[^"]*"|[^,]*)/gi, m;
+  while ((m = re.exec(str)) !== null) {
+    var v = m[2];
+    if (v.length >= 2 && v[0] === '"') v = v.slice(1, -1);
+    attrs[m[1].toUpperCase()] = v;
+  }
+  return attrs;
+}
+
+function dmParsePlaylist(text, baseUrl) {
+  var lines = text.split(/\r?\n/);
+  var out = {
+    isMaster: false, variants: [], audioRenditions: [],
+    segments: [], targetDuration: 0, mediaSequence: 0,
+    endList: false, totalDuration: 0, encrypted: false, hasMap: false
+  };
+  var pendingInf = null, pendingDur = null;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    if (line.indexOf('#EXT-X-STREAM-INF:') === 0) {
+      out.isMaster = true;
+      pendingInf = dmParseAttrs(line.slice(18));
+    } else if (line.indexOf('#EXT-X-MEDIA:') === 0) {
+      var a = dmParseAttrs(line.slice(13));
+      if (a.TYPE === 'AUDIO' && a.URI) {
+        out.audioRenditions.push({
+          uri: new URL(a.URI, baseUrl).href,
+          group: a['GROUP-ID'] || '', name: a.NAME || '',
+          isDefault: a.DEFAULT === 'YES'
+        });
+      }
+    } else if (line.indexOf('#EXT-X-TARGETDURATION:') === 0) {
+      out.targetDuration = parseFloat(line.slice(23)) || 0;
+    } else if (line.indexOf('#EXT-X-MEDIA-SEQUENCE:') === 0) {
+      out.mediaSequence = parseInt(line.slice(23), 10) || 0;
+    } else if (line.indexOf('#EXTINF:') === 0) {
+      pendingDur = parseFloat(line.slice(8)) || 0;
+    } else if (line === '#EXT-X-ENDLIST') {
+      out.endList = true;
+    } else if (line.indexOf('#EXT-X-KEY:') === 0) {
+      var ka = dmParseAttrs(line.slice(11));
+      if (ka.METHOD && ka.METHOD !== 'NONE') out.encrypted = true;
+    } else if (line.indexOf('#EXT-X-MAP:') === 0) {
+      out.hasMap = true;
+    } else if (line[0] !== '#') {
+      var uri = new URL(line, baseUrl).href;
+      if (pendingInf) {
+        out.variants.push({
+          uri: uri,
+          bandwidth: parseInt(pendingInf.BANDWIDTH, 10) || 0,
+          codecs: pendingInf.CODECS || '',
+          resolution: pendingInf.RESOLUTION || '',
+          audioGroup: pendingInf.AUDIO || ''
+        });
+        pendingInf = null;
+      } else if (pendingDur !== null) {
+        out.segments.push({ uri: uri, duration: pendingDur });
+        out.totalDuration += pendingDur;
+        pendingDur = null;
+      }
+    }
+  }
+  return out;
+}
+
+/* ---------------- MPEG-TS demuxer ----------------
+   Feed bytes with push(); callbacks:
+     onVideoConfig({codec, description, width, height})
+     onVideoSample({data, pts, keyframe})   data = AVCC-format sample
+     onAudioConfig({codec, description, sampleRate, channels})
+     onAudioSample({data, pts})             data = raw AAC frame
+     onUnsupported(what)                    e.g. 'hevc', 'ac3'
+   Times are seconds (float). */
+
+var DM_AAC_RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+
+function DmTsDemuxer() {
+  this.buf = new Uint8Array(0);
+  this.pmtPid = -1;
+  this.videoPid = -1; this.audioPid = -1;
+  this.videoType = -1; this.audioType = -1;
+  this.pes = {};            // pid -> {chunks:[], pts, dts}
+  this.sps = null; this.pps = null; this.configSent = false;
+  this.hasAUD = false;
+  this.lastVideoPts = 0; this.lastVideoDur = 1 / 30;
+  this.audioCfg = null;
+  this.onVideoConfig = null; this.onVideoSample = null;
+  this.onAudioConfig = null; this.onAudioSample = null;
+  this.onUnsupported = null;
+}
+
+DmTsDemuxer.prototype.push = function (chunk) {
+  this.buf = dmConcat(this.buf, chunk);
+  var b = this.buf, off = 0;
+  // Resync to a 0x47 sync byte with another sync 188 later.
+  while (off < b.length && (b[off] !== 0x47 || (off + 188 < b.length && b[off + 188] !== 0x47))) off++;
+  while (b.length - off >= 188) {
+    this._packet(b.subarray(off, off + 188));
+    off += 188;
+  }
+  this.buf = b.slice(off);
+};
+
+DmTsDemuxer.prototype.flush = function () {
+  for (var pid in this.pes) this._flushPes(parseInt(pid, 10));
+};
+
+DmTsDemuxer.prototype._packet = function (p) {
+  var pusi = (p[1] & 0x40) !== 0;
+  var pid = ((p[1] & 0x1f) << 8) | p[2];
+  var afc = (p[3] >> 4) & 3;
+  if (afc === 0 || afc === 2) return; // no payload
+  var start = 4;
+  if (afc === 3) start += 1 + p[4];
+  if (start >= 188) return;
+  var payload = p.subarray(start);
+  if (pid === 0) { this._parsePat(payload, pusi); return; }
+  if (pid === this.pmtPid) { this._parsePmt(payload, pusi); return; }
+  if (pid === this.videoPid || pid === this.audioPid) {
+    if (pusi) {
+      this._flushPes(pid);
+      this.pes[pid] = { chunks: [], pts: null, dts: null };
+    }
+    var cur = this.pes[pid];
+    if (!cur) { cur = this.pes[pid] = { chunks: [], pts: null, dts: null }; }
+    cur.chunks.push(new Uint8Array(payload));
+  }
+};
+
+DmTsDemuxer.prototype._sectionPayload = function (payload, pusi) {
+  var off = 0;
+  if (pusi) off = 1 + payload[0]; // pointer_field
+  return payload.subarray(Math.min(off, payload.length));
+};
+
+DmTsDemuxer.prototype._parsePat = function (payload, pusi) {
+  var s = this._sectionPayload(payload, pusi);
+  if (s.length < 12 || s[0] !== 0) return;
+  var sectionLength = ((s[1] & 0x0f) << 8) | s[2];
+  var end = Math.min(3 + sectionLength - 4, s.length); // exclude CRC
+  for (var i = 8; i + 4 <= end; i += 4) {
+    var prog = (s[i] << 8) | s[i + 1];
+    var pid = ((s[i + 2] & 0x1f) << 8) | s[i + 3];
+    if (prog !== 0) { this.pmtPid = pid; return; }
+  }
+};
+
+DmTsDemuxer.prototype._parsePmt = function (payload, pusi) {
+  var s = this._sectionPayload(payload, pusi);
+  if (s.length < 12 || s[0] !== 2) return;
+  var sectionLength = ((s[1] & 0x0f) << 8) | s[2];
+  var end = Math.min(3 + sectionLength - 4, s.length);
+  var progInfoLen = ((s[10] & 0x0f) << 8) | s[11];
+  var i = 12 + progInfoLen;
+  while (i + 5 <= end) {
+    var type = s[i];
+    var pid = ((s[i + 1] & 0x1f) << 8) | s[i + 2];
+    var esLen = ((s[i + 3] & 0x0f) << 8) | s[i + 4];
+    if (type === 0x1b) { this.videoPid = pid; this.videoType = type; }
+    else if (type === 0x24) { this.videoPid = pid; this.videoType = type; if (this.onUnsupported) this.onUnsupported('hevc'); }
+    else if (type === 0x0f) { this.audioPid = pid; this.audioType = type; }
+    else if (type === 0x03 || type === 0x04) { this.audioPid = pid; this.audioType = type; if (this.onUnsupported) this.onUnsupported('mp3-audio'); }
+    else if (type === 0x81 || type === 0x06) { if (this.onUnsupported) this.onUnsupported('ac3-audio'); }
+    i += 5 + esLen;
+  }
+};
+
+function dmParsePesTimestamp(b, o) {
+  return ((b[o] >> 1) & 7) * 1073741824
+    + b[o + 1] * 4194304
+    + ((b[o + 2] >> 1) & 0x7f) * 32768
+    + b[o + 3] * 128
+    + ((b[o + 4] >> 1) & 0x7f);
+}
+
+DmTsDemuxer.prototype._flushPes = function (pid) {
+  var pes = this.pes[pid];
+  if (!pes || pes.chunks.length === 0) { this.pes[pid] = null; return; }
+  this.pes[pid] = null;
+  var total = 0, i;
+  for (i = 0; i < pes.chunks.length; i++) total += pes.chunks[i].length;
+  var b = new Uint8Array(total), o = 0;
+  for (i = 0; i < pes.chunks.length; i++) { b.set(pes.chunks[i], o); o += pes.chunks[i].length; }
+  if (b.length < 9 || b[0] !== 0 || b[1] !== 0 || b[2] !== 1) return;
+  var streamId = b[3];
+  var payloadOff = 6, pts = null;
+  var noHeader = [0xbc, 0xbe, 0xbf, 0xf0, 0xf1, 0xff, 0xf2, 0xf8].indexOf(streamId) >= 0;
+  if (!noHeader) {
+    if (b.length < 9) return;
+    var ptsDtsFlags = (b[7] >> 6) & 3;
+    var headerLen = b[8];
+    if (ptsDtsFlags === 2 || ptsDtsFlags === 3) pts = dmParsePesTimestamp(b, 9) / 90000;
+    payloadOff = 9 + headerLen;
+  }
+  if (payloadOff >= b.length) return;
+  var payload = b.subarray(payloadOff);
+  if (pid === this.videoPid && this.videoType === 0x1b) this._videoPes(payload, pts);
+  else if (pid === this.audioPid && this.audioType === 0x0f) this._audioPes(payload, pts);
+};
+
+DmTsDemuxer.prototype._splitNals = function (es) {
+  // Split an Annex B byte stream into NAL units (data includes NAL header byte).
+  var nals = [], i = 0, start = -1, startLen = 0;
+  function findStart(from) {
+    for (var j = from; j + 2 < es.length; j++) {
+      if (es[j] === 0 && es[j + 1] === 0 && es[j + 2] === 1) return { at: j, len: 3 };
+      if (es[j] === 0 && es[j + 1] === 0 && es[j + 2] === 0 && es[j + 3] === 1) return { at: j, len: 4 };
+    }
+    return null;
+  }
+  var cur = findStart(0);
+  if (!cur) return nals;
+  start = cur.at + cur.len; startLen = cur.len;
+  while (true) {
+    var nxt = findStart(start);
+    var end = nxt ? nxt.at : es.length;
+    // trim trailing zero bytes that belong to the next start code prefix
+    while (end > start && es[end - 1] === 0 && nxt) end--;
+    if (end > start) nals.push(es.subarray(start, end));
+    if (!nxt) break;
+    start = nxt.at + nxt.len;
+  }
+  return nals;
+};
+
+DmTsDemuxer.prototype._videoPes = function (payload, pts) {
+  var nals = this._splitNals(payload);
+  if (nals.length === 0) return;
+  // Split into access units at AUDs if the stream uses them.
+  var aus = [], cur = [];
+  var i, nal, type;
+  for (i = 0; i < nals.length; i++) {
+    nal = nals[i]; type = nal[0] & 0x1f;
+    if (type === 9) { this.hasAUD = true; if (cur.length) { aus.push(cur); cur = []; } continue; }
+    cur.push(nal);
+  }
+  if (cur.length) aus.push(cur);
+  if (!this.hasAUD && aus.length > 1) { /* shouldn't happen */ }
+  for (i = 0; i < aus.length; i++) {
+    var auPts;
+    if (pts !== null && i === 0) auPts = pts;
+    else auPts = this.lastVideoPts + this.lastVideoDur;
+    this._emitAu(aus[i], auPts);
+    if (pts !== null && i === 0 && aus.length === 1) {
+      // update running duration estimate
+      var d = auPts - this.lastVideoPts;
+      if (d > 0.001 && d < 0.25) this.lastVideoDur = d;
+    }
+    this.lastVideoPts = auPts;
+  }
+};
+
+DmTsDemuxer.prototype._emitAu = function (nals, pts) {
+  var parts = [], keyframe = false, hasVcl = false, i, nal, type;
+  for (i = 0; i < nals.length; i++) {
+    nal = nals[i]; type = nal[0] & 0x1f;
+    if (type === 7) {
+      var curSps = this.sps;
+      var same = curSps && nal.length === curSps.length;
+      if (same) { for (var sj = 0; sj < nal.length; sj++) { if (nal[sj] !== curSps[sj]) { same = false; break; } } }
+      if (!same) { this.sps = new Uint8Array(nal); this.configSent = false; }
+      continue;
+    }
+    if (type === 8) { this.pps = new Uint8Array(nal); continue; }
+    if (type === 6) continue; // SEI: not needed for decode
+    if (type === 5) keyframe = true;
+    if (type === 1 || type === 5) hasVcl = true;
+    parts.push(nal);
+  }
+  if (!hasVcl) return;
+  if (this.sps && this.pps && !this.configSent) {
+    this.configSent = true;
+    if (this.onVideoConfig) {
+      var info = { width: 0, height: 0 };
+      try { info = dmParseSPS(this.sps); } catch (e) { /* decoder can still use avcC */ }
+      this.onVideoConfig({
+        codec: dmAvcCodecString(this.sps),
+        description: dmBuildAvcc(this.sps, this.pps),
+        width: info.width, height: info.height
+      });
+    }
+  }
+  if (!this.configSent) return; // wait until SPS/PPS seen
+  var total = 0;
+  for (i = 0; i < parts.length; i++) total += 4 + parts[i].length;
+  var data = new Uint8Array(total), o = 0;
+  for (i = 0; i < parts.length; i++) {
+    var n = parts[i];
+    data[o++] = (n.length >>> 24) & 0xff; data[o++] = (n.length >>> 16) & 0xff;
+    data[o++] = (n.length >>> 8) & 0xff; data[o++] = n.length & 0xff;
+    data.set(n, o); o += n.length;
+  }
+  if (this.onVideoSample) this.onVideoSample({ data: data, pts: pts, keyframe: keyframe });
+};
+
+function dmId3Timestamp(tag) {
+  // tag = the full ID3v2 tag bytes (starting "ID3"). Returns the
+  // com.apple.streaming.transportStreamTimestamp value in seconds, or null.
+  if (tag.length < 10 || tag[0] !== 0x49 || tag[1] !== 0x44 || tag[2] !== 0x33) return null;
+  var major = tag[3];
+  var p = 10;
+  while (p + 10 <= tag.length) {
+    var id = String.fromCharCode(tag[p], tag[p + 1], tag[p + 2], tag[p + 3]);
+    if (id.charCodeAt(0) === 0) break;
+    var size;
+    if (major === 4) size = ((tag[p + 4] & 0x7f) << 21) | ((tag[p + 5] & 0x7f) << 14) | ((tag[p + 6] & 0x7f) << 7) | (tag[p + 7] & 0x7f);
+    else size = dmU32(tag, p + 4);
+    var dataStart = p + 10;
+    if (id === 'PRIV' && size > 45) {
+      var owner = '';
+      for (var i = dataStart; i < tag.length && tag[i] !== 0; i++) owner += String.fromCharCode(tag[i]);
+      if (owner === 'com.apple.streaming.transportStreamTimestamp') {
+        var v = 0, tOff = i + 1;
+        for (var j = 0; j < 8 && tOff + j < tag.length; j++) v = v * 256 + tag[tOff + j];
+        return v / 90000;
+      }
+    }
+    p = dataStart + size;
+  }
+  return null;
+}
+
+DmTsDemuxer.prototype.pushAudioRaw = function (bytes, fallbackStartPts) {
+  // Raw ADTS elementary stream (HLS audio-only segments), optionally
+  // prefixed with an ID3v2 tag carrying the stream timestamp.
+  var start = fallbackStartPts, off = 0;
+  if (bytes.length > 10 && bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) {
+    var size = ((bytes[6] & 0x7f) << 21) | ((bytes[7] & 0x7f) << 14) | ((bytes[8] & 0x7f) << 7) | (bytes[9] & 0x7f);
+    var ts = dmId3Timestamp(bytes.subarray(0, Math.min(10 + size, bytes.length)));
+    if (ts !== null) start = ts;
+    off = 10 + size;
+    if (bytes[5] & 0x10) off += 10; // footer present
+  }
+  this._adtsScan(bytes.subarray(off), start);
+};
+
+DmTsDemuxer.prototype._audioPes = function (payload, pts) {
+  this._adtsScan(payload, pts);
+};
+
+DmTsDemuxer.prototype._adtsScan = function (payload, pts) {
+  var off = 0, framePts = pts;
+  while (off + 7 <= payload.length) {
+    if (payload[off] !== 0xff || (payload[off + 1] & 0xf0) !== 0xf0) { off++; continue; }
+    var b2 = payload[off + 2], b3 = payload[off + 3];
+    var profile = (b2 >> 6) & 3;
+    var sfIndex = (b2 >> 2) & 0x0f;
+    var chan = ((b2 & 1) << 2) | ((b3 >> 6) & 3);
+    var frameLen = ((b3 & 3) << 11) | (payload[off + 4] << 3) | (payload[off + 5] >> 5);
+    if (frameLen < 7 || off + frameLen > payload.length) break;
+    var crcPresent = (payload[off + 1] & 1) === 0;
+    var headerLen = crcPresent ? 9 : 7;
+    var sampleRate = DM_AAC_RATES[sfIndex] || 44100;
+    if (!this.audioCfg) {
+      var aot = profile + 1;
+      var asc = new Uint8Array(2);
+      asc[0] = ((aot & 0x1f) << 3) | ((sfIndex >> 1) & 7);
+      asc[1] = ((sfIndex & 1) << 7) | ((chan & 0xf) << 3);
+      this.audioCfg = { codec: 'mp4a.40.' + aot, description: asc, sampleRate: sampleRate, channels: chan || 2 };
+      if (this.onAudioConfig) this.onAudioConfig(this.audioCfg);
+    }
+    var raw = payload.subarray(off + headerLen, off + frameLen);
+    if (this.onAudioSample && framePts !== null) {
+      this.onAudioSample({ data: new Uint8Array(raw), pts: framePts });
+    }
+    if (framePts !== null) framePts += 1024 / sampleRate;
+    off += frameLen;
+  }
+};
+
+/* ---------------- Minimal MP4 demuxer ----------------
+   parseMP4(arrayBuffer) -> {
+     duration,                                   // seconds
+     video: { codec, description, width, height,
+              samples: [{data, pts, duration, keyframe}] } | null,
+     audio: { codec, description, sampleRate, channels,
+              samples: [{data, pts, duration}] } | null,
+     error: string | null
+   }
+   Non-fragmented MP4 only; H.264 (avc1) + AAC (mp4a). */
+
+function dmU32(b, o) { return ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0; }
+function dmU64(b, o) { return dmU32(b, o) * 4294967296 + dmU32(b, o + 4); }
+
+function dmBoxes(b, start, end) {
+  var boxes = [], o = start;
+  while (o + 8 <= end) {
+    var size = dmU32(b, o);
+    var type = String.fromCharCode(b[o + 4], b[o + 5], b[o + 6], b[o + 7]);
+    var header = 8;
+    if (size === 1) { size = dmU64(b, o + 8); header = 16; }
+    else if (size === 0) { size = end - o; }
+    if (size < header || o + size > end) break;
+    boxes.push({ type: type, start: o, dataStart: o + header, size: size, end: o + size });
+    o += size;
+  }
+  return boxes;
+}
+function dmFindBox(b, start, end, type) {
+  var boxes = dmBoxes(b, start, end);
+  for (var i = 0; i < boxes.length; i++) if (boxes[i].type === type) return boxes[i];
+  return null;
+}
+function dmFindSub(b, from, to, fourcc) {
+  // byte-scan for a nested box by fourcc (used for avcC / esds inside stsd entries)
+  for (var i = from; i + 4 <= to; i++) {
+    if (b[i] === fourcc.charCodeAt(0) && b[i + 1] === fourcc.charCodeAt(1) &&
+        b[i + 2] === fourcc.charCodeAt(2) && b[i + 3] === fourcc.charCodeAt(3)) {
+      return i - 4; // position of the box size field
+    }
+  }
+  return -1;
+}
+
+function dmExpandRuns(entries, timescale) {
+  // entries: [{count, delta}] -> per-sample decode times + durations (seconds)
+  var times = [], durs = [], t = 0;
+  for (var i = 0; i < entries.length; i++) {
+    for (var j = 0; j < entries[i].count; j++) {
+      times.push(t / timescale);
+      durs.push(entries[i].delta / timescale);
+      t += entries[i].delta;
+    }
+  }
+  return { times: times, durs: durs };
+}
+
+function dmParseMp4Track(b, trak) {
+  var mdia = dmFindBox(b, trak.dataStart, trak.end, 'mdia');
+  if (!mdia) return null;
+  var mdhd = dmFindBox(b, mdia.dataStart, mdia.end, 'mdhd');
+  var hdlr = dmFindBox(b, mdia.dataStart, mdia.end, 'hdlr');
+  var minf = dmFindBox(b, mdia.dataStart, mdia.end, 'minf');
+  if (!mdhd || !hdlr || !minf) return null;
+  var version = b[mdhd.dataStart];
+  var timescale, i;
+  if (version === 1) timescale = dmU32(b, mdhd.dataStart + 20);
+  else timescale = dmU32(b, mdhd.dataStart + 12);
+  var handler = String.fromCharCode(b[hdlr.dataStart + 8], b[hdlr.dataStart + 9], b[hdlr.dataStart + 10], b[hdlr.dataStart + 11]);
+  var stbl = dmFindBox(b, minf.dataStart, minf.end, 'stbl');
+  if (!stbl) return null;
+  var stsd = dmFindBox(b, stbl.dataStart, stbl.end, 'stsd');
+  var stts = dmFindBox(b, stbl.dataStart, stbl.end, 'stts');
+  var stsz = dmFindBox(b, stbl.dataStart, stbl.end, 'stsz');
+  var stsc = dmFindBox(b, stbl.dataStart, stbl.end, 'stsc');
+  var stco = dmFindBox(b, stbl.dataStart, stbl.end, 'stco');
+  var co64 = dmFindBox(b, stbl.dataStart, stbl.end, 'co64');
+  var stss = dmFindBox(b, stbl.dataStart, stbl.end, 'stss');
+  var ctts = dmFindBox(b, stbl.dataStart, stbl.end, 'ctts');
+  if (!stsd || !stts || !stsz || !stsc || (!stco && !co64)) return null;
+
+  // --- sample description ---
+  var entryStart = stsd.dataStart + 8; // version/flags + entry_count
+  var entryType = String.fromCharCode(b[entryStart + 4], b[entryStart + 5], b[entryStart + 6], b[entryStart + 7]);
+  var track = { handler: handler, codec: null, samples: [] };
+
+  if (handler === 'vide') {
+    if (entryType !== 'avc1' && entryType !== 'avc3') { track.unsupported = entryType; return track; }
+    track.width = (b[entryStart + 32] << 8) | b[entryStart + 33];
+    track.height = (b[entryStart + 34] << 8) | b[entryStart + 35];
+    var avccAt = dmFindSub(b, entryStart, stsd.end, 'avcC');
+    if (avccAt < 0) { track.unsupported = 'avc1-no-avcc'; return track; }
+    var avccSize = dmU32(b, avccAt);
+    var avcc = b.subarray(avccAt + 8, avccAt + avccSize);
+    track.description = new Uint8Array(avcc);
+    track.nalLengthSize = (avcc[4] & 3) + 1;
+    track.codec = 'avc1.' + dmHex2(avcc[1]) + dmHex2(avcc[2]) + dmHex2(avcc[3]);
+  } else if (handler === 'soun') {
+    if (entryType !== 'mp4a') { track.unsupported = entryType; return track; }
+    track.channels = (b[entryStart + 24] << 8) | b[entryStart + 25];
+    track.sampleRate = dmU32(b, entryStart + 32) >>> 16;
+    var esdsAt = dmFindSub(b, entryStart, stsd.end, 'esds');
+    if (esdsAt < 0) { track.unsupported = 'mp4a-no-esds'; return track; }
+    var asc = dmParseEsds(b, esdsAt + 8, dmU32(b, esdsAt) + esdsAt);
+    if (!asc) { track.unsupported = 'mp4a-no-asc'; return track; }
+    track.description = asc;
+    var aot = (asc[0] >> 3) & 0x1f;
+    track.codec = 'mp4a.40.' + aot;
+    if (!track.sampleRate) track.sampleRate = DM_AAC_RATES[((asc[0] & 7) << 1) | (asc[1] >> 7)] || 44100;
+    if (!track.channels) track.channels = (asc[1] >> 3) & 0xf;
+  } else {
+    return null;
+  }
+
+  // --- sample tables ---
+  function readRuns(box) {
+    var count = dmU32(b, box.dataStart + 4), out = [], o = box.dataStart + 8;
+    for (var i = 0; i < count; i++, o += 8) out.push({ count: dmU32(b, o), delta: dmU32(b, o + 4) });
+    return out;
+  }
+  var timing = dmExpandRuns(readRuns(stts), timescale);
+  var sampleCount;
+  var uniformSize = dmU32(b, stsz.dataStart + 4);
+  sampleCount = dmU32(b, stsz.dataStart + 8);
+  var sizes = [];
+  if (uniformSize) { for (i = 0; i < sampleCount; i++) sizes.push(uniformSize); }
+  else { for (i = 0; i < sampleCount; i++) sizes.push(dmU32(b, stsz.dataStart + 12 + i * 4)); }
+
+  var chunkOffsets = [];
+  var chunkBox = stco || co64, chunkCount = dmU32(b, chunkBox.dataStart + 4);
+  for (i = 0; i < chunkCount; i++) {
+    chunkOffsets.push(stco ? dmU32(b, chunkBox.dataStart + 8 + i * 4) : dmU64(b, chunkBox.dataStart + 8 + i * 8));
+  }
+  var scCount = dmU32(b, stsc.dataStart + 4), scEntries = [];
+  for (i = 0; i < scCount; i++) {
+    scEntries.push({
+      first: dmU32(b, stsc.dataStart + 8 + i * 12),
+      perChunk: dmU32(b, stsc.dataStart + 12 + i * 12)
+    });
+  }
+  var offsets = [], sIdx = 0;
+  for (var c = 0; c < chunkOffsets.length; c++) {
+    var per = 0;
+    for (i = 0; i < scEntries.length; i++) if (scEntries[i].first <= c + 1) per = scEntries[i].perChunk;
+    var off = chunkOffsets[c];
+    for (var s = 0; s < per && sIdx < sampleCount; s++) { offsets.push(off); off += sizes[sIdx]; sIdx++; }
+  }
+  var keyframes = null;
+  if (stss) {
+    keyframes = {};
+    var kCount = dmU32(b, stss.dataStart + 4);
+    for (i = 0; i < kCount; i++) keyframes[dmU32(b, stss.dataStart + 8 + i * 4)] = true;
+  }
+  var ctoffs = null;
+  if (ctts) {
+    ctoffs = [];
+    var ctVer = b[ctts.dataStart];
+    var ctCount = dmU32(b, ctts.dataStart + 4), co = ctts.dataStart + 8;
+    for (i = 0; i < ctCount; i++, co += 8) {
+      var cnt = dmU32(b, co), offv = dmU32(b, co + 4);
+      if (ctVer === 1 && offv >= 2147483648) offv -= 4294967296;
+      for (var j = 0; j < cnt; j++) ctoffs.push(offv / timescale);
+    }
+  }
+  for (i = 0; i < sampleCount && i < offsets.length; i++) {
+    track.samples.push({
+      data: b.subarray(offsets[i], offsets[i] + sizes[i]),
+      pts: timing.times[i] + (ctoffs ? (ctoffs[i] || 0) : 0),
+      duration: timing.durs[i] || 0,
+      keyframe: keyframes ? !!keyframes[i + 1] : true
+    });
+  }
+  return track;
+}
+
+function dmParseEsds(b, start, end) {
+  // Walk the descriptor tree to tag 0x05 (DecoderSpecificInfo = ASC).
+  var p = start + 4; // version/flags
+  function readLen() {
+    var len = 0, c;
+    do { c = b[p++]; len = (len << 7) | (c & 0x7f); } while ((c & 0x80) && p < end);
+    return len;
+  }
+  while (p < end) {
+    var tag = b[p++];
+    var len = readLen();
+    if (tag === 0x05) return new Uint8Array(b.subarray(p, p + len));
+    if (tag === 0x03) { p += 3; continue; }        // ES_ID + flags, then nested tags follow
+    if (tag === 0x04) { p += 13; continue; }       // decoder config fixed part, then nested
+    p += len;
+  }
+  return null;
+}
+
+function dmConvertNalLength(data, fromSize) {
+  if (fromSize === 4) return data;
+  var parts = [], o = 0;
+  while (o + fromSize <= data.length) {
+    var n = 0;
+    for (var i = 0; i < fromSize; i++) n = n * 256 + data[o + i];
+    o += fromSize;
+    if (n === 0 || o + n > data.length) break;
+    parts.push(data.subarray(o, o + n));
+    o += n;
+  }
+  var total = 0, j;
+  for (j = 0; j < parts.length; j++) total += 4 + parts[j].length;
+  var out = new Uint8Array(total), w = 0;
+  for (j = 0; j < parts.length; j++) {
+    var p = parts[j];
+    out[w++] = (p.length >>> 24) & 0xff; out[w++] = (p.length >>> 16) & 0xff;
+    out[w++] = (p.length >>> 8) & 0xff; out[w++] = p.length & 0xff;
+    out.set(p, w); w += p.length;
+  }
+  return out;
+}
+
+function dmParseMP4(arrayBuffer) {
+  var b = new Uint8Array(arrayBuffer);
+  var result = { duration: 0, video: null, audio: null, error: null };
+  var moov = dmFindBox(b, 0, b.length, 'moov');
+  if (!moov) { result.error = 'No moov box (fragmented or not an MP4).'; return result; }
+  var mvhd = dmFindBox(b, moov.dataStart, moov.end, 'mvhd');
+  if (mvhd) {
+    var ver = b[mvhd.dataStart];
+    var ts = (ver === 1) ? dmU32(b, mvhd.dataStart + 20) : dmU32(b, mvhd.dataStart + 12);
+    var dur = (ver === 1) ? dmU64(b, mvhd.dataStart + 24) : dmU32(b, mvhd.dataStart + 16);
+    if (ts) result.duration = dur / ts;
+  }
+  var boxes = dmBoxes(b, moov.dataStart, moov.end);
+  for (var i = 0; i < boxes.length; i++) {
+    if (boxes[i].type !== 'trak') continue;
+    var track = dmParseMp4Track(b, boxes[i]);
+    if (!track) continue;
+    if (track.handler === 'vide' && !result.video) result.video = track;
+    if (track.handler === 'soun' && !result.audio) result.audio = track;
+  }
+  if (result.video && result.video.unsupported) {
+    result.error = 'Unsupported video codec in MP4: ' + result.video.unsupported;
+    result.video = null;
+  }
+  if (result.audio && result.audio.unsupported) result.audio = null; // video-only is fine
+  return result;
+}
+
+/* Export for Node tests */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    dmParsePlaylist: dmParsePlaylist, DmTsDemuxer: DmTsDemuxer,
+    dmParseMP4: dmParseMP4, dmParseSPS: dmParseSPS, dmBuildAvcc: dmBuildAvcc,
+    dmConvertNalLength: dmConvertNalLength
+  };
+}
+
+</script>
+<script>
+/* =====================================================================
+   Drive Mode engine — browser side. Decodes H.264 with WebCodecs and
+   paints frames to a <canvas> (no <video> element, so Tesla's
+   in-Drive video pause has nothing to grab). AAC audio is decoded
+   with WebCodecs and scheduled on an AudioContext; the audio clock
+   is the master clock for A/V sync.
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  /* ---------- DOM ---------- */
+  function $(id) { return document.getElementById(id); }
+  var gate = $('gate'), canvas = $('screen'), stage = $('stage');
+  var btnPlay = $('btnPlay'), btnFs = $('btnFs'), seek = $('seek');
+  var timeLabel = $('timeLabel'), statusEl = $('status'), wcWarn = $('wcWarn');
+  var urlIn = $('urlIn'), btnUrlPlay = $('btnUrlPlay');
+  var plexBaseIn = $('plexBase'), plexTokenIn = $('plexToken');
+  var btnPlexLoad = $('btnPlexLoad'), btnPlexForget = $('btnPlexForget');
+  var plexMsg = $('plexMsg'), plexList = $('plexList');
+  var ctx2d = canvas.getContext('2d');
+
+  /* ---------- Gate (same pattern as the theater page) ---------- */
+  function dismissGate() { gate.hidden = true; document.body.classList.remove('gated'); }
+  $('gatePassenger').addEventListener('click', dismissGate);
+  $('gateDriver').addEventListener('click', dismissGate);
+
+  /* ---------- WebCodecs availability ---------- */
+  var hasWC = (typeof VideoDecoder !== 'undefined') && (typeof AudioDecoder !== 'undefined');
+  if (!hasWC) {
+    wcWarn.hidden = false;
+    btnUrlPlay.disabled = true;
+  }
+
+  /* ---------- State ---------- */
+  var S = {
+    gen: 0, mode: null, loaded: false,
+    started: false, playing: false, ended: false,
+    isLive: false, duration: 0,
+    ctx: null, ctxEpoch: 0, mediaTarget: 0,
+    vdec: null, adec: null, vdecReady: false, adecReady: false,
+    vConfig: null, aConfig: null,
+    frames: [], drawnFrame: null, lastFrameDur: 1 / 30,
+    audioPtsQueue: [], audioSources: new Set(), nextAudioWhen: 0,
+    tracks: [], mp4: null, mp4VIdx: 0, mp4AIdx: 0,
+    needKey: true, dropAudioBefore: 0, paintTick: 0
+  };
+  var vSamples = [];   // {data, pts, keyframe}
+  var aSamples = [];   // {data, pts}
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (isErr ? ' err' : '');
+  }
+  function onEngineError(msg) { setStatus(msg, true); }
+  function fmt(t) {
+    if (!isFinite(t) || t < 0) t = 0;
+    t = Math.floor(t);
+    var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    return (h > 0 ? h + ':' : '') + (h > 0 && m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* ---------- Clock ---------- */
+  function ensureCtx() {
+    if (!S.ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) S.ctx = new AC();
+    }
+    return S.ctx;
+  }
+  function mediaNow() {
+    if (!S.started || !S.ctx) return S.mediaTarget;
+    return S.mediaTarget + (S.ctx.currentTime - S.ctxEpoch);
+  }
+  function startClockAt(t) {
+    ensureCtx();
+    if (!S.ctx) { onEngineError('No audio support in this browser — cannot run the player clock.'); return; }
+    S.mediaTarget = t;
+    S.ctxEpoch = S.ctx.currentTime + 0.15;
+    S.started = true;
+    S.dropAudioBefore = t;
+    if (S.ctx.state === 'suspended') S.ctx.resume();
+    S.playing = true;
+    updatePlayBtn();
+  }
+
+  /* ---------- Decoders ---------- */
+  function setupVideoDecoder() {
+    if (!S.vConfig || !hasWC) return;
+    if (!S.vdec) {
+      S.vdec = new VideoDecoder({
+        output: function (frame) {
+          if (S.frames.length > 150) { frame.close(); return; }
+          S.frames.push(frame);
+        },
+        error: function (e) { onEngineError('Video decoder error: ' + e.message); }
+      });
+    } else { try { S.vdec.reset(); } catch (e) {} }
+    var cfg = { codec: S.vConfig.codec, description: S.vConfig.description };
+    if (S.vConfig.width) { cfg.codedWidth = S.vConfig.width; cfg.codedHeight = S.vConfig.height; }
+    if (VideoDecoder.isConfigSupported) {
+      VideoDecoder.isConfigSupported(cfg).then(function (res) {
+        if (!res.supported) onEngineError('This browser cannot decode ' + cfg.codec + ' video with WebCodecs.');
+      }).catch(function () {});
+    }
+    try { S.vdec.configure(cfg); S.vdecReady = true; }
+    catch (e) { onEngineError('Video decoder setup failed: ' + e.message); }
+  }
+  function setupAudioDecoder() {
+    if (!S.aConfig || !hasWC) return;
+    if (!S.adec) {
+      S.adec = new AudioDecoder({
+        output: function (buf) {
+          var pts = S.audioPtsQueue.length ? S.audioPtsQueue.shift() : S.mediaTarget;
+          scheduleAudio(buf, pts);
+        },
+        error: function (e) { onEngineError('Audio decoder error: ' + e.message); }
+      });
+    } else { try { S.adec.reset(); } catch (e) {} }
+    var cfg = {
+      codec: S.aConfig.codec, description: S.aConfig.description,
+      sampleRate: S.aConfig.sampleRate, numberOfChannels: S.aConfig.channels
+    };
+    try { S.adec.configure(cfg); S.adecReady = true; }
+    catch (e) { onEngineError('Audio decoder setup failed: ' + e.message); }
+  }
+  function onVideoConfig(cfg) {
+    if (S.vConfig && S.vConfig.codec === cfg.codec && S.vConfig.width === cfg.width && S.vConfig.height === cfg.height) return;
+    S.vConfig = cfg;
+    setupVideoDecoder();
+  }
+  function onAudioConfig(cfg) {
+    if (S.aConfig && S.aConfig.codec === cfg.codec && S.aConfig.sampleRate === cfg.sampleRate) return;
+    S.aConfig = cfg;
+    setupAudioDecoder();
+  }
+  function scheduleAudio(buf, pts) {
+    if (!S.ctx) return;
+    var when = S.ctxEpoch + (pts - S.mediaTarget);
+    var now = S.ctx.currentTime;
+    if (when < now + 0.02) when = now + 0.02;
+    if (S.nextAudioWhen && when < S.nextAudioWhen) when = S.nextAudioWhen;
+    S.nextAudioWhen = when + buf.duration;
+    var src = S.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(S.ctx.destination);
+    src.onended = function () { S.audioSources.delete(src); };
+    S.audioSources.add(src);
+    try { src.start(when); } catch (e) {}
+  }
+  function stopAudioSources() {
+    S.audioSources.forEach(function (src) { try { src.stop(); } catch (e) {} try { src.disconnect(); } catch (e) {} });
+    S.audioSources.clear();
+    S.nextAudioWhen = 0;
+  }
+  function closeFrames() {
+    for (var i = 0; i < S.frames.length; i++) { try { S.frames[i].close(); } catch (e) {} }
+    S.frames = [];
+    S.drawnFrame = null;
+  }
+
+  function decodeVideoSample(s, nextPts) {
+    var dur = (nextPts !== null && nextPts > s.pts) ? nextPts - s.pts : S.lastFrameDur;
+    if (dur > 0 && dur < 0.5) S.lastFrameDur = dur;
+    try {
+      S.vdec.decode(new EncodedVideoChunk({
+        type: s.keyframe ? 'key' : 'delta',
+        timestamp: Math.round(s.pts * 1000000),
+        duration: Math.round(dur * 1000000),
+        data: s.data
+      }));
+    } catch (e) { onEngineError('Video decode failed: ' + e.message); }
+  }
+  function decodeAudioSample(a) {
+    S.audioPtsQueue.push(a.pts);
+    try {
+      S.adec.decode(new EncodedAudioChunk({
+        type: 'key', timestamp: Math.round(a.pts * 1000000), data: a.data
+      }));
+    } catch (e) { S.audioPtsQueue.pop(); }
+  }
+
+  /* ---------- HLS tracks ---------- */
+  function bindDemuxer(track) {
+    var d = track.demuxer;
+    d.onVideoConfig = function (cfg) { onVideoConfig(cfg); };
+    d.onAudioConfig = function (cfg) { onAudioConfig(cfg); };
+    d.onVideoSample = function (s) {
+      if (track.basePts === null) track.basePts = s.pts - (track.segments[track.demuxSeq] ? track.segments[track.demuxSeq].start : 0);
+      vSamples.push({ data: s.data, pts: s.pts - track.basePts, keyframe: s.keyframe });
+    };
+    d.onAudioSample = function (s) {
+      if (track.basePts === null) track.basePts = s.pts - (track.segments[track.demuxSeq] ? track.segments[track.demuxSeq].start : 0);
+      aSamples.push({ data: s.data, pts: s.pts - track.basePts });
+    };
+    d.onUnsupported = function (what) {
+      if (track.unsupportedSeen[what]) return;
+      track.unsupportedSeen[what] = true;
+      if (what === 'hevc') onEngineError('This stream uses HEVC/H.265 video, which this player cannot decode (H.264 only).');
+      else setStatus('Note: ' + what + ' audio is not supported in drive mode — playing without that audio track.', false);
+    };
+  }
+
+  function addSegments(track, pl) {
+    var base = pl.mediaSequence, i, seq;
+    for (i = 0; i < pl.segments.length; i++) {
+      seq = base + i;
+      if (track.segments[seq]) continue;
+      var start;
+      if (seq === track.firstSeq) start = 0;
+      else if (track.segments[seq - 1]) start = track.segments[seq - 1].start + track.segments[seq - 1].duration;
+      else start = track.endOfKnown;
+      track.segments[seq] = { uri: pl.segments[i].uri, duration: pl.segments[i].duration, start: start };
+      track.endOfKnown = start + pl.segments[i].duration;
+      if (seq > track.lastSeq) track.lastSeq = seq;
+    }
+    track.endList = pl.endList;
+    if (pl.targetDuration) track.targetDuration = pl.targetDuration;
+  }
+
+  function makeTrack(kind, url, pl) {
+    var track = {
+      kind: kind, url: url, demuxer: new DmTsDemuxer(), basePts: null,
+      segments: {}, firstSeq: pl.mediaSequence, lastSeq: pl.mediaSequence - 1,
+      nextSeq: pl.mediaSequence, demuxSeq: pl.mediaSequence,
+      endList: false, targetDuration: pl.targetDuration || 6,
+      fetching: false, done: false, endOfKnown: 0, lastPoll: 0,
+      hasFetchedOnce: false, unsupportedSeen: {}
+    };
+    addSegments(track, pl);
+    bindDemuxer(track);
+    S.tracks.push(track);
+    return track;
+  }
+
+  function fetchedUptoTime(track) {
+    if (track.nextSeq <= track.firstSeq) return 0;
+    var prev = track.segments[track.nextSeq - 1];
+    return prev ? prev.start + prev.duration : track.endOfKnown;
+  }
+
+  function maybeFetch(track) {
+    if (track.fetching || track.done) return;
+    if (track.retryAfter && performance.now() < track.retryAfter) return;
+    var gen = S.gen;
+    if (track.nextSeq > track.lastSeq) {
+      if (!track.endList && performance.now() - track.lastPoll > (track.targetDuration || 6) * 500) {
+        track.lastPoll = performance.now();
+        track.fetching = true;
+        fetch(track.url).then(function (r) { return r.text(); }).then(function (text) {
+          if (gen !== S.gen) return;
+          addSegments(track, dmParsePlaylist(text, track.url));
+        }).catch(function () {}).then(function () { if (gen === S.gen) track.fetching = false; });
+      }
+      return;
+    }
+    if (track.hasFetchedOnce && fetchedUptoTime(track) - mediaNow() > 14) return;
+    fetchSegment(track, gen);
+  }
+
+  function fetchSegment(track, gen) {
+    var seq = track.nextSeq;
+    var seg = track.segments[seq];
+    if (!seg) return;
+    track.fetching = true;
+    track.hasFetchedOnce = true;
+    fetch(seg.uri).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (ab) {
+      if (gen !== S.gen) return;
+      var buf = new Uint8Array(ab);
+      track.demuxSeq = seq;
+      if (track.kind === 'audio' && buf.length && buf[0] !== 0x47) {
+        track.demuxer.pushAudioRaw(buf, (track.basePts || 0) + seg.start);
+      } else {
+        track.demuxer.push(buf);
+      }
+      track.nextSeq = seq + 1;
+      if (track.nextSeq > track.lastSeq && track.endList) { track.demuxer.flush(); track.done = true; }
+    }).catch(function (e) {
+      if (gen === S.gen) { track.retryAfter = performance.now() + 2000; setStatus('Could not fetch stream segment (' + e.message + ') — retrying…', true); }
+    }).then(function () { if (gen === S.gen) track.fetching = false; });
+  }
+
+  function seqAtTime(track, t) {
+    var seqs = Object.keys(track.segments).map(Number).sort(function (a, b) { return a - b; });
+    for (var i = 0; i < seqs.length; i++) {
+      var seg = track.segments[seqs[i]];
+      if (t < seg.start + seg.duration) return seqs[i];
+    }
+    return seqs.length ? seqs[seqs.length - 1] : track.firstSeq;
+  }
+
+  /* ---------- Pump + painter ---------- */
+  function pump() {
+    if (!S.loaded) return;
+    var i;
+    if (S.mode === 'hls') {
+      for (i = 0; i < S.tracks.length; i++) maybeFetch(S.tracks[i]);
+    }
+    if (!S.started) return;
+    if (!S.playing) return; // paused: keep fetching ahead, but don't feed decoders into a frozen clock
+    // Feed video decoder
+    if (S.vdec && S.vdecReady) {
+      if (S.mode === 'hls') {
+        while (S.vdec.decodeQueueSize < 6 && vSamples.length) {
+          var s = vSamples[0];
+          if (S.needKey && !s.keyframe) { vSamples.shift(); continue; }
+          S.needKey = false;
+          vSamples.shift();
+          decodeVideoSample(s, vSamples.length ? vSamples[0].pts : null);
+        }
+      } else if (S.mode === 'mp4' && S.mp4 && S.mp4.video) {
+        var vs = S.mp4.video.samples;
+        while (S.vdec.decodeQueueSize < 6 && S.mp4VIdx < vs.length) {
+          var ms = vs[S.mp4VIdx++];
+          if (S.needKey && !ms.keyframe) continue;
+          S.needKey = false;
+          var data = (S.mp4.video.nalLengthSize === 4) ? ms.data : dmConvertNalLength(ms.data, S.mp4.video.nalLengthSize);
+          decodeVideoSample({ data: data, pts: ms.pts, keyframe: ms.keyframe },
+            S.mp4VIdx < vs.length ? vs[S.mp4VIdx].pts : null);
+        }
+      }
+    }
+    // Feed audio decoder
+    if (S.adec && S.adecReady) {
+      if (S.mode === 'hls') {
+        while (S.adec.decodeQueueSize < 12 && aSamples.length) {
+          var a = aSamples.shift();
+          if (a.pts < S.dropAudioBefore - 0.05) continue;
+          decodeAudioSample(a);
+        }
+      } else if (S.mode === 'mp4' && S.mp4 && S.mp4.audio) {
+        var as = S.mp4.audio.samples;
+        while (S.adec.decodeQueueSize < 12 && S.mp4AIdx < as.length) {
+          var ma = as[S.mp4AIdx++];
+          if (ma.pts < S.dropAudioBefore - 0.05) continue;
+          decodeAudioSample({ data: ma.data, pts: ma.pts });
+        }
+      }
+    }
+  }
+  setInterval(pump, 150);
+
+  function allTracksDone() {
+    for (var i = 0; i < S.tracks.length; i++) if (!S.tracks[i].done) return false;
+    return S.tracks.length > 0;
+  }
+  function checkEnded(t) {
+    if (!S.started || S.ended || S.isLive) return;
+    var drained;
+    if (S.mode === 'hls') {
+      drained = allTracksDone() && !vSamples.length && !aSamples.length;
+    } else if (S.mode === 'mp4' && S.mp4) {
+      drained = (!S.mp4.video || S.mp4VIdx >= S.mp4.video.samples.length) &&
+                (!S.mp4.audio || S.mp4AIdx >= S.mp4.audio.samples.length);
+    } else return;
+    if (drained && S.frames.length <= 1 && (!S.vdec || S.vdec.decodeQueueSize === 0) && t >= S.duration - 0.6) {
+      S.ended = true;
+      S.playing = false;
+      updatePlayBtn();
+      setStatus('Finished.');
+    }
+  }
+
+  function updateTimeUi(t) {
+    timeLabel.textContent = fmt(t) + ' / ' + fmt(S.duration);
+    if (!S.isLive && S.duration > 0 && document.activeElement !== seek) {
+      seek.value = Math.round(1000 * Math.min(1, Math.max(0, t / S.duration)));
+    }
+  }
+
+  function paint() {
+    requestAnimationFrame(paint);
+    if (!S.loaded) return;
+    var t = mediaNow();
+    var frames = S.frames;
+    while (frames.length > 1 && frames[1].timestamp / 1000000 <= t) {
+      var old = frames.shift();
+      try { old.close(); } catch (e) {}
+    }
+    if (frames.length && frames[0].timestamp / 1000000 <= t && frames[0] !== S.drawnFrame) {
+      var fr = frames[0];
+      if (fr.displayWidth && canvas.width !== fr.displayWidth) {
+        canvas.width = fr.displayWidth; canvas.height = fr.displayHeight;
+      }
+      try { ctx2d.drawImage(fr, 0, 0, canvas.width, canvas.height); } catch (e) {}
+      S.drawnFrame = fr;
+    }
+    S.paintTick++;
+    if (S.paintTick % 15 === 0) updateTimeUi(t);
+    checkEnded(t);
+  }
+  requestAnimationFrame(paint);
+
+  /* ---------- Source loading ---------- */
+  function teardown() {
+    S.gen++;
+    stopPlexTranscode();
+    S.loaded = false; S.started = false; S.playing = false; S.ended = false;
+    S.mode = null; S.isLive = false; S.duration = 0;
+    S.tracks = []; S.mp4 = null; S.mp4VIdx = 0; S.mp4AIdx = 0;
+    vSamples = []; aSamples = []; S.audioPtsQueue = [];
+    closeFrames();
+    stopAudioSources();
+    if (S.vdec) { try { S.vdec.close(); } catch (e) {} S.vdec = null; S.vdecReady = false; }
+    if (S.adec) { try { S.adec.close(); } catch (e) {} S.adec = null; S.adecReady = false; }
+    S.vConfig = null; S.aConfig = null;
+    S.needKey = true; S.dropAudioBefore = 0; S.mediaTarget = 0;
+    btnPlay.disabled = true; seek.disabled = true;
+    updatePlayBtn();
+  }
+
+  function pickVariant(pl) {
+    var vs = pl.variants.filter(function (v) { return !v.codecs || v.codecs.toLowerCase().indexOf('avc1') >= 0; });
+    if (!vs.length) vs = pl.variants.slice();
+    // Prefer AAC-audio variants: AC-3/E-AC-3 audio can't be decoded here.
+    var aac = vs.filter(function (v) { return !v.codecs || v.codecs.toLowerCase().indexOf('mp4a') >= 0; });
+    if (aac.length) vs = aac;
+    vs.sort(function (a, b) { return a.bandwidth - b.bandwidth; });
+    var under = vs.filter(function (v) { return v.bandwidth > 0 && v.bandwidth <= 2800000; });
+    if (under.length) return under[under.length - 1];
+    return vs[0];
+  }
+
+  function loadHls(url, label) {
+    var gen = S.gen;
+    setStatus('Loading ' + label + '…');
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    }).then(function (text) {
+      if (gen !== S.gen) return;
+      if (text.indexOf('#EXTM3U') !== 0) throw new Error('that address did not return an HLS playlist.');
+      var pl = dmParsePlaylist(text, url);
+      if (pl.encrypted) throw new Error('this stream is encrypted (DRM) — drive mode cannot play it.');
+      if (pl.hasMap) throw new Error('this stream uses fMP4 segments, which phase 1 of this player does not support (MPEG-TS only).');
+      S.mode = 'hls'; S.loaded = true;
+      if (pl.isMaster) {
+        var variant = pickVariant(pl);
+        if (!variant) throw new Error('no playable variant in the playlist.');
+        return fetch(variant.uri).then(function (r) { return r.text(); }).then(function (vtext) {
+          if (gen !== S.gen) return;
+          var vpl = dmParsePlaylist(vtext, variant.uri);
+          if (vpl.encrypted || vpl.hasMap) throw new Error('the chosen variant is encrypted or fMP4 — not supported.');
+          var vTrack = makeTrack('video', variant.uri, vpl);
+          S.duration = vpl.totalDuration; S.isLive = !vpl.endList;
+          var audioUrl = null;
+          if (variant.audioGroup) {
+            var rend = pl.audioRenditions.filter(function (x) { return x.group === variant.audioGroup; });
+            var def = null, i;
+            for (i = 0; i < rend.length; i++) if (rend[i].isDefault) { def = rend[i]; break; }
+            def = def || rend[0];
+            if (def) audioUrl = def.uri;
+          }
+          if (audioUrl) {
+            return fetch(audioUrl).then(function (r) {
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              return r.text();
+            }).then(function (atext) {
+              if (gen !== S.gen) return;
+              makeTrack('audio', audioUrl, dmParsePlaylist(atext, audioUrl));
+              readyUp(label);
+            }).catch(function () {
+              if (gen === S.gen) { readyUp(label); setStatus(label + ' ready — tap Play. (Separate audio track could not be loaded; playing video only.)'); }
+            });
+          }
+          readyUp(label);
+        });
+      }
+      var track = makeTrack('muxed', url, pl);
+      S.duration = pl.totalDuration; S.isLive = !pl.endList;
+      readyUp(label);
+    }).catch(function (e) {
+      if (gen === S.gen) { teardown(); setStatus('Could not load the stream: ' + e.message, true); }
+    });
+  }
+
+  function loadMp4(url, label) {
+    var gen = S.gen;
+    setStatus('Downloading ' + label + ' (the whole file loads before playback)…');
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (ab) {
+      if (gen !== S.gen) return;
+      var parsed = dmParseMP4(ab);
+      if (parsed.error) throw new Error(parsed.error);
+      if (!parsed.video) throw new Error('no H.264 video track found in that MP4.');
+      S.mode = 'mp4'; S.mp4 = parsed; S.loaded = true;
+      S.duration = parsed.duration || 0; S.isLive = false;
+      S.mp4VIdx = 0; S.mp4AIdx = 0;
+      onVideoConfig({ codec: parsed.video.codec, description: parsed.video.description, width: parsed.video.width, height: parsed.video.height });
+      if (parsed.audio) onAudioConfig({ codec: parsed.audio.codec, description: parsed.audio.description, sampleRate: parsed.audio.sampleRate, channels: parsed.audio.channels });
+      readyUp(label);
+    }).catch(function (e) {
+      if (gen === S.gen) { teardown(); setStatus('Could not load the file: ' + e.message, true); }
+    });
+  }
+
+  function readyUp(label) {
+    btnPlay.disabled = false;
+    seek.disabled = S.isLive || !(S.duration > 0);
+    setStatus(label + ' ready — tap Play.' + (S.isLive ? ' (Live stream — no seeking.)' : ''));
+    updateTimeUi(0);
+  }
+
+  function loadSource(url, label) {
+    if (!hasWC) { setStatus('This browser cannot run the drive-mode player (no WebCodecs).', true); return; }
+    teardown();
+    url = (url || '').trim();
+    if (!url) { setStatus('Paste a stream address first.', true); return; }
+    if (/\.mp4($|\?)/i.test(url) && !/\.m3u8/i.test(url)) loadMp4(url, label || 'MP4 file');
+    else loadHls(url, label || 'stream');
+  }
+
+  /* ---------- Seek / transport ---------- */
+  function seekTo(t) {
+    if (!S.loaded || S.isLive || !(S.duration > 0)) return;
+    t = Math.max(0, Math.min(S.duration - 0.25, t));
+    S.gen++;
+    var gen = S.gen;
+    vSamples = []; aSamples = []; S.audioPtsQueue = [];
+    closeFrames();
+    stopAudioSources();
+    if (S.vdec && S.vConfig) setupVideoDecoder();
+    if (S.adec && S.aConfig) setupAudioDecoder();
+    S.ended = false;
+    S.dropAudioBefore = t;
+    S.needKey = true;
+    if (S.mode === 'hls') {
+      for (var i = 0; i < S.tracks.length; i++) {
+        var track = S.tracks[i];
+        track.demuxer = new DmTsDemuxer();
+        bindDemuxer(track);
+        track.nextSeq = seqAtTime(track, t);
+        track.fetching = false; track.done = false; track.hasFetchedOnce = false;
+      }
+    } else if (S.mode === 'mp4' && S.mp4) {
+      var vs = S.mp4.video ? S.mp4.video.samples : [];
+      var vi = 0, j;
+      for (j = 0; j < vs.length; j++) { if (vs[j].pts <= t && vs[j].keyframe) vi = j; if (vs[j].pts > t) break; }
+      S.mp4VIdx = vi;
+      var as = S.mp4.audio ? S.mp4.audio.samples : [];
+      var ai = as.length;
+      for (j = 0; j < as.length; j++) { if (as[j].pts >= t - 0.05) { ai = j; break; } }
+      S.mp4AIdx = ai;
+    }
+    S.mediaTarget = t;
+    if (S.started && S.ctx) S.ctxEpoch = S.ctx.currentTime + 0.15;
+    updateTimeUi(t);
+    if (gen === S.gen) setStatus('Jumped to ' + fmt(t) + '.');
+  }
+
+  function updatePlayBtn() {
+    if (S.ended) btnPlay.innerHTML = '&#8635; Replay';
+    else if (S.playing) btnPlay.innerHTML = '&#10073;&#10073; Pause';
+    else btnPlay.innerHTML = '&#9654; Play';
+  }
+
+  btnPlay.addEventListener('click', function () {
+    if (!S.loaded) return;
+    ensureCtx();
+    if (!S.ctx) { onEngineError('No audio support in this browser.'); return; }
+    if (S.ended) { seekTo(0); }
+    if (!S.started) { startClockAt(S.mediaTarget || 0); return; }
+    if (S.playing) {
+      S.ctx.suspend(); S.playing = false; updatePlayBtn();
+    } else {
+      S.ctx.resume(); S.playing = true; updatePlayBtn();
+    }
+  });
+
+  seek.addEventListener('change', function () {
+    if (S.duration > 0) seekTo((seek.value / 1000) * S.duration);
+  });
+  seek.addEventListener('input', function () {
+    if (S.duration > 0) timeLabel.textContent = fmt((seek.value / 1000) * S.duration) + ' / ' + fmt(S.duration);
+  });
+
+  btnFs.addEventListener('click', function () {
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    var el = stage;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  });
+
+  btnUrlPlay.addEventListener('click', function () { loadSource(urlIn.value, 'stream'); });
+
+  /* ---------- Plex ---------- */
+  var plexSid = 'dm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  var plexPlayingRk = null;
+
+  function plexSetMsg(msg, isErr) {
+    plexMsg.textContent = msg;
+    plexMsg.className = 'status' + (isErr ? ' err' : '');
+  }
+  function plexBase() { return plexBaseIn.value.trim().replace(/\/+$/, ''); }
+  function plexToken() { return plexTokenIn.value.trim(); }
+  function plexSave() {
+    try {
+      localStorage.setItem('dm_plex_base', plexBase());
+      localStorage.setItem('dm_plex_token', plexToken());
+    } catch (e) {}
+  }
+  try {
+    plexBaseIn.value = localStorage.getItem('dm_plex_base') || '';
+    plexTokenIn.value = localStorage.getItem('dm_plex_token') || '';
+  } catch (e) {}
+
+  btnPlexForget.addEventListener('click', function () {
+    try { localStorage.removeItem('dm_plex_base'); localStorage.removeItem('dm_plex_token'); } catch (e) {}
+    plexBaseIn.value = ''; plexTokenIn.value = '';
+    plexSetMsg('Saved Plex details forgotten on this browser.');
+  });
+
+  function plexGet(path) {
+    var base = plexBase(), tok = plexToken();
+    if (!base || !tok) return Promise.reject(new Error('enter the server address and token first.'));
+    var sep = path.indexOf('?') >= 0 ? '&' : '?';
+    return fetch(base + path + sep + 'X-Plex-Token=' + encodeURIComponent(tok), {
+      headers: { 'Accept': 'application/json', 'X-Plex-Token': tok }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('Plex answered HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  function stopPlexTranscode() {
+    if (!plexPlayingRk) return;
+    plexPlayingRk = null;
+    var base = plexBase(), tok = plexToken();
+    if (!base || !tok) return;
+    try {
+      fetch(base + '/video/:/transcode/universal/stop?session=' + encodeURIComponent(plexSid) +
+        '&X-Plex-Token=' + encodeURIComponent(tok)).catch(function () {});
+    } catch (e) {}
+  }
+
+  function libButton(text, sub, onclick) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'libitem';
+    b.innerHTML = '';
+    b.appendChild(document.createTextNode(text));
+    if (sub) {
+      var s = document.createElement('span');
+      s.className = 'meta'; s.textContent = sub;
+      b.appendChild(s);
+    }
+    b.addEventListener('click', onclick);
+    return b;
+  }
+
+  function renderLibrary(sections) {
+    plexList.innerHTML = '';
+    sections.forEach(function (sec) {
+      var head = document.createElement('div');
+      head.className = 'libhead';
+      head.textContent = sec.title;
+      plexList.appendChild(head);
+      (sec.items || []).forEach(function (item) {
+        var label = item.title + (item.year ? ' (' + item.year + ')' : '');
+        var sub = item.type === 'show' ? 'TV show — tap to list episodes' : 'Movie';
+        plexList.appendChild(libButton(label, sub, function () {
+          if (item.type === 'show') loadEpisodes(item);
+          else playPlexItem(item.ratingKey, item.title);
+        }));
+      });
+      if (!sec.items || !sec.items.length) {
+        var empty = document.createElement('div');
+        empty.className = 'status';
+        empty.textContent = 'Nothing listed in this section.';
+        plexList.appendChild(empty);
+      }
+    });
+  }
+
+  function loadEpisodes(showItem) {
+    plexSetMsg('Loading episodes of ' + showItem.title + '…');
+    plexGet('/library/metadata/' + showItem.ratingKey + '/allLeaves').then(function (data) {
+      var eps = (data.MediaContainer && data.MediaContainer.Metadata) || [];
+      plexList.innerHTML = '';
+      plexList.appendChild(libButton('← Back to library', '', function () { btnPlexLoad.click(); }));
+      var head = document.createElement('div');
+      head.className = 'libhead'; head.textContent = showItem.title;
+      plexList.appendChild(head);
+      eps.forEach(function (ep) {
+        var label = 'S' + (ep.parentIndex || '?') + ' E' + (ep.index || '?') + ' — ' + ep.title;
+        plexList.appendChild(libButton(label, showItem.title, function () {
+          playPlexItem(ep.ratingKey, ep.title);
+        }));
+      });
+      plexSetMsg(eps.length + ' episodes.');
+    }).catch(function (e) { plexSetMsg('Could not load episodes: ' + e.message, true); });
+  }
+
+  btnPlexLoad.addEventListener('click', function () {
+    plexSave();
+    plexSetMsg('Contacting your Plex server…');
+    plexList.innerHTML = '';
+    plexGet('/library/sections').then(function (data) {
+      var dirs = ((data.MediaContainer && data.MediaContainer.Directory) || [])
+        .filter(function (d) { return d.type === 'movie' || d.type === 'show'; });
+      if (!dirs.length) throw new Error('no movie or TV libraries found on that server.');
+      var sections = [];
+      var chain = Promise.resolve();
+      dirs.forEach(function (d) {
+        chain = chain.then(function () {
+          return plexGet('/library/sections/' + d.key + '/all').then(function (res) {
+            var items = ((res.MediaContainer && res.MediaContainer.Metadata) || []).map(function (m) {
+              return { ratingKey: m.ratingKey, title: m.title, year: m.year, type: m.type };
+            });
+            sections.push({ title: d.title, items: items });
+          });
+        });
+      });
+      return chain.then(function () { return sections; });
+    }).then(function (sections) {
+      renderLibrary(sections);
+      plexSetMsg('Library loaded. Tap a title to play it in drive mode.');
+    }).catch(function (e) {
+      plexSetMsg('Could not load the library: ' + e.message + ' — check the address is reachable from this browser and the token is right.', true);
+    });
+  });
+
+  function playPlexItem(ratingKey, title) {
+    plexSetMsg('Getting “' + title + '” ready…');
+    plexGet('/library/metadata/' + ratingKey).then(function (data) {
+      var meta = data.MediaContainer && data.MediaContainer.Metadata && data.MediaContainer.Metadata[0];
+      if (!meta) throw new Error('item not found on the server.');
+      var media = (meta.Media || [])[0];
+      var part = media && (media.Part || [])[0];
+      if (!media || !part) throw new Error('no playable file listed for that item.');
+      stopPlexTranscode();
+      var base = plexBase(), tok = plexToken();
+      var container = (media.container || '').toLowerCase();
+      var vcodec = (media.videoCodec || '').toLowerCase();
+      if (container === 'mp4' && vcodec === 'h264' && part.key) {
+        plexPlayingRk = ratingKey;
+        loadSource(base + part.key + (part.key.indexOf('?') >= 0 ? '&' : '?') + 'X-Plex-Token=' + encodeURIComponent(tok), title);
+      } else {
+        plexPlayingRk = ratingKey;
+        var url = base + '/video/:/transcode/universal/start.m3u8?path=' + encodeURIComponent('/library/metadata/' + ratingKey) +
+          '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=0' +
+          '&directPlay=0&directStream=1&maxVideoBitrate=20000' +
+          '&X-Plex-Session-Identifier=' + encodeURIComponent(plexSid) +
+          '&X-Plex-Client-Identifier=' + encodeURIComponent(plexSid) +
+          '&X-Plex-Token=' + encodeURIComponent(tok);
+        loadSource(url, title);
+      }
+      plexSetMsg('“' + title + '” loaded in the player above — tap Play there.');
+    }).catch(function (e) { plexSetMsg('Could not start that title: ' + e.message, true); });
+  }
+
+  window.addEventListener('pagehide', stopPlexTranscode);
+
+  if (!hasWC) setStatus('This browser cannot run the drive-mode player (no WebCodecs) — see the note above.', true);
+})();
+
+</script>
+</body>
+</html>
