@@ -161,6 +161,9 @@
       <div class="grow"><input type="text" id="urlIn" placeholder="https://example.com/stream.m3u8" autocomplete="off" autocapitalize="off" spellcheck="false" /></div>
       <button class="abtn" id="btnUrlPlay" type="button">Play stream</button>
     </div>
+    <div class="row" style="margin-top:12px;">
+      <button class="abtn abtn-ghost" id="btnTestStream" type="button">&#9654; Test stream (Apple BipBop)</button>
+    </div>
   </section>
 
   <section class="panel" aria-label="Plex">
@@ -1070,7 +1073,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var gate = $('gate'), canvas = $('screen'), stage = $('stage');
   var btnPlay = $('btnPlay'), btnFs = $('btnFs'), seek = $('seek');
   var timeLabel = $('timeLabel'), statusEl = $('status'), wcWarn = $('wcWarn');
-  var urlIn = $('urlIn'), btnUrlPlay = $('btnUrlPlay');
+  var urlIn = $('urlIn'), btnUrlPlay = $('btnUrlPlay'), btnTestStream = $('btnTestStream');
   var plexBaseIn = $('plexBase'), plexTokenIn = $('plexToken');
   var btnPlexLoad = $('btnPlexLoad'), btnPlexForget = $('btnPlexForget');
   var plexMsg = $('plexMsg'), plexList = $('plexList');
@@ -1086,6 +1089,7 @@ if (typeof module !== 'undefined' && module.exports) {
   if (!hasWC) {
     wcWarn.hidden = false;
     btnUrlPlay.disabled = true;
+    btnTestStream.disabled = true;
   }
 
   /* ---------- State ---------- */
@@ -1119,6 +1123,15 @@ if (typeof module !== 'undefined' && module.exports) {
     errLatch[key] = msg;
     onEngineError(msg);
   }
+  function setTransportStatus(msg) {
+    // Transport state (Playing / Paused) may replace the "ready — tap
+    // Play" line or the opposite transport state, but never an error or
+    // note the engine put up in the meantime — so this only ever fixes
+    // the ready line lingering into playback, and leaves the error/latch
+    // behavior exactly as it was.
+    var cur = statusEl.textContent;
+    if (cur.indexOf('ready — tap Play') >= 0 || cur === 'Playing.' || cur === 'Paused.') setStatus(msg);
+  }
   function fmt(t) {
     if (!isFinite(t) || t < 0) t = 0;
     t = Math.floor(t);
@@ -1148,6 +1161,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (S.ctx.state === 'suspended') S.ctx.resume();
     S.playing = true;
     updatePlayBtn();
+    setTransportStatus('Playing.');
   }
 
   /* ---------- Decoders ----------
@@ -1722,8 +1736,10 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!S.started) { startClockAt(S.mediaTarget || 0); return; }
     if (S.playing) {
       S.ctx.suspend(); S.playing = false; updatePlayBtn();
+      setTransportStatus('Paused.');
     } else {
       S.ctx.resume(); S.playing = true; updatePlayBtn();
+      setTransportStatus('Playing.');
     }
   });
 
@@ -1742,6 +1758,15 @@ if (typeof module !== 'undefined' && module.exports) {
   });
 
   btnUrlPlay.addEventListener('click', function () { loadSource(urlIn.value, 'stream'); });
+
+  // One-tap test stream: fills the address field with Apple's BipBop
+  // sample and fires the exact same Play stream handler, so it takes
+  // the identical load path as pasting the address by hand.
+  var TEST_STREAM_URL = 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8';
+  btnTestStream.addEventListener('click', function () {
+    urlIn.value = TEST_STREAM_URL;
+    btnUrlPlay.click();
+  });
 
   /* ---------- Plex ---------- */
   var plexSid = 'dm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
