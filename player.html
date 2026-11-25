@@ -219,26 +219,30 @@
     </details>
   </section>
 
+  <section class="panel" aria-label="Plex">
+    <h2>Your Plex library</h2>
+    <div id="plexSigninBox">
+      <p>Sign in with your Plex account, the same as in any Plex app. Your server is found automatically &mdash; nothing to type in, and it stays signed in on this screen.</p>
+      <button class="abtn" id="btnPlexSignin" type="button">Sign in to Plex</button>
+      <div class="status" id="plexSigninMsg"></div>
+      <p id="plexAuthLinkWrap" style="display:none;"><a id="plexAuthLink" href="#" target="_blank" rel="noopener">If the Plex sign-in page didn&rsquo;t open, tap here to open it</a></p>
+    </div>
+    <div id="plexMainBox" style="display:none;">
+      <div class="row">
+        <div class="grow"><span id="plexServerName"></span></div>
+        <button class="abtn abtn-ghost" id="btnPlexSignout" type="button">Sign out</button>
+      </div>
+    </div>
+    <div class="status" id="plexMsg"></div>
+    <div class="liblist" id="plexList"></div>
+  </section>
+
   <section class="panel" aria-label="Live TV">
     <h2>Live TV</h2>
     <p>Free live channels &mdash; tap one to start watching. These are free-to-air streams from the iptv-org collection; channels come and go, so if one stops working, try another.</p>
     <div class="liblist" id="liveList"></div>
   </section>
 
-  <section class="panel" aria-label="Plex">
-    <h2>Your Plex library</h2>
-    <p>Enter your Plex server address and token once &mdash; they&rsquo;re saved <strong>only in this browser</strong> (local storage), never in this page. Use the address that works away from home (a plex.direct address if Remote Access is on, or your home address on home Wi-Fi).</p>
-    <label for="plexBase">Plex server address</label>
-    <input type="text" id="plexBase" placeholder="https://xxxxxxxx.plex.direct:32400" autocomplete="off" autocapitalize="off" spellcheck="false" />
-    <label for="plexToken">X-Plex-Token</label>
-    <input type="password" id="plexToken" placeholder="Your Plex token" autocomplete="off" autocapitalize="off" spellcheck="false" />
-    <div class="row" style="margin-top:16px;">
-      <button class="abtn" id="btnPlexLoad" type="button">Load library</button>
-      <button class="abtn abtn-ghost" id="btnPlexForget" type="button">Forget saved details</button>
-    </div>
-    <div class="status" id="plexMsg"></div>
-    <div class="liblist" id="plexList"></div>
-  </section>
 
   <footer>
     <p>Nate&rsquo;s Theater. Video: H.264 only, decoded on this page with WebCodecs and painted to a canvas. Audio: AAC through Web Audio. HLS must use MPEG-TS segments (not fMP4) and be unencrypted; MP4 must be a single non-fragmented file.</p>
@@ -1133,8 +1137,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var btnPlay = $('btnPlay'), btnFs = $('btnFs'), seek = $('seek');
   var timeLabel = $('timeLabel'), statusEl = $('status'), wcWarn = $('wcWarn');
   var urlIn = $('urlIn'), btnUrlPlay = $('btnUrlPlay'), btnTestStream = $('btnTestStream');
-  var plexBaseIn = $('plexBase'), plexTokenIn = $('plexToken');
-  var btnPlexLoad = $('btnPlexLoad'), btnPlexForget = $('btnPlexForget');
+  var btnPlexSignin = $('btnPlexSignin'), btnPlexSignout = $('btnPlexSignout');
   var plexMsg = $('plexMsg'), plexList = $('plexList');
   var ctx2d = canvas.getContext('2d');
 
@@ -2038,7 +2041,14 @@ if (typeof module !== 'undefined' && module.exports) {
     });
   })();
 
-  /* ---------- Plex ---------- */
+  /* ---------- Plex (sign-in sheet, the way every Plex app works) ----------
+     "Sign in to Plex" runs Plex's own PIN sign-in against plex.tv: this
+     page asks plex.tv for a sign-in code, opens Plex's sign-in page in a
+     new tab, and polls until Plex hands back an account token. Then it
+     asks plex.tv for the account's servers and picks a connection by
+     itself — no server address or token is ever typed in. The account
+     token, the chosen server connection and its access token live in
+     localStorage on this browser only. */
   var plexSid = 'dm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   var plexPlayingRk = null;
 
@@ -2046,23 +2056,137 @@ if (typeof module !== 'undefined' && module.exports) {
     plexMsg.textContent = msg;
     plexMsg.className = 'status' + (isErr ? ' err' : '');
   }
-  function plexBase() { return plexBaseIn.value.trim().replace(/\/+$/, ''); }
-  function plexToken() { return plexTokenIn.value.trim(); }
-  function plexSave() {
-    try {
-      localStorage.setItem('dm_plex_base', plexBase());
-      localStorage.setItem('dm_plex_token', plexToken());
-    } catch (e) {}
+  function plexSigninMsg(msg, isErr) {
+    var el = $('plexSigninMsg');
+    el.textContent = msg;
+    el.className = 'status' + (isErr ? ' err' : '');
   }
-  try {
-    plexBaseIn.value = localStorage.getItem('dm_plex_base') || '';
-    plexTokenIn.value = localStorage.getItem('dm_plex_token') || '';
-  } catch (e) {}
 
-  btnPlexForget.addEventListener('click', function () {
-    try { localStorage.removeItem('dm_plex_base'); localStorage.removeItem('dm_plex_token'); } catch (e) {}
-    plexBaseIn.value = ''; plexTokenIn.value = '';
-    plexSetMsg('Saved Plex details forgotten on this browser.');
+  var plexClientId = '';
+  try {
+    plexClientId = localStorage.getItem('dm_plex_client') || '';
+    if (!plexClientId) {
+      plexClientId = 'nt-' + Date.now().toString(36) + '-' +
+        Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('dm_plex_client', plexClientId);
+    }
+  } catch (e) { plexClientId = 'nt-theater'; }
+
+  var plexAuth = null;  // {token} — account token from plex.tv
+  var plexConn = null;  // {base, token, name} — chosen server connection
+  try {
+    var pa = localStorage.getItem('dm_plex_auth'); if (pa) plexAuth = JSON.parse(pa);
+    var pc = localStorage.getItem('dm_plex_conn'); if (pc) plexConn = JSON.parse(pc);
+  } catch (e) {}
+  function plexBase() { return plexConn ? plexConn.base : ''; }
+  function plexToken() { return plexConn ? plexConn.token : ''; }
+
+  function plexTv(path, method) {
+    return fetch('https://plex.tv' + path, {
+      method: method || 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Plex-Client-Identifier': plexClientId,
+        'X-Plex-Product': "Nate's Theater",
+        'X-Plex-Version': '1.0'
+      }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('plex.tv answered HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  function showPlexMain() {
+    $('plexSigninBox').style.display = 'none';
+    $('plexMainBox').style.display = '';
+    $('plexServerName').textContent = 'Plex — ' + (plexConn ? plexConn.name : 'your server');
+  }
+  function showPlexSignin() {
+    $('plexMainBox').style.display = 'none';
+    $('plexSigninBox').style.display = '';
+  }
+
+  var plexPinPoll = null;
+  function stopPlexPinPoll() { if (plexPinPoll) { clearInterval(plexPinPoll); plexPinPoll = null; } }
+  function pollPlexPin(id) {
+    stopPlexPinPoll();
+    var tries = 0;
+    plexSigninMsg('Waiting for you to finish signing in at Plex — this page checks on its own, just come back here after.');
+    plexPinPoll = setInterval(function () {
+      tries++;
+      if (tries > 150) {
+        stopPlexPinPoll();
+        plexSigninMsg('That sign-in timed out. Tap “Sign in to Plex” to try again.', true);
+        return;
+      }
+      plexTv('/api/v2/pins/' + id).then(function (pin) {
+        if (pin && pin.authToken) {
+          stopPlexPinPoll();
+          try { localStorage.removeItem('dm_plex_pin'); } catch (e) {}
+          plexAuth = { token: pin.authToken };
+          try { localStorage.setItem('dm_plex_auth', JSON.stringify(plexAuth)); } catch (e) {}
+          discoverPlexServer();
+        }
+      }).catch(function () {});
+    }, 2000);
+  }
+
+  function startPlexSignin() {
+    plexSigninMsg('Contacting Plex…');
+    plexTv('/api/v2/pins?strong=true', 'POST').then(function (pin) {
+      try { localStorage.setItem('dm_plex_pin', JSON.stringify({ id: pin.id, at: Date.now() })); } catch (e) {}
+      var url = 'https://app.plex.tv/auth#?clientID=' + encodeURIComponent(plexClientId) +
+        '&code=' + encodeURIComponent(pin.code) +
+        '&forwardUrl=' + encodeURIComponent('https://natesrooms.github.io/player.html');
+      var link = $('plexAuthLink');
+      link.href = url;
+      $('plexAuthLinkWrap').style.display = '';
+      window.open(url, '_blank');
+      pollPlexPin(pin.id);
+    }).catch(function (e) {
+      plexSigninMsg('Could not reach Plex: ' + e.message, true);
+    });
+  }
+
+  function discoverPlexServer() {
+    plexSigninMsg('Signed in — finding your server…');
+    plexTv('/api/v2/resources?includeHttps=1&includeRelay=1&X-Plex-Token=' + encodeURIComponent(plexAuth.token))
+      .then(function (list) {
+        var servers = (list || []).filter(function (r) {
+          return (r.provides || '').split(',').indexOf('server') >= 0;
+        });
+        if (!servers.length) throw new Error('no Plex server was found on that account.');
+        servers.sort(function (a, b) { return (b.owned ? 1 : 0) - (a.owned ? 1 : 0); });
+        var srv = servers[0];
+        var conns = srv.connections || [];
+        var pick = null, i;
+        for (i = 0; i < conns.length; i++) { if (!conns[i].local && /^https:/.test(conns[i].uri)) { pick = conns[i]; break; } }
+        if (!pick) for (i = 0; i < conns.length; i++) { if (/^https:/.test(conns[i].uri)) { pick = conns[i]; break; } }
+        if (!pick && conns.length) pick = conns[0];
+        if (!pick) throw new Error('that server lists no way to connect to it.');
+        plexConn = { base: pick.uri.replace(/\/+$/, ''), token: srv.accessToken, name: srv.name };
+        try { localStorage.setItem('dm_plex_conn', JSON.stringify(plexConn)); } catch (e) {}
+        plexSigninMsg('');
+        showPlexMain();
+        loadPlexLibrary();
+      })
+      .catch(function (e) { plexSigninMsg('Signed in, but your server could not be set up: ' + e.message, true); });
+  }
+
+  btnPlexSignin.addEventListener('click', startPlexSignin);
+  btnPlexSignout.addEventListener('click', function () {
+    stopPlexPinPoll();
+    stopPlexTranscode();
+    plexAuth = null; plexConn = null;
+    try {
+      localStorage.removeItem('dm_plex_auth');
+      localStorage.removeItem('dm_plex_conn');
+      localStorage.removeItem('dm_plex_pin');
+    } catch (e) {}
+    plexList.innerHTML = '';
+    plexSetMsg('');
+    showPlexSignin();
+    plexSigninMsg('Signed out of Plex on this screen.');
   });
 
   function plexGet(path) {
@@ -2131,7 +2255,7 @@ if (typeof module !== 'undefined' && module.exports) {
     plexGet('/library/metadata/' + showItem.ratingKey + '/allLeaves').then(function (data) {
       var eps = (data.MediaContainer && data.MediaContainer.Metadata) || [];
       plexList.innerHTML = '';
-      plexList.appendChild(libButton('← Back to library', '', function () { btnPlexLoad.click(); }));
+      plexList.appendChild(libButton('← Back to library', '', function () { loadPlexLibrary(); }));
       var head = document.createElement('div');
       head.className = 'libhead'; head.textContent = showItem.title;
       plexList.appendChild(head);
@@ -2145,8 +2269,7 @@ if (typeof module !== 'undefined' && module.exports) {
     }).catch(function (e) { plexSetMsg('Could not load episodes: ' + e.message, true); });
   }
 
-  btnPlexLoad.addEventListener('click', function () {
-    plexSave();
+  function loadPlexLibrary() {
     plexSetMsg('Contacting your Plex server…');
     plexList.innerHTML = '';
     plexGet('/library/sections').then(function (data) {
@@ -2168,11 +2291,26 @@ if (typeof module !== 'undefined' && module.exports) {
       return chain.then(function () { return sections; });
     }).then(function (sections) {
       renderLibrary(sections);
-      plexSetMsg('Library loaded. Tap a title to play it in drive mode.');
+      plexSetMsg('Library loaded. Tap a title to play it.');
     }).catch(function (e) {
-      plexSetMsg('Could not load the library: ' + e.message + ' — check the address is reachable from this browser and the token is right.', true);
+      plexSetMsg('Could not load the library: ' + e.message + ' — the server may be unreachable from here; if this keeps happening, sign out and back in.', true);
     });
-  });
+  }
+
+  /* Plex startup: already signed in → show the library. Signed in but no
+     server chosen yet → find it. A sign-in still in progress (he went to
+     Plex's page and came back) → resume waiting for it. */
+  (function initPlex() {
+    if (plexAuth && plexConn) { showPlexMain(); loadPlexLibrary(); return; }
+    if (plexAuth) { discoverPlexServer(); return; }
+    var pending = null;
+    try { pending = JSON.parse(localStorage.getItem('dm_plex_pin') || 'null'); } catch (e) {}
+    if (pending && pending.id && (Date.now() - pending.at) < 25 * 60 * 1000) {
+      var link = $('plexAuthLink');
+      link.href = 'https://app.plex.tv/auth#?clientID=' + encodeURIComponent(plexClientId);
+      pollPlexPin(pending.id);
+    }
+  })();
 
   function playPlexItem(ratingKey, title) {
     plexSetMsg('Getting “' + title + '” ready…');
