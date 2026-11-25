@@ -1,0 +1,727 @@
+{
+ "source": "https://iptv-org.github.io/iptv/countries/fr.m3u",
+ "checked": "2026-11-25T20:27:53+00:00",
+ "total": 231,
+ "ok": 118,
+ "why_failed": {
+  "blocks web players (no CORS)": 55,
+  "http:// only": 25,
+  "HTTP 403": 13,
+  "unreachable": 6,
+  "HTTP 429": 5,
+  "HTTP 404": 5,
+  "audio track encrypted/fMP4": 2,
+  "HTTP 504": 1,
+  "HTTP 400": 1
+ },
+ "channels": [
+  {
+   "name": "6ter (720p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/6ter_fr/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/2nd5Cox.png"
+  },
+  {
+   "name": "20 Minutes TV (1080p)",
+   "cat": "General",
+   "url": "https://live-20minutestv.digiteka.com/1961167769/index.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/20_Minutes_TV_IDF_logo_%282023%29.png/960px-20_Minutes_TV_IDF_logo_%282023%29.png"
+  },
+  {
+   "name": "AB1 (720p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/ab1/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/9C7UsOe.png"
+  },
+  {
+   "name": "Action (540p)",
+   "cat": "Movies",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/action/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/Zv9VsVq.png"
+  },
+  {
+   "name": "ADN TV+ (720p)",
+   "cat": "Animation",
+   "url": "https://d3b73b34o7cvkq.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-gz2sgqzp076kf/adn.m3u8",
+   "logo": "https://i.imgur.com/HQZQyWt.png"
+  },
+  {
+   "name": "Africa 24 (1080p)",
+   "cat": "News",
+   "url": "https://africa24.vedge.infomaniak.com/livecast/ik:africa24/manifest.m3u8",
+   "logo": "https://africa24tv.com/wp-content/uploads/2021/09/logo.png"
+  },
+  {
+   "name": "Africa 24 English (1080p)",
+   "cat": "News",
+   "url": "https://edge20.vedge.infomaniak.com/livecast/ik:africa24english/manifest.m3u8",
+   "logo": "https://africa24tv.com/wp-content/uploads/2023/12/logo-Africa24TVEnglish.png"
+  },
+  {
+   "name": "Africa 24 Sport (1080p)",
+   "cat": "News",
+   "url": "https://africa24.vedge.infomaniak.com/livecast/ik:africa24sport/manifest.m3u8",
+   "logo": "https://i0.wp.com/africa24tv.com/wp-content/uploads/2023/12/LOGO-AFRICASPORT-4-HD-sans-fond.png?fit=512%2C107&ssl=1"
+  },
+  {
+   "name": "Alpe d'Huez TV (720p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://edge13.vedge.infomaniak.com/livecast/ik:adhtv/manifest.m3u8",
+   "logo": "https://i.imgur.com/090tCQ5.png"
+  },
+  {
+   "name": "Animaux (720p)",
+   "cat": "Education",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/animaux/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/FM9FVAG.png"
+  },
+  {
+   "name": "Antenne Reunion (720p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://live-antenne-reunion.zeop.tv/live/c3eds/antreunihd/hls_fta/antreunihd.m3u8?location=ZEOP01",
+   "logo": "https://i.imgur.com/EPIMMaB.png"
+  },
+  {
+   "name": "Automoto la chaine (720p)",
+   "cat": "Auto",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/automoto/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/ebf2uc7.png"
+  },
+  {
+   "name": "BFM2 (1080p)",
+   "cat": "News",
+   "url": "https://d1ib1gsg71oarf.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-scp7wda722jph/BFM2_FR.m3u8",
+   "logo": "https://alloforfait.fr/wp-content/uploads/2024/03/logo-bfm2-300x200.jpg"
+  },
+  {
+   "name": "BFM TV (1080p)",
+   "cat": "News",
+   "url": "https://n-5-2.eu.cdn-redge.media/livehls/oeu/mt/live/bfm_tv/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/YJCcczD.png"
+  },
+  {
+   "name": "Brionnais TV (720p)",
+   "cat": "General",
+   "url": "https://stream2.mandarine.media/brionnaistv/brionnaistv/playlist.m3u8",
+   "logo": "https://i.imgur.com/y94bhqX.jpg"
+  },
+  {
+   "name": "BTL TV (Netherlands) (1080p)",
+   "cat": "Religious",
+   "url": "https://cdn.liveplustv.com/v1/live/btl-tv/master.m3u8",
+   "logo": "https://yt3.googleusercontent.com/ytc/APkrFKZYgQTsDhkbaqmPRCPZIf0UgZqF1wa6aG2eo8ti=s176-c-k-c0x00ffffff-no-rj-mo"
+  },
+  {
+   "name": "C Star (720p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/cstar/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/w4kAX1V.png"
+  },
+  {
+   "name": "Caillou",
+   "cat": "Undefined",
+   "url": "https://do7nccdsswstc.cloudfront.net/v1/manifest/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-1aso0bc668saa/a5233c83-f772-4a81-959a-45ec7877ef61/5.m3u8",
+   "logo": "https://i.imgur.com/RgKaoe4.png"
+  },
+  {
+   "name": "Cannes Lerins TV (1080p)",
+   "cat": "General",
+   "url": "https://vdo2.pro-fhi.net:3628/live/uppodsfqlive.m3u8",
+   "logo": "https://i.imgur.com/atlgnum.png"
+  },
+  {
+   "name": "Chasse & Peche (540p)",
+   "cat": "Outdoor",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/chasse_et_peche/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/ZIS2ZQ1.png"
+  },
+  {
+   "name": "Cine Nanar (1080p)",
+   "cat": "Movies",
+   "url": "https://zylo-cinenanar-rakuten.amagi.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/YnUZd3W.png"
+  },
+  {
+   "name": "Cine Western (France) (1080p)",
+   "cat": "Movies",
+   "url": "https://amg00711-zylo-amg00711c8-rakuten-uk-2686.playouts.now.amagi.tv/playlist/amg00711-zylofast-cinewestern-rakutenuk/playlist.m3u8",
+   "logo": "https://i.imgur.com/tteOFkL.png"
+  },
+  {
+   "name": "CNEWS PRIME (1080p)",
+   "cat": "News",
+   "url": "https://raw.githubusercontent.com/Paradise-91/ParaTV/main/streams/canalplus/cnews-prime-dm.m3u8",
+   "logo": "https://www.cnews.fr/themes/cnews/img/cnews-prime.png"
+  },
+  {
+   "name": "Comedy Central (France) (720p)",
+   "cat": "Comedy",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/comedy_central/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Comedy_Central_2018.svg/960px-Comedy_Central_2018.svg.png"
+  },
+  {
+   "name": "Comedy Central (France) HD (720p)",
+   "cat": "Comedy",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/comedy_central_en/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Comedy_Central_2018.svg/960px-Comedy_Central_2018.svg.png"
+  },
+  {
+   "name": "Crime District (540p)",
+   "cat": "Series",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/crime_district/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/WQJ6Lbk.png"
+  },
+  {
+   "name": "DBM TV (1080p)",
+   "cat": "Music",
+   "url": "https://dbmtv.vedge.infomaniak.com/livecast/dbmtv/playlist.m3u8",
+   "logo": "https://i.imgur.com/ab6p2SW.png"
+  },
+  {
+   "name": "Emotion L (1080p)",
+   "cat": "Movies",
+   "url": "https://rakutenaa-zylo-emotional-rakuten-r1zkm.amagi.tv/playlist/rakutenAA-zylo-emotional-rakuten/playlist.m3u8",
+   "logo": "https://i.imgur.com/MP34aaj.png"
+  },
+  {
+   "name": "Equidia (1080p)",
+   "cat": "Sports",
+   "url": "https://raw.githubusercontent.com/Paradise-91/ParaTV/main/streams/equidia/live2.m3u8",
+   "logo": "https://i.imgur.com/QPpbRcZ.png"
+  },
+  {
+   "name": "Euronews French (720p)",
+   "cat": "News",
+   "url": "https://2f6c5bf4.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmxheHhUVi1ldV9FdXJvbmV3c0ZyYW5jYWlzX0hMUw/playlist.m3u8",
+   "logo": "https://i.imgur.com/8t9mdg9.png"
+  },
+  {
+   "name": "Eurosport 1 (1080p)",
+   "cat": "Sports",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/eurosport_1/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/olQJgm7.png"
+  },
+  {
+   "name": "Eurosport 2 (1080p)",
+   "cat": "Sports",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/eurosport_2/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/f56dHgR.png"
+  },
+  {
+   "name": "Evandis Gospel TV (1080p)",
+   "cat": "Religious",
+   "url": "https://evandis.streamakaci.tv/str_evandis_evandis/str_evandis_multi/playlist.m3u8",
+   "logo": "https://i.imgur.com/v8TiqhH.png"
+  },
+  {
+   "name": "FashionTV Paris L'Original (1080p)",
+   "cat": "Lifestyle",
+   "url": "https://edge-fast3.evrideo.tv/bfdbb576-83f7-11f0-9f89-0200170e3e04_1000028043_HLS/manifest.m3u8",
+   "logo": "https://i.imgur.com/GFTAN5Q.png"
+  },
+  {
+   "name": "FashionTV Secrets (1080p)",
+   "cat": "Lifestyle",
+   "url": "https://ssai.aniview.com/api/v1/hls/stream.m3u8?AVS_SSAIID=67c0c39764ad6f7dab07aa0b&AV_APPNAME=[ADS.APP_NAME]&AV_APPPKGNAME=[ADS.APP_BUNDLE]&AV_APPSTOREURL=[ADS.APP_STORE_URL]&AV_CCPA=[ADS.US_PRIVACY]&AV_CLIENT_SECTION=ftv_secrets&AV_CONSENT=[ADS.GDPR_CONSENT]&AV_CONTENT_CAT=IAB7&AV_CONTENT_CHANNEL=&AV_CONTENT_CONTEXT=&AV_CONTENT_EPISODE=&AV_CONTENT_GENRE=fashion+and+lifestyle&AV_CONTENT_ID=[ADS.VIDAA_ADS_CONTENTID]&AV_CONTENT_KEYWORDS=&AV_CONTENT_LANGUAGE=en&AV_CONTENT_LENGTH=&AV_CONTENT_NETWORK=&AV_CONTENT_PROVIDER=FTV&AV_CONTENT_RATING=R&AV_CONTENT_SEASON=&AV_CONTENT_SERIES=&AV_CONTENT_TITLE=&AV_CONTENT_URL=&AV_DNT=[ADS.DNT]&AV_GDPR=[ADS.GDPR]&AV_HEIGHT=[ADS.H]&AV_IDFA=[ADS.IFA]&AV_IFA_TYPE=[ADS.IFA_TYPE]&AV_LANGUAGE=[ADS.DEVICE_LANGUAGE]&AV_OSVERS=[ADS.DEVICE_OSV]&AV_RTB_DEVICE_TYPE=[ADS.DEVICE_TYPE]&AV_VAUTH=[ADS.VAUTH]&AV_WIDTH=[ADS.W]&Content_Id=[ADS.ADS_CONTENTID]&ads.vidaa_ads_param=1191723366&cb=[CACHEBUSTER]&content_channel_name=ftv+-fashiontv+Secrets&content_livestream=1",
+   "logo": "https://i.ibb.co/fVGJyCC8/w512.png"
+  },
+  {
+   "name": "FIFA+ French (720p)",
+   "cat": "Sports",
+   "url": "https://37b4c228.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWZyX0ZJRkFQbHVzRnJlbmNoX0hMUw/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/FIFA%2B_(2025).svg/960px-FIFA%2B_(2025).svg.png"
+  },
+  {
+   "name": "France 2 (1080p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/france_2/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/France_2_2018.svg/960px-France_2_2018.svg.png"
+  },
+  {
+   "name": "France 3 (1080p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/france_3/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/France_3_2018.svg/960px-France_3_2018.svg.png"
+  },
+  {
+   "name": "France 3 Cote d'Azur (720p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/france_3_nice/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/9/9c/France_3_Cote_d%27Azur_-_Logo_2018.svg"
+  },
+  {
+   "name": "France 4 (1080p)",
+   "cat": "Kids",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/france_4/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/France_4_2018.svg/960px-France_4_2018.svg.png"
+  },
+  {
+   "name": "France 5 (1080p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/france_5/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/France_5_2018.svg/960px-France_5_2018.svg.png"
+  },
+  {
+   "name": "France 24 (1080p)",
+   "cat": "News",
+   "url": "https://freem3u.xyz/api/live/play.m3u8?vid=10007",
+   "logo": "https://i.imgur.com/u8N6uoj.png"
+  },
+  {
+   "name": "Franceinfo (720p)",
+   "cat": "News",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/france_info/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/eITXz6A.png"
+  },
+  {
+   "name": "Frequence Novelas (1080p)",
+   "cat": "Series",
+   "url": "https://d20oth1416y9a1.cloudfront.net/playlist/amg00711-zylofast-frequencenovelas-rakutenus/playlist.m3u8",
+   "logo": "https://i.imgur.com/fEjNAps.png"
+  },
+  {
+   "name": "Generations TV (576p)",
+   "cat": "Undefined",
+   "url": "https://event.vedge.infomaniak.com/livecast/ik:generation-tv/manifest.m3u8",
+   "logo": "https://i.imgur.com/NgBrDMe.png"
+  },
+  {
+   "name": "Gong (1080p)",
+   "cat": "Animation",
+   "url": "https://amg01596-gongnetworks-gong-ono-vh5f2.amagi.tv/1080p-vtt/index.m3u8",
+   "logo": "https://i.imgur.com/lA9UFMG.png"
+  },
+  {
+   "name": "HANDICAP TV",
+   "cat": "Lifestyle",
+   "url": "https://srv.webtvmanager.fr:3697/stream/play.m3u8",
+   "logo": "https://i.imgur.com/vXbAeD0.png"
+  },
+  {
+   "name": "Histoire TV (720p)",
+   "cat": "Documentary",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/histoire/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/hxuJXll.png"
+  },
+  {
+   "name": "ILTV (720p)",
+   "cat": "Undefined",
+   "url": "https://live.creacast.com/iltv/smil:iltv.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/fVhrJHK.png"
+  },
+  {
+   "name": "Into Crime (1080p)",
+   "cat": "Documentary",
+   "url": "https://amg00711-zylo-amg00711c10-rakuten-fr-6731.playouts.now.amagi.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/43at4M2.png"
+  },
+  {
+   "name": "Kozoom TV (1080p)",
+   "cat": "Sports",
+   "url": "https://streams2.sofast.tv/v1/master/611d79b11b77e2f571934fd80ca1413453772ac7/fdd6f243-f971-4a1a-9510-97ac01d6b37f/manifest.m3u8",
+   "logo": "https://i.imgur.com/M1Ee79b.png"
+  },
+  {
+   "name": "L'Equipe (1080p)",
+   "cat": "Sports",
+   "url": "https://dq37unyetkpcz.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-m04j89j7k5gtp/LEquipe_FR.m3u8",
+   "logo": "https://i.imgur.com/t35zhM9.png"
+  },
+  {
+   "name": "LCI (1080p)",
+   "cat": "News",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/lci/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/DED8EXs.png"
+  },
+  {
+   "name": "LCP (720p)",
+   "cat": "Legislative",
+   "url": "https://n-5-2.eu.cdn-redge.media/livehls/oeu/mt/live/lcp/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/k7UImOJ.png"
+  },
+  {
+   "name": "Le Figaro TV Ile-de-France (1080p)",
+   "cat": "General",
+   "url": "https://figarotv-live.freecaster.com/live/freecaster/figarotv.m3u8",
+   "logo": "https://i.imgur.com/a8RuRUQ.png"
+  },
+  {
+   "name": "M6 SD (1080p)",
+   "cat": "Entertainment",
+   "url": "https://n-5-2.eu.cdn-redge.media/livehls/oeu/mt/live/m6_fr/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/7GVp3fW.png"
+  },
+  {
+   "name": "M6 Music (1080p)",
+   "cat": "Music",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/m6_music_hits/live.livx/playlist.m3u8",
+   "logo": "https://static.wikia.nocookie.net/logopedia/images/6/68/M6music-95cde0867d.svg/revision/latest?cb=20200412210630"
+  },
+  {
+   "name": "Mangas (720p)",
+   "cat": "Animation",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/mangas/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/wmmEOza.png"
+  },
+  {
+   "name": "Melody (720p)",
+   "cat": "Music",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/melody/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/9GVyQ6x.png"
+  },
+  {
+   "name": "Motorvision+ (720p)",
+   "cat": "Auto",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/motorvision_en/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/5cs5GkJ.png"
+  },
+  {
+   "name": "Mr Bean Animated FR (1080p)",
+   "cat": "Animation",
+   "url": "https://amg00627-amg00627c31-rakuten-fr-3991.playouts.now.amagi.tv/playlist/amg00627-banijayfast-mrbeanfrcc-rakutenfr/playlist.m3u8",
+   "logo": "https://static.wikia.nocookie.net/logopedia/images/2/25/Mr._Bean_Animated_Series_stacked_logo.png"
+  },
+  {
+   "name": "MTV (France) (720p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/mtv/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/MTV_2021_%28brand_version%29.svg/960px-MTV_2021_%28brand_version%29.svg.png"
+  },
+  {
+   "name": "MyZen TV (720p)",
+   "cat": "Relax",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/myzen_tv/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/fIi8o0C.png"
+  },
+  {
+   "name": "NatureTime France (1080p)",
+   "cat": "Documentary",
+   "url": "https://bamusa-naturetime-emea-fra-rakuten.amagi.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/72JmyjM.png"
+  },
+  {
+   "name": "Nickelodeon (France) (720p)",
+   "cat": "Kids",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/nickelodeon/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/E84jnP8.png"
+  },
+  {
+   "name": "Nickelodeon Junior (720p)",
+   "cat": "Kids",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/nickelodeon_junior/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Nickelodeon_Junior.png/960px-Nickelodeon_Junior.png"
+  },
+  {
+   "name": "Nicktoons (France) (720p)",
+   "cat": "Kids",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/nicktoons/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/b/be/Nicktoons_Logo_2023.svg"
+  },
+  {
+   "name": "NOVO19 (720p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/novo_19/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Logo_NOVO19_-_2025.svg/960px-Logo_NOVO19_-_2025.svg.png"
+  },
+  {
+   "name": "P2M TV (720p)",
+   "cat": "Music",
+   "url": "https://vdo2.pro-fhi.net:3207/stream/play.m3u8",
+   "logo": "https://i.imgur.com/TrecSeG.png"
+  },
+  {
+   "name": "Paris Premiere (720p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/paris_premiere/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/ily4bEm.png"
+  },
+  {
+   "name": "Puissance TV",
+   "cat": "General",
+   "url": "https://event.vedge.infomaniak.com/livecast/ik:puissancetelevision/manifest.m3u8",
+   "logo": "https://pbs.twimg.com/profile_images/1274572654016675842/A6v8Qo_X_400x400.jpg"
+  },
+  {
+   "name": "Qwest TV Jazz & Beyond (1080p)",
+   "cat": "Music",
+   "url": "https://samsungau-qwestjazz-samsungtv-zw2jc.amagi.tv/playlist/samsungau-qwestjazz-samsungtv/playlist.m3u8",
+   "logo": "https://i.imgur.com/89yWH5L.png"
+  },
+  {
+   "name": "RMC Decouverte (1080p)",
+   "cat": "Undefined",
+   "url": "https://d16zzycxcd0m0r.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-hixvx5kymecr9/RMC_Decouverte_FR.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/fr/thumb/b/b3/RMC_D%C3%A9couverte_logo_2017.svg/960px-RMC_D%C3%A9couverte_logo_2017.svg.png"
+  },
+  {
+   "name": "RMC Life (1080p)",
+   "cat": "Entertainment",
+   "url": "https://d3dcdjv6dx07iz.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-eaaww2dyp3iih/RMC_Life_FR.m3u8",
+   "logo": "https://img1.dc2.oqee.net/channel_pictures/3606/w512"
+  },
+  {
+   "name": "RMC Story (1080p)",
+   "cat": "Undefined",
+   "url": "https://d15aro46bnpfm8.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-fqkqiax1078up/RMC_Story_FR.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/fr/thumb/4/43/Logo_RMC_Story_2025.png/960px-Logo_RMC_Story_2025.png"
+  },
+  {
+   "name": "RT France (1080p) [Geo-blocked]",
+   "cat": "News",
+   "url": "https://rt-fra.rttv.com/dvr/rtfrance/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/RT-France-logo.svg/960px-RT-France-logo.svg.png"
+  },
+  {
+   "name": "RTL9 (720p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/rtl_9/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/nFqjVNW.png"
+  },
+  {
+   "name": "Science & Vie TV (720p)",
+   "cat": "Science",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/science_et_vie/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/9ELsSMI.png"
+  },
+  {
+   "name": "ScreamIN (1080p)",
+   "cat": "Movies",
+   "url": "https://rakutenaa-zylo-screamin-rakuten-p11ej.amagi.tv/playlist/rakutenAA-zylo-screamin-rakuten/playlist.m3u8",
+   "logo": "https://i.imgur.com/tGmKbil.png"
+  },
+  {
+   "name": "Serie Club (720p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/serie_club/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/V8wRRg5.png"
+  },
+  {
+   "name": "Sony One Blacklist (1080p)",
+   "cat": "Series",
+   "url": "https://06cb85ad6ccb4a6b97f561e62d16ad3f.mediatailor.us-west-2.amazonaws.com/v1/master/ba62fe743df0fe93366eba3a257d792884136c7f/LINEAR-822-FR-SONYONETHEBLACKLIST-LG_FR/playlist.m3u8",
+   "logo": "https://i.imgur.com/uJC8rXr.png"
+  },
+  {
+   "name": "Sony One Favoris (1080p)",
+   "cat": "Movies",
+   "url": "https://49d735318d6b4c30a24a7997ea594e1b.mediatailor.us-west-2.amazonaws.com/v1/master/ba62fe743df0fe93366eba3a257d792884136c7f/LINEAR-820-FR-SONYONEFAVORIS-LG_FR/playlist.m3u8",
+   "logo": "https://i.imgur.com/RO4AM4b.png"
+  },
+  {
+   "name": "Sony One Hits Action (1080p)",
+   "cat": "Movies",
+   "url": "https://5098a8b860504a3690fd2e7c0a18d68f.mediatailor.us-west-2.amazonaws.com/v1/master/ba62fe743df0fe93366eba3a257d792884136c7f/LINEAR-817-FR-SONYONEHITSACTION-LG_FR/playlist.m3u8",
+   "logo": "https://i.imgur.com/pXsZEsR.png"
+  },
+  {
+   "name": "Sony One Hits Comedie (1080p)",
+   "cat": "Movies",
+   "url": "https://7aa9671895264ec9a384dfed1b992171.mediatailor.us-west-2.amazonaws.com/v1/master/ba62fe743df0fe93366eba3a257d792884136c7f/LINEAR-818-FR-SONYONEHITSCOMDIE-LG_FR/playlist.m3u8",
+   "logo": "https://i.imgur.com/8sHuxxS.png"
+  },
+  {
+   "name": "Tebeo TV (576i)",
+   "cat": "General",
+   "url": "https://tebeo.streamakaci.tv/tebeo/tebeo-multi/playlist.m3u8",
+   "logo": "https://i.imgur.com/WdZWBEd.png"
+  },
+  {
+   "name": "Teva (720p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/teva/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/kDW0hN5.png"
+  },
+  {
+   "name": "TF1 (1080p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/tf1/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/QxHt9NC.png"
+  },
+  {
+   "name": "TF1 Series Films (1080p)",
+   "cat": "Movies",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/tf1_series_films/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/4CJIDKQ.png"
+  },
+  {
+   "name": "TFX (1080p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/tfx/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/d91GcVf.png"
+  },
+  {
+   "name": "TMC (1080p)",
+   "cat": "General",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/tmc_fr/live.livx/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/5/54/TMC_logo.svg/960px-TMC_logo.svg.png"
+  },
+  {
+   "name": "Toute l'Histoire (720p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/toute_lhistoire/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/xRfyQYn.png"
+  },
+  {
+   "name": "Trace Africa (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/AFRICA_FR_hd/index.m3u8",
+   "logo": "https://i.imgur.com/kPUkoS7.png"
+  },
+  {
+   "name": "Trace Afrikora (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/TERANGA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/CQDdnhp.png"
+  },
+  {
+   "name": "Trace Ayiti (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/AYITI_hd/index.m3u8",
+   "logo": "https://i.imgur.com/KkJ6fet.png"
+  },
+  {
+   "name": "Trace Brazuca (1090p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/BRAZIL_sd/index.m3u8",
+   "logo": "https://i.imgur.com/DFBocPu.png"
+  },
+  {
+   "name": "Trace Brazuca HD (1080p)",
+   "cat": "Music",
+   "url": "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01131-tracetv-tracebrazuca-samsungbr/playlist.m3u8",
+   "logo": "https://i.imgur.com/DFBocPu.png"
+  },
+  {
+   "name": "Trace Caribbean (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/CARIBBEAN_hd/index.m3u8",
+   "logo": "https://i.imgur.com/ZHD7Vxy.png"
+  },
+  {
+   "name": "Trace Gospel (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/GOSPEL_FR_hd/index.m3u8",
+   "logo": "https://i.imgur.com/X0UmU3K.png"
+  },
+  {
+   "name": "Trace Jama (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/JAMA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/pthX34m.png"
+  },
+  {
+   "name": "Trace Kitoko (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/KITOKO_hd/index.m3u8",
+   "logo": "https://i.imgur.com/q6vkMrU.png"
+  },
+  {
+   "name": "Trace Latina (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/LATINA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/CUVAi4u.png"
+  },
+  {
+   "name": "Trace Mboa (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/MBOA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/cYwkCj2.png"
+  },
+  {
+   "name": "Trace Muzika (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/MUZIKA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/xsEGIXO.png"
+  },
+  {
+   "name": "Trace Mziki (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/MZIKI_hd/index.m3u8",
+   "logo": "https://i.imgur.com/l3X9Gg4.png"
+  },
+  {
+   "name": "Trace Naija (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/NAIJA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/Rguekcp.png"
+  },
+  {
+   "name": "Trace Urban HD (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/URBAN_FR_hd/index.m3u8",
+   "logo": "https://i.imgur.com/DLIbUMx.png"
+  },
+  {
+   "name": "Trace Vanilla Islands (1080p)",
+   "cat": "Music",
+   "url": "https://channels.trace.plus/Traceprod/VANILLA_hd/index.m3u8",
+   "logo": "https://i.imgur.com/ngF58fe.png"
+  },
+  {
+   "name": "TV3V (720p)",
+   "cat": "General",
+   "url": "https://tv3v.live-kd.com/live/tv3v/livestream/index.m3u8",
+   "logo": "https://i.ibb.co/X2yd0zL/logo-tv3v.jpg"
+  },
+  {
+   "name": "TV5Monde France Belgium Switzerland Monaco (720p)",
+   "cat": "General",
+   "url": "https://n-5-2.eu.cdn-redge.media/livehls/oeu/mt/live/tv5_monde_fbs/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/WmRbudc.png"
+  },
+  {
+   "name": "TV7 Colmar (576p)",
+   "cat": "General",
+   "url": "https://tv7.live-kd.com/live/tv7/livestream/playlist.m3u8",
+   "logo": "https://i.imgur.com/kSdGi43.png"
+  },
+  {
+   "name": "TV Breizh (720p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/tv_breizh/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/O8W4yhn.png"
+  },
+  {
+   "name": "TV Monaco (1080p)",
+   "cat": "General",
+   "url": "https://production-fast-mcrtv.content.okast.tv/channels/2116dc08-1959-465d-857f-3619daefb66b/b702b2b9-aebd-436c-be69-2118f56f3d86/master.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/TVMonaco_2023.svg/960px-TVMonaco_2023.svg.png"
+  },
+  {
+   "name": "Ushuaia TV (720p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/ushuaia/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/WjjlqbP.png"
+  },
+  {
+   "name": "ViaMatele (1080p)",
+   "cat": "Undefined",
+   "url": "https://5dd226f8f01e8.streamlock.net/via-matele-live/matelelive_1080/playlist.m3u8",
+   "logo": "https://i.imgur.com/XVCV9rj.png"
+  },
+  {
+   "name": "viaTelePaese (720p)",
+   "cat": "General",
+   "url": "https://srv.webtvmanager.fr:3970/live/viatelepaeselive.m3u8",
+   "logo": "https://i.imgur.com/TLZsAKK.png"
+  },
+  {
+   "name": "Vosges TV (576p) [Not 24/7]",
+   "cat": "Undefined",
+   "url": "https://vosgestv.live-kd.com/live/vosgestv/vosgestv/playlist.m3u8",
+   "logo": "https://i.imgur.com/7y7ancc.png"
+  },
+  {
+   "name": "W9 (1080p)",
+   "cat": "Entertainment",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/w9_fr/live.livx/playlist.m3u8",
+   "logo": "https://i.imgur.com/reYeMuE.png"
+  },
+  {
+   "name": "Zee One French (720p)",
+   "cat": "Entertainment",
+   "url": "https://7689426c.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/U2Ftc3VuZy1mcl9aZWVNYWdpY19ITFM/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/2/24/Zee_One_Logo_2025.png"
+  }
+ ]
+}

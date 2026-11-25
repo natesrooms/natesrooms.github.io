@@ -1,0 +1,727 @@
+{
+ "source": "https://iptv-org.github.io/iptv/countries/es.m3u",
+ "checked": "2026-11-25T20:27:35+00:00",
+ "total": 305,
+ "ok": 117,
+ "why_failed": {
+  "blocks web players (no CORS)": 54,
+  "HTTP 403": 29,
+  "http:// only": 28,
+  "unreachable": 26,
+  "HTTP 404": 25,
+  "DASH, not HLS": 9,
+  "audio track encrypted/fMP4": 4,
+  "empty playlist": 4,
+  "HTTP 504": 2,
+  "encrypted": 2,
+  "not an HLS playlist": 1,
+  "HTTP 429": 1,
+  "HTTP 400": 1,
+  "not H.264 (mp4a.40.2)": 1,
+  "fMP4 segments": 1
+ },
+ "channels": [
+  {
+   "name": "3Cat Cameres del temps (1080p)",
+   "cat": "Public",
+   "url": "https://directes-tv-int.3catdirectes.cat/live-content/beauties-hls/master.m3u8",
+   "logo": "https://i.imgur.com/zXy2kbe.png"
+  },
+  {
+   "name": "3Cat Plats bruts (1080p)",
+   "cat": "Classic",
+   "url": "https://fast-tailor.3catdirectes.cat/v1/channel/ccma-channel2/hls.m3u8",
+   "logo": "https://i.imgur.com/49ZENis.png"
+  },
+  {
+   "name": "3CatInfo (1080p)",
+   "cat": "News",
+   "url": "https://directes-tv-int.3catdirectes.cat/live-origin/canal324-hls/master.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/3CatInfo_logo.svg/960px-3CatInfo_logo.svg.png"
+  },
+  {
+   "name": "24 Horas (720p)",
+   "cat": "News",
+   "url": "https://rtvelivestream.rtve.es/rtvesec/24h/24h_main_dvr.m3u8",
+   "logo": "https://i.ibb.co/21sXZ3GT/24h.png"
+  },
+  {
+   "name": "24 Horas Catalunya (720p)",
+   "cat": "News",
+   "url": "https://rtvelivestream.rtve.es/rtvesec/cat/24h_cat_main_dvr.m3u8",
+   "logo": "https://i.ibb.co/21sXZ3GT/24h.png"
+  },
+  {
+   "name": "28 kanala",
+   "cat": "General",
+   "url": "https://streaming.28kanala.eus/hls/z.m3u8",
+   "logo": "https://i.imgur.com/DyvK28q.png"
+  },
+  {
+   "name": "Activa TV (720p)",
+   "cat": "Music",
+   "url": "https://streamtv.mediasector.es/hls/activatv/index.m3u8",
+   "logo": "https://i.imgur.com/VCUZKiw.png"
+  },
+  {
+   "name": "Angel TV Spanish (720p)",
+   "cat": "Religious",
+   "url": "https://janya-digimix.akamaized.net/vglive-sk-351398/spanish/ngrp:angelspanish_all/playlist.m3u8",
+   "logo": "https://i.imgur.com/qKLEGU7.png"
+  },
+  {
+   "name": "Arabi TV (1080p)",
+   "cat": "General",
+   "url": "https://streamtv2.elitecomunicacion.cloud:3628/live/arabitv2025live.m3u8",
+   "logo": "https://i.ibb.co/9Vp9Ghg/LOGO-WEB-ARABI-TV-3.png"
+  },
+  {
+   "name": "BBC Drama (1080p)",
+   "cat": "Series",
+   "url": "https://amg00793-amg00793c40-rakuten-es-5444.playouts.now.amagi.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/HctHhLL.png"
+  },
+  {
+   "name": "BCN Gospel TV HD (720p)",
+   "cat": "General",
+   "url": "https://live1.ovalcast.com:3916/live/bcngospeltvlive.m3u8",
+   "logo": "https://bcngospelchannel.com/wp-content/uploads/2025/09/bcn-gospel-channer-favicon.png"
+  },
+  {
+   "name": "Bon Dia TV (1080p)",
+   "cat": "General",
+   "url": "https://directes-tv-int.3catdirectes.cat/live-content/bondia-hls/master.m3u8",
+   "logo": "https://i.imgur.com/VgRCu2U.png"
+  },
+  {
+   "name": "BTL TV (Netherlands) (1080p)",
+   "cat": "Religious",
+   "url": "https://cdn.liveplustv.com/v1/live/btl-tv/master.m3u8",
+   "logo": "https://yt3.googleusercontent.com/ytc/APkrFKZYgQTsDhkbaqmPRCPZIf0UgZqF1wa6aG2eo8ti=s176-c-k-c0x00ffffff-no-rj-mo"
+  },
+  {
+   "name": "Canal 3 TV Biar (480p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://avantstreaming.es/hls/canal3.m3u8",
+   "logo": "https://i.imgur.com/cnKCZkK.png"
+  },
+  {
+   "name": "Canal 4 Mancha Centro (720p) [Not 24/7]",
+   "cat": "Undefined",
+   "url": "https://5924d3ad0efcf.streamlock.net/canal4/canal4live/playlist.m3u8",
+   "logo": "https://i.imgur.com/t3O3O9M.png"
+  },
+  {
+   "name": "Canal 7 TeleValencia (576p)",
+   "cat": "General",
+   "url": "https://play.cdn.enetres.net/9E9557EFCEBB43A89CEC8FBD3C500247022/028/playlist.m3u8",
+   "logo": "https://i.imgur.com/ILfXDRs.png"
+  },
+  {
+   "name": "Canal 33 Madrid (720p)",
+   "cat": "Undefined",
+   "url": "https://media2.streambrothers.com:1936/8140/8140/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Logo_Canal_33_Madrid_2025.jpg/960px-Logo_Canal_33_Madrid_2025.jpg"
+  },
+  {
+   "name": "Canal 45 (576p)",
+   "cat": "Undefined",
+   "url": "https://nlb1-live.emitstream.com/hls/625csn5et2iszm9oze65/master.m3u8",
+   "logo": "https://i.imgur.com/yEfSnGt.png"
+  },
+  {
+   "name": "Canal Diocesano (576p)",
+   "cat": "Undefined",
+   "url": "https://nlb2-live.emitstream.com/hls/5i3pxfuz4az356yu22ij/master.m3u8",
+   "logo": "https://i.imgur.com/uWhVKL3.png"
+  },
+  {
+   "name": "Canal Donana (720p) [Not 24/7]",
+   "cat": "Undefined",
+   "url": "https://secure5.todostreaming.es/live/division-alm.m3u8",
+   "logo": "https://i.imgur.com/0WrKIxm.png"
+  },
+  {
+   "name": "Canal Malaga RTV (720p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://canalmalaga-tv-live.flumotion.com/playlist.m3u8",
+   "logo": "https://i.imgur.com/QSUOxtM.png"
+  },
+  {
+   "name": "Canal Parlamento (360p) [Not 24/7]",
+   "cat": "Legislative",
+   "url": "https://congresodirecto.akamaized.net/hls/live/2037973/canalparlamento/master.m3u8",
+   "logo": "https://i.imgur.com/BUO0wH6.png"
+  },
+  {
+   "name": "Canal San Roque (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://cdnlivevlc.codev8.net/aytosanroquelive/smil:channel1.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/SN9kFKh.png"
+  },
+  {
+   "name": "Canal Sierra de Cadiz (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://s.emisoras.tv:8081/sierradecadiz/index.m3u8",
+   "logo": "https://i.imgur.com/94rn7pb.png"
+  },
+  {
+   "name": "Canal Sur 2 (720p)",
+   "cat": "General",
+   "url": "https://cdnlive.codev8.net/rtvalive/smil:channel22.smil/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Canal_Sur_2_-_2017_logo.png/500px-Canal_Sur_2_-_2017_logo.png"
+  },
+  {
+   "name": "Canal Sur Andalucia (1080p)",
+   "cat": "General",
+   "url": "https://dfk2a268yviz9.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-ddiii1m6jt6of/CanalSurAndaluciaES.m3u8",
+   "logo": "https://i.imgur.com/lznnA4v.png"
+  },
+  {
+   "name": "Canal Sur Noticias",
+   "cat": "News",
+   "url": "https://cdnlive.codev8.net/rtvalive/smil:channel42.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/A3JscwS.png"
+  },
+  {
+   "name": "Canal Taronja Comarques Centrals (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://ingest1-video.streaming-pro.com/canaltaronja/central/playlist.m3u8",
+   "logo": "https://i.imgur.com/RP8VcqZ.png"
+  },
+  {
+   "name": "Canal Taronja Osona i Moianes (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://ingest1-video.streaming-pro.com/canaltaronja/osona/playlist.m3u8",
+   "logo": "https://i.imgur.com/RP8VcqZ.png"
+  },
+  {
+   "name": "Canal Terrassa (1080p)",
+   "cat": "Undefined",
+   "url": "https://ingest2-video.streaming-pro.com/canalterrassa/stream/playlist.m3u8",
+   "logo": "https://i.imgur.com/5fc5ZyI.png"
+  },
+  {
+   "name": "Cine Friki (1080p)",
+   "cat": "Movies",
+   "url": "https://d2mr4fu91mjx9m.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-rb0tx75ojbc5u/CineFriki_ES.m3u8",
+   "logo": "https://i.imgur.com/b3Ospym.png"
+  },
+  {
+   "name": "Cine Western (Spain) (1080p)",
+   "cat": "Movies",
+   "url": "https://d2nq34q0i1r3la.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-awohw8g217ho8/CineWestern_ES.m3u8",
+   "logo": "https://i.imgur.com/2UROzSc.png"
+  },
+  {
+   "name": "Ciudades del Ocio TV (720p)",
+   "cat": "Entertainment",
+   "url": "https://cloudvideo.servers10.com:8081/8024/index.m3u8",
+   "logo": "https://i.imgur.com/CTQgqsM.png"
+  },
+  {
+   "name": "Clan (1080p)",
+   "cat": "Kids",
+   "url": "https://lge-lgla2.otteravision.com/lge/lgcla/lgcla.m3u8",
+   "logo": "https://i.ibb.co/vv3FC2Nv/clan.png"
+  },
+  {
+   "name": "CMM TV HD (1080p)",
+   "cat": "General",
+   "url": "https://cdnapisec.kaltura.com/p/2288691/sp/228869100/playManifest/entryId/1_gnz6ity9/protocol/https/format/applehttp/flavorIds/1_a9gxgxzy,1_v71ryg4b,1_vbfvtjw6,1_obo1bqsx,1_3shk3s5d/a.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/CMMedia.svg/960px-CMMedia.svg.png"
+  },
+  {
+   "name": "Costa Noroeste TV (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://limited31.todostreaming.es/live/noroestetv-livestream.m3u8",
+   "logo": "https://i.imgur.com/iM9AN6Z.png"
+  },
+  {
+   "name": "Diez TV Las Villas (1080p)",
+   "cat": "General",
+   "url": "https://streaming.cloud.innovasur.es/mmj2/index.m3u8",
+   "logo": "https://i.imgur.com/QTA40lP.png"
+  },
+  {
+   "name": "Diez TV Ubeda (1080p)",
+   "cat": "General",
+   "url": "https://streaming.cloud.innovasur.es/mmj/index.m3u8",
+   "logo": "https://i.imgur.com/o2a7s4W.png"
+  },
+  {
+   "name": "Distrito TV (1080p)",
+   "cat": "General",
+   "url": "https://nlb2-live.emitstream.com/hls/3mn7wpcv7hbmxmdzaxap/master.m3u8",
+   "logo": "https://i.imgur.com/AqGIoIt.png"
+  },
+  {
+   "name": "Durangaldeko Telebista (576p)",
+   "cat": "General",
+   "url": "https://nlb2-live.emitstream.com/hls/5f9asjsehd7gmyxsdpzu/master.m3u8",
+   "logo": "https://i.imgur.com/qdlW6cg.png"
+  },
+  {
+   "name": "El 33 Originals (1080p) [Not 24/7]",
+   "cat": "Culture",
+   "url": "https://directes-tv-int.3catdirectes.cat/live-content/c33-super3-hls/master.m3u8",
+   "logo": "https://i.imgur.com/frKCBTN.png"
+  },
+  {
+   "name": "El Toro TV (720p)",
+   "cat": "General",
+   "url": "https://streaming-1.eltorotv.com/lb0/eltorotv-streaming-web/index.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/9/93/Eltorotv.png"
+  },
+  {
+   "name": "Emporda TV (1080p)",
+   "cat": "General",
+   "url": "https://video3.lhdserver.es/empordatv2/live.m3u8",
+   "logo": "https://i.imgur.com/jc0lUbX.png"
+  },
+  {
+   "name": "EsTuTele (720p)",
+   "cat": "General",
+   "url": "https://cloud.streamingconnect.tv/hls/estutele/estutele.m3u8",
+   "logo": "https://i.imgur.com/bsAbcmC.png"
+  },
+  {
+   "name": "ETB1 On (1080p)",
+   "cat": "Public",
+   "url": "https://cdn1.etbon.eus/etb1on/index.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/5/52/Logo_ETB1_On_2026.svg"
+  },
+  {
+   "name": "ETB2 On (1080p)",
+   "cat": "Entertainment",
+   "url": "https://cdn1.etbon.eus/etb2on/index.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/f/f5/Logo_ETB2_On_2026.svg"
+  },
+  {
+   "name": "ETB Events 1 (1080p)",
+   "cat": "General",
+   "url": "https://cdn1.etbon.eus/oc1/index.m3u8",
+   "logo": "https://i.imgur.com/bVUEmx9.png"
+  },
+  {
+   "name": "EWTN (United States) Spain & Latin America (720p)",
+   "cat": "Religious",
+   "url": "https://cdn3.wowza.com/1/SmVrQmZCUXZhVDgz/b3J3MFJv/hls/live/playlist.m3u8",
+   "logo": "https://play-lh.googleusercontent.com/3716tvZCgzpIt-X1giV8jKwCdC8zwOI4eMUfO_ETWzNX6eGKIi2RiUK9a_fr6BCzjw"
+  },
+  {
+   "name": "EWTN Espana",
+   "cat": "Religious",
+   "url": "https://cdn3.wowza.com/1/SmVrQmZCUXZhVDgz/b3J3MFJv/hls/q6xkg9py/480/chunklist.m3u8",
+   "logo": "https://i.imgur.com/KvpMbkd.png"
+  },
+  {
+   "name": "FIFA+ Spain (720p)",
+   "cat": "Sports",
+   "url": "https://d63fabad.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/UmFrdXRlblRWLWVzX0ZJRkFQbHVzU3BhbmlzaF9ITFM/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/FIFA%2B_(2025).svg/960px-FIFA%2B_(2025).svg.png"
+  },
+  {
+   "name": "France 24 Spanish (1080p)",
+   "cat": "News",
+   "url": "https://live.france24.com/hls/live/2037220-b/F24_ES_HI_HLS/master_5000.m3u8",
+   "logo": "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_FRANCE_24/images/LOGO_HD/image.png"
+  },
+  {
+   "name": "Fuerteventura TV (1080p)",
+   "cat": "General",
+   "url": "https://5c0956165db0b.streamlock.net/ftv/directo/.m3u8",
+   "logo": "https://i.ibb.co/MpvjCzC/Fuerteventura-tv-service-webtv-488969d1-1.png"
+  },
+  {
+   "name": "Galicia TV Europa (720p)",
+   "cat": "General",
+   "url": "https://crtvg-europa.flumotion.cloud/playlist.m3u8",
+   "logo": "https://i.imgur.com/dvkzH8n.png"
+  },
+  {
+   "name": "Goiena Eus (720p)",
+   "cat": "Undefined",
+   "url": "https://zuzenean.goienamedia.eus/goiena-telebista.m3u8",
+   "logo": "https://i.imgur.com/eaLIJzK.png"
+  },
+  {
+   "name": "Hamaika Telebista (1080p)",
+   "cat": "Culture",
+   "url": "https://cdn3.wowza.com/1/RERMR282dnU5eE5Z/OHY0dVFs/hls/live/playlist.m3u8",
+   "logo": "https://i.imgur.com/HR3G3Ie.png"
+  },
+  {
+   "name": "Historia (1080p)",
+   "cat": "Entertainment",
+   "url": "https://d1k3vzh2ivy22k.cloudfront.net/Historia.m3u8",
+   "logo": "https://i.imgur.com/VUy8xIG.png"
+  },
+  {
+   "name": "Imas TV (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://secure3.todostreaming.es/live/imastv-livestream.m3u8",
+   "logo": "https://i.imgur.com/a9hgTmM.png"
+  },
+  {
+   "name": "Interalmeria TV (1080p)",
+   "cat": "General",
+   "url": "https://interalmeria.tv/directo/live.m3u8",
+   "logo": "https://i.imgur.com/ulSkAjZ.png"
+  },
+  {
+   "name": "La 2 Canarias (720p)",
+   "cat": "General",
+   "url": "https://ztnr.rtve.es/ztnr/5468585.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Logo_La_2_Canarias.png/960px-Logo_La_2_Canarias.png"
+  },
+  {
+   "name": "La 2 Catalunya (720p)",
+   "cat": "General",
+   "url": "https://ztnr.rtve.es/ztnr/3987218.m3u8",
+   "logo": "https://i.ibb.co/Lztt9rgr/La-2-Catalunya.png"
+  },
+  {
+   "name": "Lancelot TV (404p)",
+   "cat": "General",
+   "url": "https://5c0956165db0b.streamlock.net:8090/directo/_definst_/lancelot.television/master.m3u8",
+   "logo": "https://i.imgur.com/RlzVIJP.png"
+  },
+  {
+   "name": "LiraTV (720p)",
+   "cat": "Music",
+   "url": "https://cloud2.streaminglivehd.com:1936/liratv/liratv/playlist.m3u8",
+   "logo": "https://i.imgur.com/hBswXYZ.png"
+  },
+  {
+   "name": "Logos TV (Spain) (1080p) [Not 24/7]",
+   "cat": "Religious",
+   "url": "https://streamer1.streamhost.org/salive/logosH/master.m3u8",
+   "logo": "https://i.imgur.com/Kr3U3Ub.png"
+  },
+  {
+   "name": "Logos TV Kids (720p) [Not 24/7]",
+   "cat": "Kids",
+   "url": "https://streamer1.streamhost.org/salive/logoskidsH/playlist.m3u8",
+   "logo": "https://i.imgur.com/Kr3U3Ub.png"
+  },
+  {
+   "name": "M95 Television Marbella (1080p) [Not 24/7]",
+   "cat": "News",
+   "url": "https://limited2.todostreaming.es/live/m95-livestream.m3u8",
+   "logo": "https://i.imgur.com/RzAkP1V.png"
+  },
+  {
+   "name": "Mr Bean Animated ES (1080p)",
+   "cat": "Animation",
+   "url": "https://amg00627-amg00627c30-rakuten-es-3990.playouts.now.amagi.tv/playlist/amg00627-banijayfast-mrbeanescc-rakutenes/playlist.m3u8",
+   "logo": "https://static.wikia.nocookie.net/logopedia/images/2/25/Mr._Bean_Animated_Series_stacked_logo.png"
+  },
+  {
+   "name": "Music TV Granada (1080p) [Not 24/7]",
+   "cat": "Music",
+   "url": "https://cloudvideo.servers10.com:8081/8032/index.m3u8",
+   "logo": "https://i.ibb.co/Swd9NP7n/music-tv-granada.png"
+  },
+  {
+   "name": "MyTime Movie Network (Spain) (1080p)",
+   "cat": "Movies",
+   "url": "https://appletree-mytimespain-rakuten.amagi.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/pw4NZK1.png"
+  },
+  {
+   "name": "NatureTime (1080p)",
+   "cat": "Documentary",
+   "url": "https://bamusa-naturetime-emea-eng-rakuten.amagi.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/72JmyjM.png"
+  },
+  {
+   "name": "Onda 15 TV (224p)",
+   "cat": "Music",
+   "url": "https://cloudvideo.servers10.com:8081/8034/index.m3u8",
+   "logo": "https://i.imgur.com/mUrZz9O.png"
+  },
+  {
+   "name": "Onda Algeciras (576p)",
+   "cat": "General",
+   "url": "https://cloudtv.provideo.es/live/algecirastv-livestream.m3u8",
+   "logo": "https://i.imgur.com/kUhFkVF.png"
+  },
+  {
+   "name": "Onda Cadiz (720p)",
+   "cat": "General",
+   "url": "https://ondacadiztv.es:30443/octv/24h/playlist.m3u8",
+   "logo": "https://i.imgur.com/sOBMnby.png"
+  },
+  {
+   "name": "Onda Valencia TV (720p)",
+   "cat": "Music",
+   "url": "https://cloudvideo.servers10.com:8081/8116/index.m3u8",
+   "logo": "https://i.imgur.com/6HxLUQd.png"
+  },
+  {
+   "name": "Platzi TV (1080p)",
+   "cat": "Education",
+   "url": "https://mdstrm.com/live-stream-playlist/629a63ae8df27c082901f78b.m3u8",
+   "logo": "https://i.imgur.com/vEzeqHP.png"
+  },
+  {
+   "name": "POP World TV (720p)",
+   "cat": "Music",
+   "url": "https://janus.xpbroadcasting.com:8443/hls/popworld.m3u8",
+   "logo": "https://i.imgur.com/LQB6G3s.jpg"
+  },
+  {
+   "name": "Punt 3 (1080p)",
+   "cat": "Undefined",
+   "url": "https://bit.controlstreams.com:5443/LiveApp/streams/punt3.m3u8",
+   "logo": "https://i.imgur.com/i9tsnhD.png"
+  },
+  {
+   "name": "Radio 3 (720p)",
+   "cat": "Culture",
+   "url": "https://rtvelivestream.rtve.es/rtvesec/rne/rne3_main.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/RNE_Radio_3_2026.svg/500px-RNE_Radio_3_2026.svg.png"
+  },
+  {
+   "name": "Radio Carnaval TV (720p) [Not 24/7]",
+   "cat": "Entertainment",
+   "url": "https://eu1.servers10.com:8081/8116/index.m3u8",
+   "logo": "https://i.imgur.com/cdpbkSo.png"
+  },
+  {
+   "name": "Radio Television Marbella (720p)",
+   "cat": "Undefined",
+   "url": "https://streaming.rtvmarbella.tv/hls/streamingweb.m3u8",
+   "logo": "https://i.imgur.com/o9Ro8TR.png"
+  },
+  {
+   "name": "Red Bull TV ES (1080p)",
+   "cat": "Outdoor",
+   "url": "https://886bd3fbc782459f8de7555d32d7e9ce.mediatailor.us-west-2.amazonaws.com/v1/master/ba62fe743df0fe93366eba3a257d792884136c7f/LINEAR-957-WORBLATAMESFAST-WHALETVPLUS/957/whaletvplus/hls/master/playlist.m3u8",
+   "logo": "https://images.pluto.tv/channels/5e7cb84a172a0f0007da69e4/colorLogoPNG.png"
+  },
+  {
+   "name": "Ribera TV (576p)",
+   "cat": "General",
+   "url": "https://common01.todostreaming.es/live/ribera-livestream.m3u8",
+   "logo": "https://i.imgur.com/mPvSubP.png"
+  },
+  {
+   "name": "RNE para todos (720p)",
+   "cat": "General",
+   "url": "https://rtvelivestream.rtve.es/rtvesec/rne/rne_para_todos_main.m3u8",
+   "logo": "https://i.ibb.co/dsgrWTP8/fast-rneaudioparatodos-nac.png"
+  },
+  {
+   "name": "ROTV Valencia (720p)",
+   "cat": "Entertainment",
+   "url": "https://rotv.romediavalencia.com:3839/live/rotvlive.m3u8",
+   "logo": "https://i.imgur.com/0TDnVQ4.png"
+  },
+  {
+   "name": "RTV Vida (1080p)",
+   "cat": "Music",
+   "url": "https://vidartv2.todostreaming.es/live/radiovida-emisiontvhd.m3u8",
+   "logo": "https://i.imgur.com/EqUfEAh.png"
+  },
+  {
+   "name": "Sol Musica (720p)",
+   "cat": "Music",
+   "url": "https://d2glyu450vvghm.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-21u4g5cjglv02/sm.m3u8",
+   "logo": "https://i.imgur.com/rbJrmPw.png"
+  },
+  {
+   "name": "SpektraTV (720p)",
+   "cat": "Music",
+   "url": "https://cloudvideo.servers10.com:8081/8026/tracks-v1a1/index.m3u8",
+   "logo": "https://i.imgur.com/0zCt8e4.png"
+  },
+  {
+   "name": "Taroteame (576p)",
+   "cat": "Religious",
+   "url": "https://5d2733224ac48.streamlock.net/taroteame/tarot_web/playlist.m3u8",
+   "logo": ""
+  },
+  {
+   "name": "Tele 7 (720p)",
+   "cat": "General",
+   "url": "https://ingest2-video.streaming-pro.com/tele7_ABR/stream/playlist.m3u8",
+   "logo": "https://i.imgur.com/JcuV9ZE.png"
+  },
+  {
+   "name": "Tele Safor (720p) [Not 24/7]",
+   "cat": "Undefined",
+   "url": "https://video.telesafor.com/hls/video.m3u8",
+   "logo": "https://i.imgur.com/EowJfr0.png"
+  },
+  {
+   "name": "Teledeporte (720p) [Geo-blocked]",
+   "cat": "Sports",
+   "url": "https://rtvelivestream.rtve.es/rtvesec/tdp/tdp_main.m3u8",
+   "logo": "https://i.ibb.co/0jxLdjnY/TDP.png"
+  },
+  {
+   "name": "Teleganes (720p)",
+   "cat": "Undefined",
+   "url": "https://nlb2-live.emitstream.com/hls/5z6oj7ziwxzfnj78vg2m/master.m3u8",
+   "logo": "https://i.imgur.com/BXyplMX.png"
+  },
+  {
+   "name": "Television Canaria (1080p)",
+   "cat": "Undefined",
+   "url": "https://rtvclive.flumotion.cloud/rtvc1live/smil:channel1PRG.smil/playlist.m3u8",
+   "logo": "https://rtvc.es/archivos/2020/03/logo-mobilretina.png"
+  },
+  {
+   "name": "Television Consciente (1080p)",
+   "cat": "Religious",
+   "url": "https://cdn318.fractalmedia.es/318/live/hls/tvc/master.m3u8",
+   "logo": "https://i.imgur.com/6QVHKPw.png"
+  },
+  {
+   "name": "The Pet Collective Spain (720p)",
+   "cat": "Family",
+   "url": "https://the-pet-collective-international-es.samsung.wurl.tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/yH7n2dF.png"
+  },
+  {
+   "name": "Tito TV (720p)",
+   "cat": "Undefined",
+   "url": "https://cloud.tvomix.com/TITOTV/index.m3u8",
+   "logo": "https://tvomix.com/Logos/Titotv.png"
+  },
+  {
+   "name": "Todo Novelas (1080p)",
+   "cat": "Series",
+   "url": "https://dtsszjrztq9ti.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-yshah5p4v45g1/ToDoNovelas_ES.m3u8",
+   "logo": "https://i.imgur.com/NuYwGok.png"
+  },
+  {
+   "name": "Trece (Spain) (576p)",
+   "cat": "Religious",
+   "url": "https://play.cdn.enetres.net/091DB7AFBD77442B9BA2F141DCC182F5021/live.smil/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Trece.svg/960px-Trece.svg.png"
+  },
+  {
+   "name": "TV BRICS Spanish (1080p)",
+   "cat": "General",
+   "url": "https://espbrics.mediacdn.ru/cdn/brics/spanish/playlist.m3u8",
+   "logo": "https://i.imgur.com/vLpm8tN.png"
+  },
+  {
+   "name": "TV Sabadell-Valles (1080p)",
+   "cat": "General",
+   "url": "https://ingest1-video.streaming-pro.com/canaltaronja/sabadell/playlist.m3u8",
+   "logo": "https://i.imgur.com/fSTsGbG.png"
+  },
+  {
+   "name": "TVE Internacional Europe (576p)",
+   "cat": "Undefined",
+   "url": "https://r.eu.cdn-redge.media/livehls/oeu/mt/live/tve/live.livx/playlist.m3u8",
+   "logo": "https://i.ibb.co/RpKLCMvp/tve.png"
+  },
+  {
+   "name": "TVE Star (576p)",
+   "cat": "Series",
+   "url": "https://rtvelivestream-rtveplayplus.rtve.es/rtvesec/int/star_main_576.m3u8",
+   "logo": "https://i.ibb.co/j98NY8Mr/starcolor.png"
+  },
+  {
+   "name": "TVE Star HD (1080p)",
+   "cat": "Series",
+   "url": "https://rtvelivestream-rtveplayplus.rtve.es/rtvesec/int/star_main_1080.m3u8",
+   "logo": "https://i.ibb.co/j98NY8Mr/starcolor.png"
+  },
+  {
+   "name": "TVG2 (720p) [Geo-blocked]",
+   "cat": "General",
+   "url": "https://crtvg-tvg2.flumotion.cloud/playlist.m3u8",
+   "logo": "https://i.imgur.com/yFy6gxg.png"
+  },
+  {
+   "name": "TVG Cativos",
+   "cat": "Kids",
+   "url": "https://crtvg-xabarinr2-schlive.flumotion.cloud/crtvglive/smil:channel7PRG.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/rS9i9RL.png"
+  },
+  {
+   "name": "TVG Mira Radio Galega",
+   "cat": "General",
+   "url": "https://crtvg-mirarg-schlive.flumotion.cloud/crtvglive/smil:channel1PRG.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/dvkzH8n.png"
+  },
+  {
+   "name": "TVG Mocinos",
+   "cat": "Kids",
+   "url": "https://crtvg-xabarinr3-schlive.flumotion.cloud/crtvglive/smil:channel8PRG.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/rS9i9RL.png"
+  },
+  {
+   "name": "TVG Pequerrechos",
+   "cat": "Kids",
+   "url": "https://crtvg-xabarinr1-schlive.flumotion.cloud/crtvglive/smil:channel6PRG.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/rS9i9RL.png"
+  },
+  {
+   "name": "TVO Jesus (720p)",
+   "cat": "Undefined",
+   "url": "https://cloud.tvomix.com/TVOJESUS/index.m3u8",
+   "logo": "https://tvomix.com/Logos/Tvojesus.png"
+  },
+  {
+   "name": "TVOMIX (1080p)",
+   "cat": "Music",
+   "url": "https://cloud.tvomix.com/TVOMIX/index.m3u8",
+   "logo": "https://ugc.production.linktr.ee/7ef61237-c46d-456b-afe3-a42ef49a979e_Mejorado2.png"
+  },
+  {
+   "name": "TVReus (720p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://eu1.servers10.com:8081/8166/index.m3u8",
+   "logo": "https://i.imgur.com/Ee0C8UH.jpg"
+  },
+  {
+   "name": "Univers TV (720p)",
+   "cat": "Entertainment",
+   "url": "https://cloud2.streaminglivehd.com:1936/universfaller/universfaller/playlist.m3u8",
+   "logo": "https://i.imgur.com/EW2bfix.png"
+  },
+  {
+   "name": "Urola Telebista (416p)",
+   "cat": "General",
+   "url": "https://5940924978228.streamlock.net/j_Directo2/mp4:j_Directo2/playlist.m3u8",
+   "logo": "https://i.imgur.com/V23bltn.png"
+  },
+  {
+   "name": "VOTV (1080p)",
+   "cat": "Undefined",
+   "url": "https://ingest2-video.streaming-pro.com/votv/streaming_web/playlist.m3u8",
+   "logo": "https://i.imgur.com/1g2Z64L.png"
+  },
+  {
+   "name": "WaterBear (1080p)",
+   "cat": "Documentary",
+   "url": "https://amg01415-waterbearnetwor-waterbear-samsunguk-1h0y8.amagi.tv/playlist/amg01415-waterbearnetwor-waterbear-samsunguk/playlist.m3u8",
+   "logo": "https://framerusercontent.com/images/41VQQ7F0fYlp1MX1N4Ixog5QnPI.png"
+  },
+  {
+   "name": "XPTV1 (720p)",
+   "cat": "Music",
+   "url": "https://janus.xpbroadcasting.com:8443/hls/xptv1.m3u8",
+   "logo": "https://i.imgur.com/Ty7GkoN.png"
+  },
+  {
+   "name": "XPTV2 (720p)",
+   "cat": "Entertainment",
+   "url": "https://janus.xpbroadcasting.com:8443/hls/xptv2.m3u8",
+   "logo": "https://i.imgur.com/74Z8ATB.png"
+  },
+  {
+   "name": "XPTV US (720p)",
+   "cat": "Series",
+   "url": "https://janus.xpbroadcasting.com:8443/hls/xptvUS.m3u8",
+   "logo": "https://i.imgur.com/1m7kDmc.png"
+  }
+ ]
+}

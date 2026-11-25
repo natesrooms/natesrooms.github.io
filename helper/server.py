@@ -16,6 +16,13 @@ Endpoints:
                                  serves the growing EVENT playlist on
                                  every poll thereafter
   GET /hls/<videoid>/<file>   -> playlist / segment bytes
+  GET /iptv?k=<key>&u=<url>   -> IPTV relay (off unless IPTV_KEY and
+                                 IPTV_HOSTS are set): fetches a channel
+                                 list, HLS playlist or live .ts stream from
+                                 the IPTV provider and hands it to the car
+                                 with CORS headers over HTTPS. HLS playlists
+                                 are rewritten so segments come through the
+                                 relay too.
 
 Stdlib only; yt-dlp and ffmpeg are invoked as subprocesses.
 Environment:
@@ -23,6 +30,10 @@ Environment:
   DATA_DIR    default ./data (session cache: one dir per video id)
   YTDLP_BIN   default "yt-dlp" (PATH lookup)
   FFMPEG_BIN  default "ffmpeg"
+  IPTV_KEY    secret the player must send to use /iptv (relay off if empty)
+  IPTV_HOSTS  comma-separated provider host names the relay may fetch from
+              (e.g. "provider.example,cdn.provider.example"); hosts that a
+              relayed playlist or redirect points at are trusted for 6 h
   CLIENT_SETS default "web,android,ios;android;ios"
               (';'-separated yt-dlp player_client sets, tried in order
               until one yields media formats - the web client gives the
@@ -30,6 +41,7 @@ Environment:
               client is the one that still answers from many datacenter
               IPs, where web gets a bot-check wall.)
 """
+import hmac
 import json
 import os
 import re
@@ -37,7 +49,9 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8799"))
@@ -49,6 +63,11 @@ CLIENT_SETS = [s.strip() for s in os.environ.get(
 MAX_HEIGHT = 720
 HLS_TIME = "6"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
+
+IPTV_KEY = os.environ.get("IPTV_KEY", "")
+IPTV_HOSTS = {h.strip().lower() for h in os.environ.get("IPTV_HOSTS", "").split(",") if h.strip()}
+_DYN_HOSTS = {}
+_DYN_LOCK = threading.Lock()
 
 SESSIONS = {}
 SESSIONS_LOCK = threading.Lock()
@@ -303,6 +322,49 @@ def ffmpeg_log_tail(s, n=3000):
         return ""
 
 
+# ---------------- IPTV relay ----------------
+
+def iptv_host_ok(url):
+    p = urllib.parse.urlparse(url)
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return False
+    host = p.hostname.lower()
+    if host in IPTV_HOSTS:
+        return True
+    with _DYN_LOCK:
+        exp = _DYN_HOSTS.get(host)
+    return bool(exp and exp > time.time())
+
+
+def iptv_trust(url):
+    host = (urllib.parse.urlparse(url).hostname or "").lower()
+    if host:
+        with _DYN_LOCK:
+            _DYN_HOSTS[host] = time.time() + 6 * 3600
+
+
+def relay_path(target):
+    return "/iptv?k=%s&u=%s" % (urllib.parse.quote(IPTV_KEY, safe=""), urllib.parse.quote(target, safe=""))
+
+
+def rewrite_hls(text, base):
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if s and not s.startswith("#"):
+            absu = urllib.parse.urljoin(base, s)
+            iptv_trust(absu)
+            ln = relay_path(absu)
+        elif 'URI="' in s:
+            def sub(m):
+                absu = urllib.parse.urljoin(base, m.group(1))
+                iptv_trust(absu)
+                return 'URI="%s"' % relay_path(absu)
+            ln = re.sub(r'URI="([^"]+)"', sub, ln)
+        out.append(ln)
+    return "\n".join(out) + "\n"
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -329,6 +391,66 @@ class Handler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def _iptv(self, u):
+        qs = urllib.parse.parse_qs(u.query)
+        key = qs.get("k", [""])[0]
+        target = qs.get("u", [""])[0]
+        if not IPTV_KEY or not hmac.compare_digest(key.encode(), IPTV_KEY.encode()):
+            return self._json(403, {"error": "IPTV relay is off, or the key is wrong"})
+        if not iptv_host_ok(target):
+            return self._json(403, {"error": "that host is not in IPTV_HOSTS"})
+        req = urllib.request.Request(target, headers={"User-Agent": UA})
+        try:
+            resp = urllib.request.urlopen(req, timeout=20)
+        except urllib.error.HTTPError as e:
+            return self._json(502, {"error": "provider answered HTTP %d" % e.code})
+        except Exception as e:
+            return self._json(502, {"error": "provider unreachable", "detail": str(e)})
+        with resp:
+            final = resp.geturl()
+            iptv_trust(final)  # the provider redirected us there
+            ctype = resp.headers.get("Content-Type", "") or ""
+            lpath = urllib.parse.urlparse(final).path.lower()
+            textual = (lpath.endswith((".m3u8", ".m3u", ".php")) or "mpegurl" in ctype.lower()
+                       or "json" in ctype.lower() or ctype.lower().startswith("text/"))
+            if textual:
+                body = resp.read(64 * 1024 * 1024)
+                if b"#EXT-X-" in body[:200000]:
+                    body = rewrite_hls(body.decode("utf-8", "replace"), final).encode()
+                    ctype = "application/vnd.apple.mpegurl"
+                self.send_response(200)
+                self.send_header("Content-Type", ctype or "application/octet-stream")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-cache")
+                self._cors()
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            # Media: a segment (has a length) or an endless live .ts stream.
+            length = resp.headers.get("Content-Length")
+            self.send_response(200)
+            self.send_header("Content-Type", ctype or "video/mp2t")
+            self.send_header("Cache-Control", "no-cache")
+            self._cors()
+            if length:
+                self.send_header("Content-Length", length)
+                self.end_headers()
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+            else:
+                self.send_header("Transfer-Encoding", "chunked")
+                self.end_headers()
+                while True:
+                    chunk = resp.read1(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(b"%x\r\n%s\r\n" % (len(chunk), chunk))
+                    self.wfile.flush()
+                self.wfile.write(b"0\r\n\r\n")
+
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         try:
@@ -346,6 +468,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"service": "nate-theater-youtube-helper",
                                         "usage": "/stream?v=<youtube url or video id>",
                                         "search": "/search?q=<terms>&n=<count>"})
+            if u.path == "/iptv":
+                return self._iptv(u)
             if u.path == "/search":
                 qs = urllib.parse.parse_qs(u.query)
                 q = (qs.get("q", [""])[0] or "").strip()
