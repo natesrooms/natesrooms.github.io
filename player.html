@@ -81,6 +81,7 @@
     border-radius: 12px; padding: 16px; font-size: 17px; min-height: 58px; cursor: pointer; width: 100%;
   }
   .libitem:active { background: #26262b; }
+  .libitem .chcat { float: right; color: #e50914; font-size: 13px; font-weight: 800; letter-spacing: .08em; }
   .libitem .yr { color: #9a9a95; font-size: 15px; }
   .libitem .meta { display: block; color: #9a9a95; font-size: 13px; margin-top: 2px; }
 
@@ -166,6 +167,12 @@
     <div class="row" style="margin-top:12px;">
       <button class="abtn abtn-ghost" id="btnTestStream" type="button">&#9654; Test stream (Apple BipBop)</button>
     </div>
+  </section>
+
+  <section class="panel" aria-label="Live TV">
+    <h2>Live TV</h2>
+    <p>Free live channels &mdash; tap one to start watching. These are free-to-air streams from the iptv-org collection; channels come and go, so if one stops working, try another.</p>
+    <div class="liblist" id="liveList"></div>
   </section>
 
   <section class="panel" aria-label="Plex">
@@ -1769,6 +1776,69 @@ if (typeof module !== 'undefined' && module.exports) {
     urlIn.value = TEST_STREAM_URL;
     btnUrlPlay.click();
   });
+
+  /* ---------- Live TV (free-to-air channels, iptv-org collection) ----------
+     Verified 2026-11-24: every stream below is unencrypted MPEG-TS HLS with
+     H.264 + AAC (ffprobe-checked) and sends CORS headers. Data file:
+     live-channels.json. Tapping a channel calls loadSource — the same load
+     path as pasting the address into the Direct stream box. */
+  var LIVE_CHANNELS = [
+      {"name": "MovieSphere", "category": "Movies", "url": "https://amg00353-lionsgatestudio-moviesphere-xumo-zh5u0.amagi.tv/playlist.m3u8"},
+      {"name": "Gravitas Movies", "category": "Movies", "url": "https://d6dg3ebeih71x.cloudfront.net/Gravitas_Movies.m3u8"},
+      {"name": "24 Hour Free Movies", "category": "Movies", "url": "https://d1j2u714xk898n.cloudfront.net/scheduler/scheduleMaster/145.m3u8"},
+      {"name": "Charge!", "category": "Movies", "url": "https://fast-channels.sinclairstoryline.com/CHARGE/index.m3u8"},
+      {"name": "ION", "category": "Series", "url": "https://wurlewscripps.global.transmit.live/hls/68b9b0338cacd6fc468c222c/v1/scripps_ion_1/vizio_us/latest/main/hls/playlist.m3u8"},
+      {"name": "ION Mystery", "category": "Series", "url": "https://bdd9b4ef.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/Vml6aW9fSU9OTXlzdGVyeV9ITFM/playlist.m3u8"},
+      {"name": "The Carol Burnett Show", "category": "Classic TV", "url": "https://vizioaaaa-carol-burnett-vizio-xam92.amagi.tv/playlist/vizioAAAA-carol-burnett-vizio/playlist.m3u8"},
+      {"name": "Story Television", "category": "Classic TV", "url": "https://2-fss-1.streamhoster.com/pl_122/206858-4412976-1/playlist.m3u8"},
+      {"name": "FailArmy", "category": "Comedy", "url": "https://failarmy-international-au.samsung.wurl.tv/playlist.m3u8"},
+      {"name": "Comet", "category": "Sci-Fi", "url": "https://fast-channels.sinclairstoryline.com/COMET/index.m3u8"},
+      {"name": "DUST", "category": "Sci-Fi", "url": "https://dqi7ayt2o24fn.cloudfront.net/playlist.m3u8"},
+      {"name": "Midnight Pulp", "category": "Horror", "url": "https://linear-897.frequency.stream/dist/cineverse/897/hls/master/playlist.m3u8"},
+      {"name": "RetroCrush", "category": "Anime", "url": "https://linear-899.frequency.stream/dist/cineverse/899/hls/master/playlist.m3u8"},
+      {"name": "Hell's Kitchen", "category": "Reality", "url": "https://amg00654-itv-amg00654c1-samsung-au-1072.playouts.now.amagi.tv/itv-hellskitchen-samsung/playlist.m3u8"},
+      {"name": "Fear Factor", "category": "Reality", "url": "https://amg00627-banijaygroup-fearfactor-samsungau-9vdod.amagi.tv/playlist/amg00627-banijaygroup-fearfactor-samsungau/playlist.m3u8"},
+      {"name": "American Ninja Warrior", "category": "Reality", "url": "https://d4whmvwm0rdvi.cloudfront.net/10007/99951318/hls/master.m3u8?ads.xumo_channelId=99951318"},
+      {"name": "Court TV", "category": "Crime", "url": "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01438-ewscrippscompan-courttv-tablo/playlist.m3u8"},
+      {"name": "Unsolved Mysteries", "category": "Crime", "url": "https://d31z96rdrmwfsp.cloudfront.net/master.m3u8"},
+      {"name": "Top Gear", "category": "Entertainment", "url": "https://amg00793-amg00793c5-vizio-us-2666.playouts.now.amagi.tv/playlist/amg00793-bbcstudios-bbctopgear8minother-vizious/playlist.m3u8"},
+      {"name": "Tastemade", "category": "Entertainment", "url": "https://rakutenaa-tm-intl-aus-rakuten-eu-n1gtg.amagi.tv/playlist/rakutenAA-tm-intl-aus-rakuten-eu/playlist.m3u8"},
+      {"name": "NBC News NOW", "category": "News", "url": "https://d1si3n1st4nkgb.cloudfront.net/10502/88896001/hls/master.m3u8?ads.xumo_channelId=88896001"},
+      {"name": "DW English", "category": "News", "url": "https://amg01644-amg01644c1-amgplt0343.playout.now3.amagi.tv/ts-eu-w1-n2/playlist/amg01644-amg01644c1-amgplt0343/playlist.m3u8"},
+      {"name": "Bloomberg TV+", "category": "News", "url": "https://bloomberg.com/media-manifest/streams/us.m3u8"},
+      {"name": "Sky News", "category": "News", "url": "https://dash4.antik.sk/live/test_skynews/playlist.m3u8"},
+      {"name": "PBS Kids", "category": "Kids", "url": "https://livestream.pbskids.org/out/v1/14507d931bbe48a69287e4850e53443c/est.m3u8"},
+      {"name": "MeTV Toons", "category": "Kids", "url": "https://sr-live-weigel1.akamaized.net/out/v1/0d1dbf29e64e47bc991796cc24fbeb97/index_2.m3u8"},
+      {"name": "The Weather Channel", "category": "Weather", "url": "https://twcprod-live.twc-tv.com/v1/manifest/b4d4d63a49309cc5140171fb2e92485c31be1e9e/DSP_6228e4760505741a116f1ba2_twcprod-live/6bf09ce5-366b-463c-b67e-c4b799f73c3f/4.m3u8"},
+      {"name": "AccuWeather NOW", "category": "Weather", "url": "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8"}
+  ];
+  (function () {
+    var list = $('liveList');
+    if (!list) return;
+    var lastCat = null;
+    LIVE_CHANNELS.forEach(function (ch) {
+      if (ch.category !== lastCat) {
+        lastCat = ch.category;
+        var h = document.createElement('div');
+        h.className = 'libhead';
+        h.textContent = lastCat;
+        list.appendChild(h);
+      }
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'libitem';
+      b.textContent = ch.name;
+      var tag = document.createElement('span');
+      tag.className = 'chcat';
+      tag.textContent = 'LIVE';
+      b.appendChild(tag);
+      b.addEventListener('click', function () {
+        loadSource(ch.url, ch.name);
+        if (stage && stage.scrollIntoView) stage.scrollIntoView();
+      });
+      list.appendChild(b);
+    });
+  })();
 
   /* ---------- Plex ---------- */
   var plexSid = 'dm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
