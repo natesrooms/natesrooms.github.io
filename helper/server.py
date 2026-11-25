@@ -16,6 +16,13 @@ Endpoints:
                                  serves the growing EVENT playlist on
                                  every poll thereafter
   GET /hls/<videoid>/<file>   -> playlist / segment bytes
+  Phone remote relay (car <-> phone through the helper):
+  POST /remote/new             -> {"room", "code"}  (car opens a room)
+  GET  /remote/pair?code=NNNNNN -> {"room"}         (phone joins by code)
+  POST /remote/<room>/cmd      phone -> car command (small JSON)
+  GET  /remote/<room>/cmds     car long-polls for commands
+  POST /remote/<room>/state    car -> phone state (what's playing, lists)
+  GET  /remote/<room>/state?v= phone long-polls for newer state
   GET /iptv?k=<key>&u=<url>   -> IPTV relay (off unless IPTV_KEY and
                                  IPTV_HOSTS are set): fetches a channel
                                  list, HLS playlist or live .ts stream from
@@ -44,6 +51,7 @@ Environment:
 import hmac
 import json
 import os
+import secrets
 import re
 import subprocess
 import sys
@@ -432,6 +440,63 @@ def rewrite_hls(text, base):
     return "\n".join(out) + "\n"
 
 
+# ---------------- phone remote relay ----------------
+# A room links one car screen with any phones that joined it. Rooms live
+# in memory only, are found by a 128-bit random id, and vanish after
+# 8 hours without use. The 6-digit code only works for 15 minutes and
+# wrong guesses are rate-limited per address.
+
+ROOMS = {}
+ROOMS_LOCK = threading.Lock()
+ROOM_IDLE = 8 * 3600
+CODE_TTL = 15 * 60
+_PAIR_FAILS = {}  # ip -> [timestamps]
+
+
+def _gc_rooms():
+    now = time.time()
+    for rid in [r for r, v in ROOMS.items() if now - v["used"] > ROOM_IDLE]:
+        ROOMS.pop(rid, None)
+
+
+def room_get(rid):
+    with ROOMS_LOCK:
+        r = ROOMS.get(rid)
+        if r:
+            r["used"] = time.time()
+        return r
+
+
+def room_new():
+    with ROOMS_LOCK:
+        _gc_rooms()
+        if len(ROOMS) > 200:
+            raise RuntimeError("too many open remotes")
+        rid = secrets.token_urlsafe(16)
+        used_codes = {v["code"] for v in ROOMS.values()}
+        code = "%06d" % secrets.randbelow(1000000)
+        while code in used_codes:
+            code = "%06d" % secrets.randbelow(1000000)
+        ROOMS[rid] = {"code": code, "code_at": time.time(), "used": time.time(),
+                      "cmds": [], "state": None, "ver": 0, "cond": threading.Condition()}
+        return rid, code
+
+
+def room_by_code(code, ip):
+    now = time.time()
+    with ROOMS_LOCK:
+        fails = [t for t in _PAIR_FAILS.get(ip, []) if now - t < 3600]
+        if len(fails) >= 20:
+            return None, "too many wrong codes - try again later"
+        for rid, r in ROOMS.items():
+            if r["code"] == code and now - r["code_at"] < CODE_TTL:
+                r["used"] = now
+                return rid, None
+        fails.append(now)
+        _PAIR_FAILS[ip] = fails
+        return None, "that code didn't match - check the code on the car screen"
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -440,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "*")
 
     def _json(self, code, obj):
@@ -518,6 +583,79 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.flush()
                 self.wfile.write(b"0\r\n\r\n")
 
+    def _body_json(self, limit):
+        n = int(self.headers.get("Content-Length") or 0)
+        if n <= 0 or n > limit:
+            raise ValueError("body missing or too large")
+        return json.loads(self.rfile.read(n).decode("utf-8"))
+
+    def do_POST(self):
+        u = urllib.parse.urlparse(self.path)
+        try:
+            if u.path == "/remote/new":
+                try:
+                    rid, code = room_new()
+                except RuntimeError as e:
+                    return self._json(503, {"error": str(e)})
+                return self._json(200, {"room": rid, "code": code, "code_ttl": CODE_TTL})
+            m = re.match(r"^/remote/([A-Za-z0-9_-]{16,40})/(cmd|state)$", u.path)
+            if m:
+                r = room_get(m.group(1))
+                if not r:
+                    return self._json(404, {"error": "this remote has expired - pair again"})
+                try:
+                    body = self._body_json(4096 if m.group(2) == "cmd" else 200000)
+                except (ValueError, UnicodeDecodeError):
+                    return self._json(400, {"error": "bad request body"})
+                with r["cond"]:
+                    if m.group(2) == "cmd":
+                        if not isinstance(body, dict) or not isinstance(body.get("type"), str):
+                            return self._json(400, {"error": "bad command"})
+                        r["cmds"] = (r["cmds"] + [body])[-50:]
+                    else:
+                        r["state"] = body
+                        r["ver"] += 1
+                    r["cond"].notify_all()
+                return self._json(200, {"ok": True, "ver": r["ver"]})
+            return self._json(404, {"error": "unknown route"})
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:
+            try:
+                self._json(500, {"error": "internal", "detail": str(e)})
+            except Exception:
+                pass
+
+    def _remote_get(self, u):
+        qs = urllib.parse.parse_qs(u.query)
+        if u.path == "/remote/pair":
+            code = (qs.get("code", [""])[0] or "").strip()
+            if not re.fullmatch(r"\d{6}", code):
+                return self._json(400, {"error": "enter the 6-digit code from the car screen"})
+            rid, err = room_by_code(code, self.client_address[0] if not self.headers.get("X-Forwarded-For")
+                                    else self.headers["X-Forwarded-For"].split(",")[0].strip())
+            if not rid:
+                return self._json(403, {"error": err})
+            return self._json(200, {"room": rid})
+        m = re.match(r"^/remote/([A-Za-z0-9_-]{16,40})/(cmds|state)$", u.path)
+        if not m:
+            return self._json(404, {"error": "unknown route"})
+        r = room_get(m.group(1))
+        if not r:
+            return self._json(404, {"error": "this remote has expired - pair again"})
+        wait = min(25.0, max(0.0, float(qs.get("wait", ["20"])[0] or 0)))
+        deadline = time.time() + wait
+        with r["cond"]:
+            if m.group(2) == "cmds":
+                while not r["cmds"] and time.time() < deadline:
+                    r["cond"].wait(max(0.05, deadline - time.time()))
+                out, r["cmds"] = r["cmds"], []
+                return self._json(200, {"cmds": out})
+            have = int(qs.get("v", ["0"])[0] or 0)
+            while r["ver"] <= have and time.time() < deadline:
+                r["cond"].wait(max(0.05, deadline - time.time()))
+            return self._json(200, {"ver": r["ver"], "state": r["state"] if r["ver"] > have else None})
+
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         try:
@@ -537,6 +675,8 @@ class Handler(BaseHTTPRequestHandler):
                                         "search": "/search?q=<terms>&n=<count>"})
             if u.path == "/iptv":
                 return self._iptv(u)
+            if u.path.startswith("/remote/"):
+                return self._remote_get(u)
             if u.path == "/search":
                 qs = urllib.parse.parse_qs(u.query)
                 q = (qs.get("q", [""])[0] or "").strip()

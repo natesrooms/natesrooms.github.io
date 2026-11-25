@@ -683,7 +683,7 @@
 
 
   /* ---------- Location (the browser's own location permission) ----------
-     Used only on this screen: shown in Settings and used to centre the
+     Used only on this screen: shown in Settings and used to center the
      traffic map. The last position is kept in this browser so the map
      can open near the car even before a fresh fix arrives. */
   function getPosition(timeoutMs) {
@@ -730,7 +730,7 @@
       }).catch((e) => { st.textContent = 'No location: ' + e.message + '.'; st.className = 'msg err'; });
     };
     return h('div', { class: 'card' }, h('h2', { text: 'Location' }),
-      h('p', { text: 'Checks whether the car shares its GPS position with this site. Your position stays on this screen — it’s only used to centre the traffic map.' }),
+      h('p', { text: 'Checks whether the car shares its GPS position with this site. Your position stays on this screen — it’s only used to center the traffic map.' }),
       h('button', { class: 'btn ghost', type: 'button', text: 'Test my location', onclick: run }), out, st);
   }
 
@@ -756,6 +756,8 @@
       return;
     }
     sawAppView = true;
+    document.body.classList.toggle('remote-mode', r.name === 'remote');
+    if (r.name === 'remote') dismissGate();
     if (playerOpen) closeWatch();
     if (r.key !== currentKey) render(r);
   }
@@ -775,9 +777,9 @@
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
     const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', iptv: 'IPTV', youtube: 'YouTube',
-      radio: 'Radio', traffic: 'Traffic', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
+      radio: 'Radio', traffic: 'Traffic', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
     document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
-    if (!['settings', 'signin', 'profiles'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
+    if (!['settings', 'signin', 'profiles', 'remote'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
     if (cache.size > 20) cache.delete(cache.keys().next().value);
     try { fn(node, r.args); } catch (e) { node.appendChild(msg('Something went wrong on this page: ' + e.message, true)); }
   }
@@ -1142,7 +1144,7 @@
     const show = (p, zoom, label) => { frame.src = wazeEmbed(p.lat, p.lon, zoom); note.textContent = label; };
     const centre = () => {
       note.textContent = 'Finding the car…';
-      getPosition(12000).then((p) => show(p, 14, 'Centred on the car · live traffic, police, hazards and accidents from Waze drivers.'))
+      getPosition(12000).then((p) => show(p, 14, 'Centered on the car · live traffic, police, hazards and accidents from Waze drivers.'))
         .catch((e) => {
           const last = store.get('dm_lastpos', null);
           if (last) show(last, 13, `Showing the last known position (${new Date(last.at).toLocaleString()}) — ${e.message}.`);
@@ -1151,7 +1153,7 @@
     };
     root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Traffic' }),
       h('div', { class: 'btns' },
-        h('button', { class: 'btn ghost', type: 'button', text: '◎ Centre on car', onclick: centre }),
+        h('button', { class: 'btn ghost', type: 'button', text: '◎ Center on car', onclick: centre }),
         h('a', { class: 'btn ghost', href: 'https://www.waze.com/live-map/', target: '_blank', rel: 'noopener', text: 'Open Waze live map' }))));
     root.appendChild(h('div', { class: 'pad' }, note, frame));
     const last = store.get('dm_lastpos', null);
@@ -1365,6 +1367,10 @@
         ln.value = lu.value = ''; invalidate('live'); drawLists(); toast('Added — find it under Live TV.');
       } }))));
     root.appendChild(iptvSetupCard());
+    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Phone remote' }),
+      h('p', { text: 'Control the car screen from a phone in the back seat: pick what to watch, pause, skip. On the car tap 📱 at the top; on the phone open this page and enter the code.' }),
+      h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '📱 Show pairing code (car)', onclick: showRemotePairing }),
+        h('a', { class: 'btn ghost', href: '#/remote', text: 'Use this device as the remote' }))));
     root.appendChild(locationCard());
     root.appendChild(backupCard());
     // Direct stream
@@ -1464,6 +1470,7 @@
   }
   function wantAutoplay() {
     const ctx = E.ensureCtx();
+    if (REM.autoUntil > Date.now() && ctx) { try { ctx.resume(); } catch (e) {} return true; }
     if (ctx && ctx.state === 'running') return true;
     if (recentTap() && ctx) { try { ctx.resume(); } catch (e) {} return true; }
     return false;
@@ -1680,8 +1687,328 @@
     }).catch(() => {});
   };
 
+
+  /* =====================================================================
+     Phone remote. The car opens a "room" on the home helper and shows a
+     QR code / 6-digit code; a phone that joins sends small commands
+     (play, skip, open this…) and reads back what's playing. Messages go
+     through the helper because the car (mobile data) and the phone can't
+     reach each other directly. Nothing secret travels: no Plex tokens,
+     only titles and app addresses.
+     ===================================================================== */
+  const REM = { room: null, code: '', gen: 0, phoneSeenAt: 0, lists: null, results: null, lastSent: '', autoUntil: 0 };
+  function remoteApi(path, opts) { return E.fetchRead(ytBase() + '/remote' + path, 'json', 30000, opts); }
+  function remotePost(path, body) {
+    return remoteApi(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  }
+  function remoteLink(room) { return location.origin + location.pathname.replace(/player\.html$/, '') + '#/remote/' + room; }
+
+  // ---- car side ----
+  function carRemoteStart() {
+    const saved = store.get('dm_remote_car', null);
+    if (saved && saved.room && Date.now() - saved.at < 7.5 * 3600 * 1000) {
+      REM.room = saved.room; REM.code = saved.code || '';
+      carRemoteLoop();
+      return Promise.resolve();
+    }
+    return remotePost('/new', {}).then((d) => {
+      REM.room = d.room; REM.code = d.code;
+      store.set('dm_remote_car', { room: d.room, code: d.code, at: Date.now() });
+      carRemoteLoop();
+    });
+  }
+  function carRemoteStop() {
+    REM.gen++; REM.room = null; REM.code = ''; store.set('dm_remote_car', null);
+    updateRemoteBtn();
+  }
+  function carRemoteLoop() {
+    const gen = ++REM.gen, room = REM.room;
+    updateRemoteBtn();
+    const loop = () => {
+      if (gen !== REM.gen) return;
+      remoteApi('/' + room + '/cmds?wait=20').then((d) => {
+        (d.cmds || []).forEach(handleRemoteCmd);
+        setTimeout(loop, 50);
+      }).catch((e) => {
+        if (/HTTP 404/.test(e.message)) { carRemoteStop(); toast('The phone remote expired — tap 📱 to pair again.'); return; }
+        setTimeout(loop, 4000);
+      });
+    };
+    loop();
+  }
+  setInterval(() => { if (REM.room) publishRemoteState(false); }, 1500);
+  const artCache = {};
+  function posterData(path) {
+    if (!path || !plex.conn) return null;
+    if (artCache[path] !== undefined) return artCache[path];
+    artCache[path] = null;
+    fetch(pimg(path, 200, 300)).then((r) => r.ok ? r.blob() : null).then((b) => {
+      if (!b) return;
+      const fr = new FileReader();
+      fr.onload = () => { artCache[path] = fr.result; publishRemoteState(true); };
+      fr.readAsDataURL(b);
+    }).catch(() => {});
+    return null;
+  }
+  function nowArt() {
+    if (P && P.meta) return posterData(P.meta.type === 'episode' ? (P.meta.grandparentThumb || P.meta.thumb) : P.meta.thumb);
+    const k = (watchKey || '').split('/');
+    if (k[0] === 'yt' && k[1]) return 'https://i.ytimg.com/vi/' + encodeURIComponent(k[1]) + '/hqdefault.jpg';
+    return null;
+  }
+  function nowState() {
+    if (playerOpen) {
+      return { kind: P ? 'plex' : (watchKey || '').split('/')[0], art: nowArt(), title: $('plTitle').textContent, sub: $('plSub').textContent,
+        pos: Math.round(E.dispPos(E.mediaNow())), dur: Math.round(E.dispDur() || 0), seek: E.canSeek(),
+        playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended };
+    }
+    if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false };
+    return { kind: 'idle' };
+  }
+  function publishRemoteState(force) {
+    if (!REM.room) return;
+    const st = { now: nowState(), lists: REM.lists, results: REM.results };
+    const s = JSON.stringify(st);
+    if (!force && s === REM.lastSent) return;
+    REM.lastSent = s;
+    remotePost('/' + REM.room + '/state', st).catch(() => { REM.lastSent = ''; });
+  }
+  const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|traffic$|search\/)/;
+  function handleRemoteCmd(c) {
+    REM.phoneSeenAt = Date.now();
+    updateRemoteBtn();
+    const t = c && c.type;
+    if (t === 'hello') { REM.lastSent = ''; publishRemoteState(true); return; }
+    if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
+    else if (t === 'skip' && playerOpen) skip(Math.max(-600, Math.min(600, +c.s || 0)));
+    else if (t === 'seek' && playerOpen && E.canSeek()) E.hooks.onSeekRequest(Math.max(0, +c.pos || 0));
+    else if (t === 'back') { if (playerOpen) $('plBack').click(); }
+    else if (t === 'stopradio') stopRadio();
+    else if (t === 'go' && typeof c.hash === 'string' && SAFE_HASH.test(c.hash)) { REM.autoUntil = Date.now() + 8000; go(c.hash); }
+    else if (t === 'radio' && c.st && okUrl(c.st.url_resolved || '')) playRadio(c.st);
+    else if (t === 'lists') buildRemoteLists().then((l) => { REM.lists = l; publishRemoteState(true); });
+    else if (t === 'find' && typeof c.q === 'string' && c.q.trim()) remoteFind(c.q.trim().slice(0, 80)).then((r) => { REM.results = r; publishRemoteState(true); });
+    setTimeout(() => publishRemoteState(true), 400);
+  }
+  function itemFromPlex(m) {
+    const isEp = m.type === 'episode';
+    return { t: isEp ? m.grandparentTitle : m.title, s: isEp ? epCode(m) + ' — ' + m.title : (m.year ? String(m.year) : ''),
+      go: (m.type === 'show' || m.type === 'season') ? null : '#/watch/plex/' + m.ratingKey };
+  }
+  function chanItem(ch) { return { t: ch.name, s: ch.cat || 'Live', go: channelHref(ch) }; }
+  function radioItem(st) {
+    return { t: st.name, s: (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', ') || 'Radio',
+      st: { stationuuid: st.stationuuid, name: st.name, url_resolved: st.url_resolved, favicon: st.favicon || '', tags: st.tags || '', bitrate: st.bitrate || 0 } };
+  }
+  function buildRemoteLists() {
+    const out = { cont: [], recent: [], live: [], radio: [] };
+    const jobs = [];
+    if (plex.auth) {
+      jobs.push(pget('/library/onDeck?X-Plex-Container-Start=0&X-Plex-Container-Size=20').then((d) => {
+        out.cont = (MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').map(itemFromPlex);
+      }).catch(() => {}));
+      jobs.push(getSections().then((secs) => Promise.all(secs.map((sec) =>
+        pget(`/library/sections/${sec.key}/recentlyAdded?X-Plex-Container-Start=0&X-Plex-Container-Size=15`).then((d) => {
+          (MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').forEach((m) => out.recent.push(itemFromPlex(m)));
+        }).catch(() => {})))).catch(() => {}));
+    }
+    out.live = favs().concat(VERIFIED).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i).slice(0, 60).map(chanItem);
+    out.radio = radioFavs().map(radioItem);
+    jobs.push(radioSearch({ countrycode: 'US', limit: '25' }).then((l) => {
+      l.forEach((st) => { if (!out.radio.some((x) => x.st.stationuuid === st.stationuuid)) out.radio.push(radioItem(st)); });
+    }).catch(() => {}));
+    return Promise.all(jobs).then(() => out);
+  }
+  function remoteFind(q) {
+    const ql = q.toLowerCase(), res = { q, items: [] };
+    const jobs = [];
+    if (plex.auth) jobs.push(pget('/hubs/search?query=' + enc(q) + '&limit=15').then((d) => {
+      (MC(d).Hub || []).forEach((hub) => (hub.Metadata || []).forEach((m) => {
+        if (m.type === 'movie' || m.type === 'episode') res.items.push(Object.assign(itemFromPlex(m), { k: 'Plex' }));
+      }));
+    }).catch(() => {}));
+    favs().concat(myChannels(), VERIFIED).filter((c) => c.name.toLowerCase().includes(ql)).slice(0, 15)
+      .forEach((c) => res.items.push(Object.assign(chanItem(c), { k: 'Live TV' })));
+    jobs.push(ytSearch(q, 12).then((l) => l.forEach((r) => res.items.push({ t: r.title, s: r.channel || '', k: 'YouTube',
+      go: '#/watch/yt/' + enc(r.id) + '/' + enc(r.title || 'YouTube video') }))).catch(() => {}));
+    jobs.push(radioSearch({ name: q, countrycode: 'US', limit: '10' }).then((l) => l.forEach((st) => res.items.push(Object.assign(radioItem(st), { k: 'Radio' })))).catch(() => {}));
+    return Promise.all(jobs).then(() => res);
+  }
+  function updateRemoteBtn() {
+    const b = $('remoteBtn');
+    if (!b) return;
+    b.classList.toggle('on', !!REM.room);
+    b.title = REM.room ? (Date.now() - REM.phoneSeenAt < 60000 ? 'Phone remote connected' : 'Phone remote on — waiting for a phone') : 'Phone remote';
+  }
+  function showRemotePairing() {
+    const box = h('div', { class: 'pairbox' });
+    const shade = h('div', { class: 'pairshade', onclick: (e) => { if (e.target === shade) shade.remove(); } }, box);
+    document.body.appendChild(shade);
+    box.appendChild(h('h2', { text: 'Phone remote' }));
+    const body = h('div', {}, msg('Setting up…')); box.appendChild(body);
+    carRemoteStart().then(() => {
+      const link = remoteLink(REM.room);
+      let qr;
+      try { qr = MiniQR.toCanvas(link, 264); } catch (e) { qr = null; }
+      body.replaceChildren(
+        h('div', { class: 'pairrow' }, qr ? h('div', { class: 'qr' }, qr) : null,
+          h('div', { class: 'paircode', text: REM.code ? REM.code.replace(/(\d{3})(\d{3})/, '$1 $2') : '—' })),
+        h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', text: 'Done', onclick: () => shade.remove() }),
+          h('button', { class: 'btn ghost', type: 'button', text: 'New code', onclick: () => { carRemoteStop(); shade.remove(); showRemotePairing(); } }),
+          h('button', { class: 'btn ghost', type: 'button', text: 'Turn remote off', onclick: () => { carRemoteStop(); shade.remove(); toast('Phone remote off.'); } })));
+    }).catch((e) => body.replaceChildren(msg('The remote needs the home helper, which isn’t answering (' + e.message + ').', true)));
+  }
+
+  // ---- phone side ----
+  VIEWS.remote = (root, [room]) => {
+    document.body.classList.add('remote-mode');
+    dismissGate();
+    const gen = ++REM.gen;
+    const alive = () => gen === REM.gen && parse().name === 'remote';
+    const brand = (right) => h('div', { class: 'rm-top' },
+      h('div', { class: 'rm-brand' }, 'Nate’s ', h('b', { text: 'Theater' })), right || h('span', { class: 'rm-pill', text: 'Remote' }));
+
+    if (!room) {
+      const input = h('input', { class: 'rm-code', type: 'text', inputmode: 'numeric', maxlength: '6', placeholder: '••••••',
+        autocomplete: 'one-time-code', 'aria-label': '6-digit code' });
+      const btn = h('button', { class: 'rm-btn', type: 'button', text: 'Connect' });
+      const st = h('div', { class: 'rm-err' });
+      let busy = false;
+      const join = () => {
+        const code = input.value.replace(/\D/g, '');
+        if (code.length !== 6) { st.textContent = 'Enter all 6 digits.'; return; }
+        if (busy) return; busy = true;
+        st.textContent = ''; btn.textContent = 'Connecting…'; btn.disabled = true;
+        remoteApi('/pair?code=' + code).then((d) => { store.set('dm_remote_phone', d.room); go('#/remote/' + d.room, true); })
+          .catch((e) => {
+            st.textContent = /HTTP 40[03]/.test(e.message) ? ((e.message.match(/\((.*)\)/) || [, 'That code didn’t work.'])[1]) : 'Can’t reach the car right now. Check your signal and try again.';
+            btn.textContent = 'Connect'; btn.disabled = false; busy = false; input.select();
+          });
+      };
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0, 6);
+        st.textContent = '';
+        if (input.value.length === 6) join();
+      });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+      btn.addEventListener('click', join);
+      const saved = store.get('dm_remote_phone', null);
+      root.appendChild(h('div', { class: 'rm-page' }, brand(),
+        h('div', { class: 'rm-connect' },
+          h('div', { class: 'rm-icon', text: '📱' }),
+          h('h1', { text: 'Connect to your car' }),
+          h('p', { text: 'Enter the 6-digit code shown on the car screen.' }),
+          input, st, btn,
+          saved ? h('a', { class: 'rm-link', href: '#/remote/' + saved, text: 'Reconnect to the last car' }) : null)));
+      setTimeout(() => input.focus(), 50);
+      return;
+    }
+
+    store.set('dm_remote_phone', room);
+    const send = (cmd) => remotePost('/' + room + '/cmd', cmd).catch((e) => { if (/404/.test(e.message)) gone(); });
+    const dot = h('span', { class: 'rm-dot' });
+    const conn = h('span', { class: 'rm-conn' }, dot, h('span', { text: 'Connecting…' }));
+    const icon = h('div', { class: 'rm-kind', text: '🎬' });
+    const title = h('div', { class: 'rm-t', text: 'Connecting to the car…' });
+    const sub = h('div', { class: 'rm-s' });
+    const bar = h('input', { type: 'range', min: '0', max: '1000', value: '0', class: 'rm-seek', disabled: true, 'aria-label': 'Position' });
+    const tl = h('span'), tr = h('span');
+    const pp = h('button', { class: 'rm-round big', type: 'button', text: '▶', 'aria-label': 'Play or pause', onclick: () => send({ type: 'toggle' }) });
+    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send({ type: 'skip', s: -10 }) }, h('span', { text: '↺' }), h('small', { text: '10' }));
+    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send({ type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
+    const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
+    let dur = 0, lastHeard = 0, state = null, tab = 'cont';
+    bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
+    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', url: '🎞', idle: '🚗' };
+    const KIND_ICON = { 'Plex': '🎬', 'Live TV': '📺', 'YouTube': '▶', 'Radio': '📻' };
+    const TAB_ICON = { cont: '🎬', recent: '🎬', live: '📺', radio: '📻' };
+    const TABS = [['cont', 'Continue'], ['recent', 'New'], ['live', 'Live TV'], ['radio', 'Radio'], ['find', 'Search']];
+    const tabsEl = h('div', { class: 'rm-tabs', role: 'tablist' });
+    const list = h('div', { class: 'rm-list' });
+    const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
+    const searchRow = h('div', { class: 'rm-searchrow', hidden: true }, search);
+    const doFind = () => { if (!search.value.trim()) return; search.blur(); list.replaceChildren(h('div', { class: 'rm-empty', text: 'Searching…' })); send({ type: 'find', q: search.value.trim() }); };
+    search.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFind(); });
+    const drawTabs = () => tabsEl.replaceChildren(...TABS.map(([id, label]) => h('button', { class: 'rm-tab' + (id === tab ? ' on' : ''), type: 'button', role: 'tab', text: label,
+      onclick: () => { tab = id; drawTabs(); drawList(); if (id === 'find') setTimeout(() => search.focus(), 50); } })));
+    const pick = (it) => { if (it.st) send({ type: 'radio', st: it.st }); else if (it.go) send({ type: 'go', hash: it.go }); toast('Playing on the car: ' + it.t); };
+    function drawList() {
+      searchRow.hidden = tab !== 'find';
+      const L = state && state.lists;
+      const items = tab === 'find' ? (state && state.results && state.results.items) : (L && L[tab]);
+      if (tab !== 'find' && !L) { list.replaceChildren(...Array.from({ length: 5 }, () => h('div', { class: 'rm-item skel-row' }))); return; }
+      if (!items || !items.length) {
+        list.replaceChildren(h('div', { class: 'rm-empty', text: tab === 'find' ? (state && state.results ? 'Nothing found.' : 'Search everything the car can play.') : 'Nothing here yet.' }));
+        return;
+      }
+      list.replaceChildren(...items.filter((it) => it.go || it.st).map((it) => h('button', { class: 'rm-item', type: 'button', onclick: () => pick(it) },
+        h('div', { class: 'rm-ii', text: it.st ? '📻' : (KIND_ICON[it.k] || TAB_ICON[tab] || '🎬') }),
+        h('div', { class: 'rm-itx' }, h('div', { class: 'rm-it', text: it.t }), h('div', { class: 'rm-is', text: [tab === 'find' ? it.k : '', it.s].filter(Boolean).join(' · ') })),
+        h('div', { class: 'rm-chev', text: '›' }))));
+    }
+    function drawNow(n) {
+      const idle = !n || n.kind === 'idle';
+      const art = n && n.art && /^(data:image\/|https:\/\/)/.test(n.art) ? n.art : null;
+      icon.classList.toggle('poster', !!art && n.kind === 'plex');
+      if (art) { if (!icon.firstChild || icon.firstChild.src !== art) icon.replaceChildren(h('img', { src: art, alt: '' })); }
+      else icon.textContent = ICON[(n && n.kind) || 'idle'] || '🎬';
+      title.textContent = idle ? 'Nothing playing' : (n.title || '');
+      sub.textContent = idle ? 'Pick something below to play it on the car.' : (n.sub || '');
+      pp.textContent = n && n.playing ? '❚❚' : '▶';
+      dur = (n && n.dur) || 0;
+      const seek = !!(n && n.seek && dur);
+      bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek; pp.disabled = idle; close.hidden = idle;
+      if (dur && document.activeElement !== bar) bar.value = Math.round(1000 * (n.pos || 0) / dur);
+      if (!dur) bar.value = 0;
+      tl.textContent = idle ? '' : n.buffering ? 'Loading…' : dur ? E.fmt(n.pos || 0) : (n.kind === 'radio' ? 'Live radio' : 'Live');
+      tr.textContent = dur ? '−' + E.fmt(Math.max(0, dur - (n.pos || 0))) : '';
+    }
+    function paintConn() {
+      if (!alive()) return;
+      const ok = Date.now() - lastHeard < 30000;
+      dot.className = 'rm-dot' + (ok ? ' ok' : '');
+      conn.lastChild.textContent = ok ? 'Connected' : 'Waiting for the car…';
+      setTimeout(paintConn, 2000);
+    }
+    function gone() {
+      if (!alive()) return;
+      REM.gen++; store.set('dm_remote_phone', null);
+      root.replaceChildren(h('div', { class: 'rm-page' }, brand(), h('div', { class: 'rm-connect' },
+        h('div', { class: 'rm-icon', text: '⏱' }), h('h1', { text: 'Remote disconnected' }),
+        h('p', { text: 'The pairing ended. Tap 📱 on the car screen for a new code.' }),
+        h('a', { class: 'rm-btn', href: '#/remote', text: 'Enter a new code' }))));
+    }
+    root.appendChild(h('div', { class: 'rm-page' }, brand(conn),
+      h('div', { class: 'rm-now' },
+        h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
+        bar, h('div', { class: 'rm-times' }, tl, tr),
+        h('div', { class: 'rm-ctrls' }, back10, pp, fwd30)),
+      tabsEl, searchRow, list));
+    drawNow(null); drawTabs(); drawList(); paintConn();
+    let ver = 0;
+    const poll = () => {
+      if (!alive()) return;
+      remoteApi('/' + room + '/state?wait=20&v=' + ver).then((d) => {
+        lastHeard = Date.now();
+        if (d.state) {
+          ver = d.ver;
+          const hadResults = state && state.results, hadLists = state && state.lists;
+          state = d.state;
+          drawNow(state.now);
+          if ((tab === 'find' && state.results !== hadResults) || (tab !== 'find' && !hadLists && state.lists)) drawList();
+        }
+        setTimeout(poll, 100);
+      }).catch((e) => { if (/404/.test(e.message)) { gone(); return; } setTimeout(poll, 3000); });
+    };
+    send({ type: 'hello' }); send({ type: 'lists' });
+    poll();
+  };
+
   /* ---------- start ---------- */
   updateMe();
-  if (plex.auth && !plex.user && parse().name !== 'profiles') go('#/profiles', true);
+  if (parse().name === 'remote') { document.body.classList.add('remote-mode'); dismissGate(); }
+  else if (plex.auth && !plex.user && parse().name !== 'profiles') go('#/profiles', true);
+  $('remoteBtn').addEventListener('click', showRemotePairing);
+  if (store.get('dm_remote_car', null)) carRemoteStart().catch(() => {});
   route();
 })();
