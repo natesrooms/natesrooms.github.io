@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="dark" />
 <link rel="icon" href="data:," />
-<title>Drive Mode Player — Nate's Theater</title>
+<title>Nate's Theater</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -34,9 +34,26 @@
     background: #000; border: 1px solid #2b2b2f; border-radius: 16px;
     aspect-ratio: 16 / 9; width: 100%; overflow: hidden;
     display: flex; align-items: center; justify-content: center;
+    position: relative;
   }
   .stage canvas { width: 100%; height: 100%; display: block; background: #000; }
   .stage:fullscreen { border: none; border-radius: 0; }
+
+  /* In-fullscreen overlay controls: the main control bar lives outside
+     the stage, so it is unreachable while the stage is fullscreen.
+     This bar sits inside the stage, appears on tap, fades after a few
+     seconds, and is the way back out. */
+  .fs-bar {
+    position: absolute; top: 12px; right: 12px; z-index: 6;
+    display: none; gap: 10px; transition: opacity .35s;
+  }
+  .stage:fullscreen .fs-bar { display: flex; }
+  .fs-bar.faded { opacity: 0; pointer-events: none; }
+  .fs-bar button {
+    background: rgba(18,18,20,.85); color: #f2f2f0; border: 1px solid #4a4a4e;
+    border-radius: 12px; font-size: 17px; font-weight: 700;
+    min-height: 56px; padding: 10px 18px; cursor: pointer;
+  }
 
   /* Controls */
   .controls { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
@@ -84,6 +101,8 @@
   .libitem .chcat { float: right; color: #e50914; font-size: 13px; font-weight: 800; letter-spacing: .08em; }
   .libitem .yr { color: #9a9a95; font-size: 15px; }
   .libitem .meta { display: block; color: #9a9a95; font-size: 13px; margin-top: 2px; }
+  .libitem .thumb { float: left; width: 112px; height: 63px; object-fit: cover; border-radius: 8px; margin-right: 14px; background: #000; }
+  .libitem::after { content: ""; display: block; clear: both; }
 
   footer { margin-top: 32px; color: #77776f; font-size: 13px; border-top: 1px solid #232327; padding-top: 16px; }
   footer p { margin: 4px 0; }
@@ -134,7 +153,7 @@
 <main class="wrap">
 
   <div class="topbar">
-    <h1>Drive Mode <span class="accent">Player</span></h1>
+    <h1>Nate&rsquo;s <span class="accent">Theater</span></h1>
     <a class="backlink" href="index.html">&larr; Nate&rsquo;s Theater</a>
   </div>
   <p class="sub">This player draws the picture itself instead of using the car&rsquo;s built-in video player &mdash; the part Tesla pauses when the car leaves Park. <strong>For the passenger while the car is moving.</strong> Works with HLS streams and MP4 files (H.264 + AAC). Encrypted services like Netflix can&rsquo;t run through any player like this.</p>
@@ -146,6 +165,10 @@
 
   <div class="stage" id="stage">
     <canvas id="screen" width="1280" height="720"></canvas>
+    <div class="fs-bar" id="fsBar">
+      <button id="btnFsPlay" type="button">&#9199; Play / Pause</button>
+      <button id="btnFsExit" type="button">&#10005; Exit fullscreen</button>
+    </div>
   </div>
 
   <div class="controls">
@@ -153,7 +176,6 @@
     <span class="timelabel" id="timeLabel">0:00 / 0:00</span>
     <input type="range" class="seek" id="seek" min="0" max="1000" value="0" disabled aria-label="Seek" />
     <button class="cbtn" id="btnFs" type="button">&#9974; Fullscreen</button>
-    <a class="cbtn" href="https://www.youtube.com/redirect?q=https%3A%2F%2Fnatesrooms.github.io%2Fplayer.html" target="_blank" rel="noopener">Fullscreen &#8599;</a>
   </div>
   <div class="status" id="status">Load a stream below to start.</div>
 
@@ -167,6 +189,20 @@
     <div class="row" style="margin-top:12px;">
       <button class="abtn abtn-ghost" id="btnTestStream" type="button">&#9654; Test stream (Apple BipBop)</button>
     </div>
+  </section>
+
+  <section class="panel" aria-label="YouTube">
+    <h2>YouTube</h2>
+    <p>Search YouTube and tap a result to watch it right here &mdash; your home helper converts the video so it plays in this player, in Drive too. You can also paste a YouTube link into the search box. The helper address is saved on this screen only.</p>
+    <label for="ytBase">Helper address</label>
+    <input type="text" id="ytBase" placeholder="https://your-helper-address" autocomplete="off" autocapitalize="off" spellcheck="false" />
+    <label for="ytQuery">Search or paste a link</label>
+    <div class="row">
+      <div class="grow"><input type="text" id="ytQuery" placeholder="Search YouTube" autocomplete="off" autocapitalize="off" spellcheck="false" /></div>
+      <button class="abtn" id="btnYtSearch" type="button">Search</button>
+    </div>
+    <div class="status" id="ytMsg"></div>
+    <div class="liblist" id="ytList"></div>
   </section>
 
   <section class="panel" aria-label="Live TV">
@@ -191,7 +227,7 @@
   </section>
 
   <footer>
-    <p>Drive Mode Player &mdash; part of Nate&rsquo;s Theater. Video: H.264 only, decoded on this page with WebCodecs and painted to a canvas. Audio: AAC through Web Audio. HLS must use MPEG-TS segments (not fMP4) and be unencrypted; MP4 must be a single non-fragmented file.</p>
+    <p>Nate&rsquo;s Theater. Video: H.264 only, decoded on this page with WebCodecs and painted to a canvas. Audio: AAC through Web Audio. HLS must use MPEG-TS segments (not fMP4) and be unencrypted; MP4 must be a single non-fragmented file.</p>
     <p>While the car is moving, this screen is for the passenger only.</p>
   </footer>
 
@@ -1766,6 +1802,35 @@ if (typeof module !== 'undefined' && module.exports) {
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
   });
 
+  // In-fullscreen overlay bar (Play/Pause + Exit). The main control bar
+  // is outside the stage and cannot be reached while fullscreen, so the
+  // overlay is the way out: it appears on any tap of the stage and
+  // fades after a few seconds.
+  var fsBar = $('fsBar'), fsFadeTimer = null;
+  function showFsBar() {
+    if (!document.fullscreenElement) return;
+    fsBar.classList.remove('faded');
+    if (fsFadeTimer) clearTimeout(fsFadeTimer);
+    fsFadeTimer = setTimeout(function () { fsBar.classList.add('faded'); }, 3500);
+  }
+  $('btnFsExit').addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (document.exitFullscreen) document.exitFullscreen();
+  });
+  $('btnFsPlay').addEventListener('click', function (e) {
+    e.stopPropagation();
+    btnPlay.click();
+    showFsBar();
+  });
+  stage.addEventListener('pointerdown', function () { showFsBar(); });
+  document.addEventListener('fullscreenchange', function () {
+    if (document.fullscreenElement) showFsBar();
+    else {
+      fsBar.classList.remove('faded');
+      if (fsFadeTimer) clearTimeout(fsFadeTimer);
+    }
+  });
+
   btnUrlPlay.addEventListener('click', function () { loadSource(urlIn.value, 'stream'); });
 
   // One-tap test stream: fills the address field with Apple's BipBop
@@ -1776,6 +1841,88 @@ if (typeof module !== 'undefined' && module.exports) {
     urlIn.value = TEST_STREAM_URL;
     btnUrlPlay.click();
   });
+
+  /* ---------- YouTube (browse + watch via the home helper) ----------
+     The helper (yt-helper on the NAS) exposes /search?q= (JSON results)
+     and /stream?v=<id> (HLS this canvas player can play, in Drive too).
+     The helper address is entered once and kept in localStorage, the
+     same pattern as the Plex details below. */
+  var ytBaseIn = $('ytBase'), ytQueryIn = $('ytQuery');
+  var ytMsg = $('ytMsg'), ytList = $('ytList');
+  function ytSetMsg(msg, isErr) {
+    ytMsg.textContent = msg;
+    ytMsg.className = 'status' + (isErr ? ' err' : '');
+  }
+  function ytBase() { return ytBaseIn.value.trim().replace(/\/+$/, ''); }
+  try { ytBaseIn.value = localStorage.getItem('dm_yt_base') || ''; } catch (e) {}
+  function ytSaveBase() {
+    try { localStorage.setItem('dm_yt_base', ytBase()); } catch (e) {}
+  }
+  function ytIdFrom(raw) {
+    raw = (raw || '').trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
+    var m = raw.match(/[?&]v=([A-Za-z0-9_-]{11})/) || raw.match(/youtu\.be\/([A-Za-z0-9_-]{11})/) ||
+            raw.match(/\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+  function fmtDur(s) {
+    if (s == null || isNaN(s)) return '';
+    s = Math.round(s);
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    return (h > 0 ? h + ':' : '') + (h > 0 && m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+  function playYouTube(id, title) {
+    var base = ytBase();
+    if (!base) { ytSetMsg('Enter the helper address above first.', true); return; }
+    ytSaveBase();
+    ytSetMsg('Converting at home — the first play of a video can take a little while to start.');
+    loadSource(base + '/stream?v=' + encodeURIComponent(id), title);
+    try { stage.scrollIntoView({ block: 'start' }); } catch (e) {}
+  }
+  function ytButton(r) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'libitem';
+    var img = document.createElement('img');
+    img.className = 'thumb'; img.src = r.thumb || ''; img.alt = '';
+    img.loading = 'lazy';
+    b.appendChild(img);
+    b.appendChild(document.createTextNode(r.title));
+    var meta = [r.channel, fmtDur(r.duration)].filter(Boolean).join('  ·  ');
+    if (meta) {
+      var s = document.createElement('span');
+      s.className = 'meta'; s.textContent = meta;
+      b.appendChild(s);
+    }
+    b.addEventListener('click', function () { playYouTube(r.id, r.title); });
+    return b;
+  }
+  function runYtSearch() {
+    var base = ytBase();
+    var q = ytQueryIn.value.trim();
+    if (!base) { ytSetMsg('Enter the helper address above first.', true); return; }
+    if (!q) { ytSetMsg('Type what you want to watch.', true); return; }
+    ytSaveBase();
+    var direct = ytIdFrom(q);
+    if (direct) { playYouTube(direct, 'YouTube video'); return; }
+    ytSetMsg('Searching YouTube…');
+    ytList.innerHTML = '';
+    fetch(base + '/search?q=' + encodeURIComponent(q) + '&n=12')
+      .then(function (r) {
+        if (!r.ok) throw new Error('helper answered HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var results = data.results || [];
+        if (!results.length) { ytSetMsg('No results for that search.', true); return; }
+        ytSetMsg(results.length + ' results — tap one to watch.');
+        results.forEach(function (r) { ytList.appendChild(ytButton(r)); });
+      })
+      .catch(function (e) {
+        ytSetMsg('Search failed: ' + e.message + ' — check the helper address and that the helper is running.', true);
+      });
+  }
+  $('btnYtSearch').addEventListener('click', runYtSearch);
+  ytQueryIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') runYtSearch(); });
 
   /* ---------- Live TV (free-to-air channels, iptv-org collection) ----------
      Verified 2026-11-24: every stream below is unencrypted MPEG-TS HLS with
