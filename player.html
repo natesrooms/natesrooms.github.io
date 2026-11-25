@@ -211,12 +211,7 @@
     <div class="ytchips" id="ytChips"></div>
     <div class="status" id="ytMsg"></div>
     <div class="ytgrid" id="ytList"></div>
-    <details class="ythelper" id="ytHelperBox">
-      <summary>Helper settings</summary>
-      <p>Videos are converted by the helper at home so they can play here, in Drive too. Enter its address once &mdash; it is saved on this screen only. You can also paste a YouTube link into the search box to play it directly.</p>
-      <label for="ytBase">Helper address</label>
-      <input type="text" id="ytBase" placeholder="https://your-helper-address" autocomplete="off" autocapitalize="off" spellcheck="false" />
-    </details>
+    <p class="hint">Videos are converted by the helper at home so they can play here, in Drive too. You can also paste a YouTube link into the search box to play it directly.</p>
   </section>
 
   <section class="panel" aria-label="Plex">
@@ -225,7 +220,7 @@
       <p>Sign in with your Plex account, the same as in any Plex app. Your server is found automatically &mdash; nothing to type in, and it stays signed in on this screen.</p>
       <button class="abtn" id="btnPlexSignin" type="button">Sign in to Plex</button>
       <div class="status" id="plexSigninMsg"></div>
-      <p id="plexAuthLinkWrap" style="display:none;"><a id="plexAuthLink" href="#" target="_blank" rel="noopener">If the Plex sign-in page didn&rsquo;t open, tap here to open it</a></p>
+      <p id="plexAuthLinkWrap" style="display:none;"><a id="plexAuthLink" href="#" target="_blank" rel="noopener">Tap here to go to PlexIf the Plex sign-in page didn&rsquo;t open, tap here to open itrsquo;s sign-in page</a></p>
     </div>
     <div id="plexMainBox" style="display:none;">
       <div class="row">
@@ -1143,8 +1138,18 @@ if (typeof module !== 'undefined' && module.exports) {
 
   /* ---------- Gate (same pattern as the theater page) ---------- */
   function dismissGate() { gate.hidden = true; document.body.classList.remove('gated'); }
-  $('gatePassenger').addEventListener('click', dismissGate);
-  $('gateDriver').addEventListener('click', dismissGate);
+  function attest() {
+    dismissGate();
+    try { localStorage.setItem('dm_attested_at', String(Date.now())); } catch (e) {}
+  }
+  $('gatePassenger').addEventListener('click', attest);
+  $('gateDriver').addEventListener('click', attest);
+  /* The Plex sign-in round trip reloads this page — remember the
+     attestation for half a day so coming back here doesn't re-ask. */
+  try {
+    var attAt = parseInt(localStorage.getItem('dm_attested_at') || '0', 10);
+    if (attAt && (Date.now() - attAt) < 12 * 60 * 60 * 1000) dismissGate();
+  } catch (e) {}
 
   /* ---------- WebCodecs availability ---------- */
   var hasWC = (typeof VideoDecoder !== 'undefined') && (typeof AudioDecoder !== 'undefined');
@@ -1864,17 +1869,15 @@ if (typeof module !== 'undefined' && module.exports) {
      and /stream?v=<id> (HLS this canvas player can play, in Drive too).
      The helper address is entered once and kept in localStorage, the
      same pattern as the Plex details below. */
-  var ytBaseIn = $('ytBase'), ytQueryIn = $('ytQuery');
+  var ytQueryIn = $('ytQuery');
   var ytMsg = $('ytMsg'), ytList = $('ytList');
   function ytSetMsg(msg, isErr) {
     ytMsg.textContent = msg;
     ytMsg.className = 'status' + (isErr ? ' err' : '');
   }
-  function ytBase() { return ytBaseIn.value.trim().replace(/\/+$/, ''); }
-  try { ytBaseIn.value = localStorage.getItem('dm_yt_base') || ''; } catch (e) {}
-  function ytSaveBase() {
-    try { localStorage.setItem('dm_yt_base', ytBase()); } catch (e) {}
-  }
+  var YT_HELPER_BASE = 'https://yt-helper.tail56cd28.ts.net';
+  function ytBase() { return YT_HELPER_BASE; }
+  function ytSaveBase() {}
   function ytIdFrom(raw) {
     raw = (raw || '').trim();
     if (/^[A-Za-z0-9_-]{11}$/.test(raw)) return raw;
@@ -1890,7 +1893,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function playYouTube(id, title) {
     var base = ytBase();
-    if (!base) { ytSetMsg('The helper address is not set yet — open Helper settings below.', true); return; }
+    if (!base) { ytSetMsg('The helper at home is not answering right now.', true); return; }
     ytSaveBase();
     ytSetMsg('Converting at home — the first play of a video can take a little while to start.');
     loadSource(base + '/stream?v=' + encodeURIComponent(id), title);
@@ -1919,7 +1922,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var base = ytBase();
     if (typeof q !== 'string') q = ytQueryIn.value.trim();
     if (!base) {
-      ytSetMsg('The helper address is not set yet — open Helper settings below.', true);
+      ytSetMsg('The helper at home is not answering right now.', true);
       var hb = $('ytHelperBox'); if (hb) hb.open = true;
       return;
     }
@@ -1942,7 +1945,7 @@ if (typeof module !== 'undefined' && module.exports) {
         results.forEach(function (r) { ytList.appendChild(ytCard(r)); });
       })
       .catch(function (e) {
-        ytSetMsg('Could not reach the helper: ' + e.message + ' — check Helper settings below.', true);
+        ytSetMsg('Could not reach the helper at home: ' + e.message, true);
       });
   }
   $('btnYtSearch').addEventListener('click', function () { runYtSearch(); });
@@ -1974,7 +1977,7 @@ if (typeof module !== 'undefined' && module.exports) {
       try { last = localStorage.getItem('dm_yt_lastq') || ''; } catch (e) {}
       runYtSearch(last || YT_CHIPS[0][1]);
     } else {
-      ytSetMsg('The helper address is not set yet — open Helper settings below.');
+      ytSetMsg('The helper at home is not answering right now.');
     }
   })();
 
@@ -2135,14 +2138,19 @@ if (typeof module !== 'undefined' && module.exports) {
   function startPlexSignin() {
     plexSigninMsg('Contacting Plex…');
     plexTv('/api/v2/pins?strong=true', 'POST').then(function (pin) {
-      try { localStorage.setItem('dm_plex_pin', JSON.stringify({ id: pin.id, at: Date.now() })); } catch (e) {}
+      try { localStorage.setItem('dm_plex_pin', JSON.stringify({ id: pin.id, code: pin.code, at: Date.now() })); } catch (e) {}
       var url = 'https://app.plex.tv/auth#?clientID=' + encodeURIComponent(plexClientId) +
         '&code=' + encodeURIComponent(pin.code) +
         '&forwardUrl=' + encodeURIComponent('https://natesrooms.github.io/player.html');
       var link = $('plexAuthLink');
       link.href = url;
+      link.removeAttribute('target');
       $('plexAuthLinkWrap').style.display = '';
-      window.open(url, '_blank');
+      /* Same-tab on purpose: popup windows get swallowed by car
+         browsers. Plex's forwardUrl brings this tab right back, and
+         the stored PIN resumes the wait on the other side. */
+      plexSigninMsg('Taking you to Plex to sign in — you will come right back here after.');
+      setTimeout(function () { location.href = url; }, 700);
       pollPlexPin(pin.id);
     }).catch(function (e) {
       plexSigninMsg('Could not reach Plex: ' + e.message, true);
@@ -2362,7 +2370,13 @@ if (typeof module !== 'undefined' && module.exports) {
     try { pending = JSON.parse(localStorage.getItem('dm_plex_pin') || 'null'); } catch (e) {}
     if (pending && pending.id && (Date.now() - pending.at) < 25 * 60 * 1000) {
       var link = $('plexAuthLink');
-      link.href = 'https://app.plex.tv/auth#?clientID=' + encodeURIComponent(plexClientId);
+      if (pending.code) {
+        link.href = 'https://app.plex.tv/auth#?clientID=' + encodeURIComponent(plexClientId) +
+          '&code=' + encodeURIComponent(pending.code) +
+          '&forwardUrl=' + encodeURIComponent('https://natesrooms.github.io/player.html');
+        link.removeAttribute('target');
+        $('plexAuthLinkWrap').style.display = '';
+      }
       pollPlexPin(pending.id);
     }
   })();
