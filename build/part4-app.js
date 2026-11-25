@@ -2050,6 +2050,11 @@
   }
 
   // ---- phone side: the remote page ----
+  function phoneId() {
+    let id = store.get('dm_phone_id', null);
+    if (!id) { id = 'ph' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36); store.set('dm_phone_id', id); }
+    return id;
+  }
   VIEWS.remote = (root, [room]) => {
     document.body.classList.add('remote-mode');
     dismissGate();
@@ -2079,7 +2084,7 @@
         if (code.length !== 6) { st.textContent = 'Enter all 6 digits.'; return; }
         if (busy) return; busy = true;
         st.textContent = ''; btn.textContent = 'Connecting…'; btn.disabled = true;
-        remoteApi('/pair?code=' + code).then((d) => { store.set('dm_remote_phone', d.room); go('#/remote/' + d.room, true); })
+        remoteApi('/pair?code=' + code + '&p=' + enc(phoneId())).then((d) => { store.set('dm_remote_phone', d.room); go('#/remote/' + d.room, true); })
           .catch((e) => {
             const why = (e.message.match(/\((.*)\)/) || [, 'That code didn’t work.'])[1];
             st.textContent = /HTTP 40[03]/.test(e.message) ? why.charAt(0).toUpperCase() + why.slice(1) + '.' : 'Can’t reach the car right now. Check your signal and try again.';
@@ -2214,7 +2219,7 @@
     const poll = () => {
       if (!alive()) return;
       const t0 = Date.now();
-      remoteApi('/' + room + '/state?wait=20&v=' + ver).then((d) => {
+      remoteApi('/' + room + '/state?wait=20&v=' + ver + '&p=' + enc(phoneId())).then((d) => {
         lastHeard = Date.now(); noteServerTime(d, t0);
         ver = d.ver || ver;
         const sl = d.slots || {};
@@ -2223,8 +2228,20 @@
         if (sl.results) { results = sl.results; drawResults(); }
         if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.textContent = '📲 Watch here too'; mirrorStart(sl.mirror, now); }
         setTimeout(poll, 100);
-      }).catch((e) => { if (/404/.test(e.message)) { gone(); return; } setTimeout(poll, 3000); });
+      }).catch((e) => {
+        if (/404/.test(e.message)) { gone(); return; }
+        if (/HTTP 409/.test(e.message)) { full(); return; }
+        setTimeout(poll, 3000);
+      });
     };
+    function full() {
+      if (!alive()) return;
+      REM.gen++; mirrorStop();
+      root.replaceChildren(h('div', { class: 'rm-page' }, brand(), h('div', { class: 'rm-connect' },
+        h('div', { class: 'rm-icon', text: '👥' }), h('h1', { text: 'Remote is full' }),
+        h('p', { text: 'Three phones are already using the remote. Try again when one of them closes it.' }),
+        h('button', { class: 'rm-btn', type: 'button', text: 'Try again', onclick: () => { currentKey = null; render(parse()); } }))));
+    }
     send({ type: 'hello' }); send({ type: 'lists' });
     poll();
   };

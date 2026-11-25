@@ -452,7 +452,8 @@ ROOMS = {}
 ROOMS_LOCK = threading.Lock()
 ROOM_IDLE = 8 * 3600
 CODE_TTL = 15 * 60
-MAX_PHONES = 3
+MAX_PHONES = 3        # phones with the remote open at the same time
+PHONE_ACTIVE = 90      # seconds a phone counts as "open" after its last check-in
 _PAIR_FAILS = {}  # ip -> [timestamps]
 
 
@@ -481,11 +482,19 @@ def room_new():
         while code in used_codes:
             code = "%06d" % secrets.randbelow(1000000)
         ROOMS[rid] = {"code": code, "code_at": time.time(), "used": time.time(),
-                      "cmds": [], "slots": {}, "ver": 0, "cond": threading.Condition(), "phones": 0}
+                      "cmds": [], "slots": {}, "ver": 0, "cond": threading.Condition(), "seen": {}}
         return rid, code
 
 
-def room_by_code(code, ip):
+def phones_active(r, exclude=""):
+    now = time.time()
+    return sum(1 for pid, ts in r["seen"].items() if pid != exclude and now - ts < PHONE_ACTIVE)
+
+
+FULL_MSG = "three phones are already using the remote - try again when one of them closes it"
+
+
+def room_by_code(code, ip, pid=""):
     now = time.time()
     with ROOMS_LOCK:
         fails = [t for t in _PAIR_FAILS.get(ip, []) if now - t < 3600]
@@ -493,9 +502,10 @@ def room_by_code(code, ip):
             return None, "too many wrong codes - try again later"
         for rid, r in ROOMS.items():
             if r["code"] == code and now - r["code_at"] < CODE_TTL:
-                if r["phones"] >= MAX_PHONES:
-                    return None, "three phones are already connected to this car - tap New code on the car to start over"
-                r["phones"] += 1
+                if phones_active(r, pid) >= MAX_PHONES:
+                    return None, FULL_MSG
+                if pid:
+                    r["seen"][pid] = now
                 r["used"] = now
                 return rid, None
         fails.append(now)
@@ -649,8 +659,9 @@ class Handler(BaseHTTPRequestHandler):
             code = (qs.get("code", [""])[0] or "").strip()
             if not re.fullmatch(r"\d{6}", code):
                 return self._json(400, {"error": "enter the 6-digit code from the car screen"})
+            pid = (qs.get("p", [""])[0] or "")[:40]
             rid, err = room_by_code(code, self.client_address[0] if not self.headers.get("X-Forwarded-For")
-                                    else self.headers["X-Forwarded-For"].split(",")[0].strip())
+                                    else self.headers["X-Forwarded-For"].split(",")[0].strip(), pid)
             if not rid:
                 return self._json(403, {"error": err})
             return self._json(200, {"room": rid})
@@ -669,8 +680,19 @@ class Handler(BaseHTTPRequestHandler):
                 out, r["cmds"] = r["cmds"], []
                 return self._json(200, {"cmds": out, "t": time.time() * 1000})
             have = int(qs.get("v", ["0"])[0] or 0)
+            pid = (qs.get("p", [""])[0] or "")[:40]
+            if pid:
+                fresh = time.time() - r["seen"].get(pid, 0) < PHONE_ACTIVE
+                if not fresh and phones_active(r, pid) >= MAX_PHONES:
+                    return self._json(409, {"error": FULL_MSG})
+                r["seen"][pid] = time.time()
+                if len(r["seen"]) > 50:
+                    for k in sorted(r["seen"], key=r["seen"].get)[:25]:
+                        r["seen"].pop(k, None)
             while r["ver"] <= have and time.time() < deadline:
                 r["cond"].wait(max(0.05, deadline - time.time()))
+            if pid:
+                r["seen"][pid] = time.time()
             changed = {k: v[1] for k, v in r["slots"].items() if v[0] > have}
             return self._json(200, {"ver": r["ver"], "slots": changed, "t": time.time() * 1000})
 
