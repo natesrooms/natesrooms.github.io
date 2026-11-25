@@ -110,6 +110,7 @@
   .pwrap { position: relative; border-radius: 10px; overflow: hidden; background: #232323; aspect-ratio: 2 / 3; }
   .pwrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .pwrap .pletter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; color: #55554f; }
+  body.watching .topbar, body.watching .sub, body.watching .panel { display: none; }
   .pbar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.25); }
   .pbar i { display: block; height: 100%; background: #e50914; }
   .ptitle { display: block; font-size: 14px; font-weight: 700; margin-top: 6px; line-height: 1.25; }
@@ -202,6 +203,7 @@
     <button class="cbtn cbtn-main" id="btnPlay" type="button" disabled>&#9654; Play</button>
     <span class="timelabel" id="timeLabel">0:00 / 0:00</span>
     <input type="range" class="seek" id="seek" min="0" max="1000" value="0" disabled aria-label="Seek" />
+    <button class="cbtn" id="btnBackLib" type="button" hidden>&#10005; Library</button>
     <button class="cbtn" id="btnFs" type="button">&#9974; Fullscreen</button>
   </div>
   <div class="status" id="status">Load a stream below to start.</div>
@@ -256,6 +258,7 @@
         <div class="grow"><span id="plexServerName"></span></div>
         <button class="abtn abtn-ghost" id="btnPlexSwitchUser" type="button">Switch user</button>
         <button class="abtn abtn-ghost" id="btnPlexSignout" type="button">Sign out</button>
+        <a class="abtn abtn-ghost" href="https://app.plex.tv/desktop" style="text-decoration:none;">Open in Plex &#8599;</a>
       </div>
     </div>
     <div class="status" id="plexMsg"></div>
@@ -1159,7 +1162,7 @@ if (typeof module !== 'undefined' && module.exports) {
   /* ---------- DOM ---------- */
   function $(id) { return document.getElementById(id); }
   var gate = $('gate'), canvas = $('screen'), stage = $('stage');
-  var btnPlay = $('btnPlay'), btnFs = $('btnFs'), seek = $('seek');
+  var btnPlay = $('btnPlay'), btnFs = $('btnFs'), seek = $('seek'), btnBackLib = $('btnBackLib');
   var timeLabel = $('timeLabel'), statusEl = $('status'), wcWarn = $('wcWarn');
   var urlIn = $('urlIn'), btnUrlPlay = $('btnUrlPlay'), btnTestStream = $('btnTestStream');
   var btnPlexSignin = $('btnPlexSignin'), btnPlexSignout = $('btnPlexSignout'),
@@ -1663,7 +1666,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function teardown() {
     S.gen++;
     stopPlexTranscode();
-    S.loaded = false; S.started = false; S.playing = false; S.ended = false;
+    S.loaded = false; S.started = false; S.playing = false; S.ended = false; S.autoplay = false;
     S.mode = null; S.isLive = false; S.duration = 0;
     S.tracks = []; S.mp4 = null; S.mp4VIdx = 0; S.mp4AIdx = 0;
     vSamples = []; aSamples = []; S.audioPtsQueue = [];
@@ -1771,6 +1774,7 @@ if (typeof module !== 'undefined' && module.exports) {
     seek.disabled = S.isLive || !(S.duration > 0);
     setStatus(label + ' ready — tap Play.' + (S.isLive ? ' (Live stream — no seeking.)' : ''));
     updateTimeUi(0);
+    if (S.autoplay) { S.autoplay = false; btnPlay.click(); }
   }
 
   function loadSource(url, label) {
@@ -2599,7 +2603,23 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   })();
 
+  /* Watch mode: tapping a title turns the page into just the streaming
+     box — stage, controls, and a way back to the library. */
+  function enterWatch() {
+    document.body.classList.add('watching');
+    btnBackLib.hidden = false;
+    window.scrollTo(0, 0);
+  }
+  function exitWatch() {
+    document.body.classList.remove('watching');
+    btnBackLib.hidden = true;
+    teardown();
+    setStatus('Pick a title below to watch.');
+  }
+  btnBackLib.addEventListener('click', exitWatch);
+
   function playPlexItem(ratingKey, title) {
+    ensureCtx(); /* warm the audio clock under the tap, so autoplay has sound */
     plexSetMsg('Getting “' + title + '” ready…');
     plexGet('/library/metadata/' + ratingKey).then(function (data) {
       var meta = data.MediaContainer && data.MediaContainer.Metadata && data.MediaContainer.Metadata[0];
@@ -2627,8 +2647,9 @@ if (typeof module !== 'undefined' && module.exports) {
         '&X-Plex-Client-Identifier=' + encodeURIComponent(plexSid) +
         '&X-Plex-Token=' + encodeURIComponent(tok);
       loadSource(url, title);
-      plexSetMsg('Streaming “' + title + '”' + (offset ? ' from where you left off' : '') +
-        ' — it starts in the player above, tap Play there.');
+      S.autoplay = true;
+      enterWatch();
+      plexSetMsg('Streaming “' + title + '”' + (offset ? ' from where you left off' : '') + '…');
     }).catch(function (e) { plexSetMsg('Could not start that title: ' + e.message, true); });
   }
 
