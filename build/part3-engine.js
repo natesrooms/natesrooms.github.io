@@ -580,6 +580,21 @@ var Engine = (function () {
     if (hooks.onBuffering) hooks.onBuffering(on);
     if (hooks.onState) hooks.onState();
   }
+  /* Sound watchdog: if the picture is playing but no sound has been
+     queued for a few seconds while audio data keeps arriving, rebuild
+     the audio decoder and pick the sound up again at the current time. */
+  var audioQuietSince = 0, audioFixes = 0;
+  function checkAudio(t) {
+    if (S.mode === 'mp4' || !S.started || !S.playing || S.buffering || S.ended || !S.aConfig || !S.firstFrameAt) { audioQuietSince = 0; return; }
+    if (S.audioSources.size > 0 || (S.ctx && S.nextAudioWhen > S.ctx.currentTime)) { audioQuietSince = 0; return; }
+    if (!audioQuietSince) { audioQuietSince = performance.now(); return; }
+    if (performance.now() - audioQuietSince < 3000 || audioFixes > 20) return;
+    audioQuietSince = 0; audioFixes++;
+    stopAudioSources();
+    S.audioPtsQueue = [];
+    S.dropAudioBefore = t;
+    setupAudioDecoder();
+  }
   function checkBuffering(t) {
     if ((S.mode !== 'hls' && S.mode !== 'ts') || !S.started || !S.playing || S.ended) { if (S.buffering && !S.playing) S.buffering = false; return; }
     var ahead = videoAhead(t);
@@ -620,6 +635,7 @@ var Engine = (function () {
       if (!S.firstFrameAt) { S.firstFrameAt = performance.now(); if (hooks.onFirstFrame) hooks.onFirstFrame(); }
     }
     checkBuffering(t);
+    if (S.paintTick % 30 === 0) checkAudio(t);
     S.paintTick++;
     if (S.paintTick % 15 === 0) updateTimeUi(t);
     checkEnded(t);

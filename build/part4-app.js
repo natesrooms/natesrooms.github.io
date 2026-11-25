@@ -1968,7 +1968,9 @@
     return n.pos + (n.playing ? Math.max(0, serverNow() - (n.at || serverNow())) / 1000 : 0);
   }
   function mirrorPlexUrl(info, off) {
-    const q = QUALITIES.find((x) => x.id === '720');
+    // Phones get 480p (~1.5 Mbps): looks the same on a small screen and
+    // leaves the home connection to the car's stream.
+    const q = QUALITIES.find((x) => x.id === '480');
     return info.base + '/video/:/transcode/universal/start.m3u8?path=' + enc('/library/metadata/' + info.rk) +
       '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=' + Math.max(0, Math.floor(off)) +
       '&directPlay=0&directStream=1&directStreamAudio=1&subtitles=none&videoResolution=' + q.res + '&maxVideoBitrate=' + q.br +
