@@ -49,6 +49,7 @@
   .cbtn-main { background: #e50914; border-color: transparent; color: #fff; min-width: 110px; }
   .cbtn-main:active { background: #b80710; }
   .cbtn[disabled] { opacity: 0.45; cursor: default; }
+  a.cbtn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
   .timelabel { font-size: 16px; color: #c9c9c4; font-variant-numeric: tabular-nums; white-space: nowrap; }
   input[type="range"].seek { flex: 1; min-width: 160px; height: 44px; accent-color: #e50914; }
   .status { color: #b8b8b3; font-size: 15px; margin-top: 10px; min-height: 22px; }
@@ -151,6 +152,7 @@
     <span class="timelabel" id="timeLabel">0:00 / 0:00</span>
     <input type="range" class="seek" id="seek" min="0" max="1000" value="0" disabled aria-label="Seek" />
     <button class="cbtn" id="btnFs" type="button">&#9974; Fullscreen</button>
+    <a class="cbtn" href="https://www.youtube.com/redirect?q=https%3A%2F%2Fnatesrooms.github.io%2Fplayer.html" target="_blank" rel="noopener">Fullscreen &#8599;</a>
   </div>
   <div class="status" id="status">Load a stream below to start.</div>
 
