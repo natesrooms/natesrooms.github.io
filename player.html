@@ -2086,7 +2086,10 @@ if (typeof module !== 'undefined' && module.exports) {
      itself — no server address or token is ever typed in. The account
      token, the chosen server connection and its access token live in
      localStorage on this browser only. */
-  var plexSid = 'dm' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  var plexSid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    var r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
   var plexPlayingRk = null;
 
   function plexSetMsg(msg, isErr) {
@@ -2639,11 +2642,19 @@ if (typeof module !== 'undefined' && module.exports) {
           meta.viewOffset < meta.duration - 60000) {
         offset = Math.floor(meta.viewOffset / 1000);
       }
+      /* The X-Plex-Platform/Device/Product parameters are NOT optional:
+         PMS refuses the transcode with HTTP 400 ("unable to find a
+         matching profile") when the client doesn't identify itself. */
       var url = base + '/video/:/transcode/universal/start.m3u8?path=' + encodeURIComponent('/library/metadata/' + ratingKey) +
         '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=' + offset +
         '&directPlay=0&directStream=1&maxVideoBitrate=10000' +
         '&X-Plex-Session-Identifier=' + encodeURIComponent(plexSid) +
         '&X-Plex-Client-Identifier=' + encodeURIComponent(plexSid) +
+        '&X-Plex-Product=' + encodeURIComponent("Nate's Theater") +
+        '&X-Plex-Version=1.0' +
+        '&X-Plex-Platform=Chrome&X-Plex-Platform-Version=120.0' +
+        '&X-Plex-Device=Web&X-Plex-Model=Web' +
+        '&X-Plex-Device-Name=' + encodeURIComponent("Nate's Theater") +
         '&X-Plex-Token=' + encodeURIComponent(tok);
       loadSource(url, title);
       S.autoplay = true;
