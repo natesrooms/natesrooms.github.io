@@ -65,10 +65,14 @@
   /* =====================================================================
      Cards and rows
      ===================================================================== */
+  function skeletons(n, wide) {
+    return Array.from({ length: n }, () => h('div', { class: (wide ? 'lc' : 'pc') + ' skel' }, h('div', { class: 'art' }), h('div', { class: 'sk-line' })));
+  }
   function artBox(img, ph, extra) {
     const box = h('div', { class: 'art' });
     if (img) {
-      const im = h('img', { src: img, alt: '', loading: 'lazy', decoding: 'async' });
+      const im = h('img', { src: img, alt: '', loading: 'lazy', decoding: 'async', class: 'fade' });
+      im.addEventListener('load', () => im.classList.add('in'));
       im.addEventListener('error', () => { im.remove(); box.prepend(h('div', { class: 'ph', text: ph || '' })); });
       box.appendChild(im);
     } else {
@@ -462,33 +466,86 @@
     const qs = new URLSearchParams(Object.assign({ hidebroken: 'true', order: 'clickcount', reverse: 'true', limit: '60' }, params)).toString();
     let i = 0;
     const attempt = () => E.fetchRead(RB[i] + '/json/stations/search?' + qs, 'json', 12000).catch((e) => { if (++i < RB.length) return attempt(); throw e; });
-    return attempt().then((list) => list.filter((s) => okUrl(s.url_resolved || '')));
+    return attempt().then((list) => {
+      // The directory lists many duplicates (same station, several streams):
+      // keep the first (most-played) of each name.
+      const seen = new Set();
+      return list.filter((s) => {
+        if (!okUrl(s.url_resolved || '')) return false;
+        const k = (s.name || '').trim().toLowerCase();
+        if (!k || seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+    });
   }
-  const RADIO_TAGS = ['pop', 'rock', 'country', 'hiphop', 'jazz', 'classical', 'news', 'talk', 'sports', 'christmas', 'oldies', 'dance'];
+  const RADIO_TAGS = [
+    ['talk', 'Talk'], ['news', 'News'], ['sports', 'Sports'], ['comedy', 'Comedy'], ['pop', 'Pop'], ['rock', 'Rock'],
+    ['classic rock', 'Classic rock'], ['country', 'Country'], ['hiphop', 'Hip-hop'], ['rnb', 'R&B'], ['jazz', 'Jazz'],
+    ['blues', 'Blues'], ['classical', 'Classical'], ['oldies', 'Oldies'], ['80s', '80s'], ['90s', '90s'], ['dance', 'Dance'],
+    ['electronic', 'Electronic'], ['latin', 'Latin'], ['christian', 'Christian'], ['chillout', 'Chill'], ['christmas', 'Christmas']
+  ];
+  const RADIO_COUNTRIES = [['US', 'USA'], ['CA', 'Canada'], ['GB', 'UK'], ['IE', 'Ireland'], ['AU', 'Australia'], ['MX', 'México'],
+    ['DE', 'Germany'], ['FR', 'France'], ['ES', 'Spain'], ['IT', 'Italy'], ['NL', 'Netherlands'], ['BR', 'Brazil'], ['JP', 'Japan'], ['ALL', 'Worldwide']];
+  function radioFavs() { return store.get('dm_radiofavs', []); }
+  function isRadioFav(st) { return radioFavs().some((f) => f.stationuuid === st.stationuuid); }
+  function toggleRadioFav(st) {
+    let f = radioFavs();
+    if (f.some((x) => x.stationuuid === st.stationuuid)) { f = f.filter((x) => x.stationuuid !== st.stationuuid); toast(`Removed ${st.name} from your stations`); }
+    else {
+      f.unshift({ stationuuid: st.stationuuid, name: st.name, url_resolved: st.url_resolved, favicon: st.favicon || '', tags: st.tags || '', countrycode: st.countrycode || '', bitrate: st.bitrate || 0 });
+      toast(`Added ${st.name} to your stations`);
+    }
+    store.set('dm_radiofavs', f.slice(0, 200));
+    document.querySelectorAll('.rstar').forEach((b) => { if (b.dataset.id === st.stationuuid) paintStar(b, isRadioFav(st)); });
+  }
+  function paintStar(b, on) { b.textContent = on ? '★' : '☆'; b.style.color = on ? '#f5c518' : '#fff'; }
   const radio = h('audio', { preload: 'none' });
   let radioBar = null, radioNow = null;
+  radio.addEventListener('error', () => { if (radioNow) toast(`${radioNow.name} isn’t broadcasting right now — try another station.`); });
+  function markPlayingCards() {
+    document.querySelectorAll('.lc[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
+  }
   function playRadio(st) {
     if (playerOpen) closeWatch();
     radioNow = st;
     radio.src = st.url_resolved;
     radio.play().catch((e) => toast('That station would not start: ' + e.message));
     if (!radioBar) {
-      radioBar = h('div', { class: 'toast', style: { bottom: '18px', display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 14px' } });
+      radioBar = h('div', { class: 'radiobar' });
       document.body.appendChild(radioBar);
     }
     radioBar.hidden = false;
+    const star = h('button', { class: 'pb rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station', onclick: () => toggleRadioFav(st) });
+    paintStar(star, isRadioFav(st));
+    const pp = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) { radio.play(); pp.textContent = '❚❚'; } else { radio.pause(); pp.textContent = '▶'; } } });
     radioBar.replaceChildren(
-      h('div', { style: { width: '44px', height: '44px', borderRadius: '8px', background: grad(st.name), overflow: 'hidden', flex: 'none' } },
-        okUrl(st.favicon || '') ? h('img', { src: st.favicon, alt: '', style: { width: '100%', height: '100%', objectFit: 'cover' } }) : null),
-      h('div', { style: { minWidth: '0' } }, h('div', { style: { fontWeight: '800' }, text: st.name }), h('div', { style: { color: '#aaa', fontSize: '13px' }, text: 'Radio · ' + (st.tags || '').split(',').slice(0, 2).join(', ') })),
-      h('button', { class: 'pb', type: 'button', text: '❚❚', onclick: (e) => { if (radio.paused) { radio.play(); e.currentTarget.textContent = '❚❚'; } else { radio.pause(); e.currentTarget.textContent = '▶'; } } }),
-      h('button', { class: 'pb', type: 'button', text: '✕', onclick: stopRadio })
+      h('div', { class: 'rb-logo', style: { background: grad(st.name) } },
+        okUrl(st.favicon || '') ? h('img', { src: st.favicon, alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
+      h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: st.name }),
+        h('div', { class: 'rb-s', text: ['Live radio', (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', '), st.bitrate ? st.bitrate + ' kbps' : ''].filter(Boolean).join(' · ') })),
+      star, pp,
+      h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio })
     );
+    markPlayingCards();
   }
-  function stopRadio() { radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; }
+  function stopRadio() { radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
   function stationCard(st) {
-    return wideCard({ channel: st.name, cat: (st.tags || '').split(',')[0] || st.country || 'Radio',
-      img: '', title: st.name, onclick: () => playRadio(st) });
+    const tag = (st.tags || '').split(',').filter(Boolean)[0] || st.countrycode || 'Radio';
+    const star = h('button', { class: 'badge rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station',
+      style: { border: '0', cursor: 'pointer', background: 'rgba(0,0,0,.55)', minWidth: '40px', height: '40px', fontSize: '20px' },
+      onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleRadioFav(st); } });
+    paintStar(star, isRadioFav(st));
+    const card = wideCard({ channel: st.name, cat: tag, img: '', title: st.name, onclick: () => playRadio(st), star });
+    card.dataset.station = st.stationuuid || '';
+    if (okUrl(st.favicon || '')) {
+      const box = card.querySelector('.art');
+      const im = h('img', { class: 'logo', src: st.favicon, alt: '', loading: 'lazy' });
+      im.addEventListener('load', () => { if (im.naturalWidth < 48) im.remove(); else box.classList.add('has-logo'); });
+      im.addEventListener('error', () => im.remove());
+      box.insertBefore(im, box.firstChild);
+    }
+    if (radioNow && radioNow.stationuuid === st.stationuuid) card.classList.add('now');
+    return card;
   }
 
   /* =====================================================================
@@ -664,6 +721,9 @@
     view.replaceChildren(node);
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
+    const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', iptv: 'IPTV', youtube: 'YouTube',
+      radio: 'Radio', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
+    document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
     if (!['settings', 'signin', 'profiles'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
     if (cache.size > 20) cache.delete(cache.keys().next().value);
     try { fn(node, r.args); } catch (e) { node.appendChild(msg('Something went wrong on this page: ' + e.message, true)); }
@@ -741,9 +801,16 @@
         const r = row('YouTube', '#/youtube'); res.forEach((x) => r.scroller.appendChild(ytCard(x))); sYT.appendChild(r.sec);
       }).catch(() => {});
     }
-    radioSearch({ countrycode: 'US', limit: '20' }).then((list) => {
+    if (radioFavs().length) {
+      const r = row('Your radio stations', '#/radio/US/' + enc('★'));
+      radioFavs().slice(0, 20).forEach((st) => r.scroller.appendChild(stationCard(st))); sRadio.appendChild(r.sec);
+    }
+    radioSearch({ countrycode: 'US', limit: '24' }).then((list) => {
       if (!list.length) return;
-      const r = row('Radio', '#/radio'); list.forEach((st) => r.scroller.appendChild(stationCard(st))); sRadio.appendChild(r.sec);
+      const r = row('Popular radio', '#/radio'); list.forEach((st) => r.scroller.appendChild(stationCard(st))); sRadio.appendChild(r.sec);
+      const t = row('Talk & news radio', '#/radio/US/talk'); sRadio.appendChild(t.sec);
+      radioSearch({ countrycode: 'US', tag: 'talk', limit: '20' })
+        .then((l2) => { if (!l2.length) t.sec.remove(); l2.forEach((st) => t.scroller.appendChild(stationCard(st))); }).catch(() => t.sec.remove());
     }).catch(() => {});
   };
   function heroFor(m, resume) {
@@ -797,8 +864,10 @@
       const qsort = sort === 'unwatched' ? 'unwatched=1&sort=addedAt:desc' : 'sort=' + enc(sort);
       function more() {
         if (busy || start >= total) return;
-        busy = true; status.textContent = 'Loading…';
+        busy = true; status.textContent = start ? 'Loading…' : '';
+        const sk = start ? [] : skeletons(18, false); sk.forEach((x) => grid.appendChild(x));
         pget(`/library/sections/${key}/all?${qsort}&X-Plex-Container-Start=${start}&X-Plex-Container-Size=${PAGE}`).then((d) => {
+          sk.forEach((x) => x.remove());
           const mc = MC(d);
           total = mc.totalSize != null ? mc.totalSize : (mc.size < PAGE ? start + (mc.size || 0) : Infinity);
           (mc.Metadata || []).forEach((m) => grid.appendChild(plexCard(m)));
@@ -1010,15 +1079,48 @@
 
 
   /* ---------- Radio ---------- */
-  VIEWS.radio = (root, [tag]) => {
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Radio' })));
-    root.appendChild(chips([{ id: '', label: 'Popular' }].concat(RADIO_TAGS.map((t) => ({ id: t, label: t[0].toUpperCase() + t.slice(1) }))), tag || '', (c) => '#/radio' + (c.id ? '/' + c.id : '')));
-    root.appendChild(msg('Free internet radio from the radio-browser.info directory. Plays in the background while you browse.'));
-    const body = h('div'); root.appendChild(body); body.appendChild(msg('Loading stations…'));
-    radioSearch(tag ? { tag, countrycode: 'US' } : { countrycode: 'US' }).then((list) => {
-      body.replaceChildren();
-      const grid = h('div', { class: 'grid wide' }); list.forEach((st) => grid.appendChild(stationCard(st))); body.appendChild(grid);
-    }).catch((e) => body.replaceChildren(msg('Could not load stations: ' + e.message, true)));
+  VIEWS.radio = (root, [cc, tag, q]) => {
+    cc = 'US'; // US stations only
+    tag = tag || ''; q = q || '';
+    const href = (c, t, s) => '#/radio/' + c + '/' + enc(t || '') + (s ? '/' + enc(s) : '');
+    const input = h('input', { type: 'text', value: q, placeholder: 'Find a station (name, city, show…)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const doSearch = () => go(href(cc, tag === '★' ? '' : tag, input.value.trim()));
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Radio' }), h('span', { class: 'msg', style: { padding: '0' }, text: 'US stations' })));
+    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
+    root.appendChild(chips([{ id: '', label: 'Popular' }, { id: '★', label: '★ Your stations' }].concat(RADIO_TAGS.map(([id, label]) => ({ id, label }))),
+      tag, (c) => href(cc, c.id, '')));
+    const body = h('div'); root.appendChild(body);
+    if (tag === '★') {
+      const f = radioFavs();
+      if (!f.length) { body.appendChild(h('div', { class: 'empty', text: 'No saved stations yet — tap ☆ on any station to keep it here.' })); return; }
+      const grid = h('div', { class: 'grid wide' }); f.forEach((st) => grid.appendChild(stationCard(st))); body.appendChild(grid);
+      return;
+    }
+    const grid = h('div', { class: 'grid wide' }); body.appendChild(grid);
+    const status = msg(''); body.appendChild(status);
+    const btn = h('button', { class: 'btn ghost', type: 'button', text: 'More stations' });
+    body.appendChild(h('div', { class: 'more' }, btn));
+    let offset = 0, busy = false;
+    const params = {};
+    if (cc !== 'ALL') params.countrycode = cc;
+    if (tag) params.tag = tag;
+    if (q) params.name = q;
+    const page = () => {
+      if (busy) return; busy = true;
+      if (!offset) grid.replaceChildren(...skeletons(12, true));
+      status.textContent = offset ? 'Loading more…' : '';
+      radioSearch(Object.assign({ limit: '60', offset: String(offset) }, params)).then((list) => {
+        if (!offset) grid.replaceChildren();
+        list.forEach((st) => grid.appendChild(stationCard(st)));
+        offset += 60;
+        btn.hidden = list.length < 30;
+        status.textContent = !grid.children.length ? 'No stations found — try another genre or country.' : '';
+      }).catch((e) => { if (!offset) grid.replaceChildren(); status.textContent = 'Could not load stations: ' + e.message; status.className = 'msg err'; })
+        .finally(() => { busy = false; });
+    };
+    btn.addEventListener('click', page);
+    page();
   };
 
   /* ---------- Search ---------- */
@@ -1057,7 +1159,7 @@
       if (!res.length) return; any = true;
       const r = row('YouTube', '#/youtube/' + enc(q)); res.forEach((x) => r.scroller.appendChild(ytCard(x))); slots[2].appendChild(r.sec);
     }).catch(() => {}));
-    done.push(radioSearch({ name: q, limit: '16' }).then((list) => {
+    done.push(radioSearch({ name: q, countrycode: 'US', limit: '16' }).then((list) => {
       if (!list.length) return; any = true;
       const r = row('Radio'); list.forEach((st) => r.scroller.appendChild(stationCard(st))); slots[3].appendChild(r.sec);
     }).catch(() => {}));
@@ -1273,7 +1375,6 @@
     E.teardown();
     player.hidden = true;
     document.body.classList.remove('playing');
-    if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
     invalidate('home'); invalidate('item');
     // Return the page to the view underneath with fresh progress bars.
     const r = parse();
@@ -1438,11 +1539,29 @@
     E.togglePlay(); showUi();
   });
   $('plBack').addEventListener('click', () => { if (sawAppView) history.back(); else go('#/home', true); });
-  $('btnFs').addEventListener('click', () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else if (player.requestFullscreen) player.requestFullscreen().catch(() => {});
-    else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
-  });
+  /* Full screen: one toggle for the whole app (menu button and the
+     player's button do the same thing), so browsing and watching stay
+     full screen together and the two can't fight each other. */
+  const root = document.documentElement;
+  const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function toggleFullscreen() {
+    if (fsOn()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    const req = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!req) { toast('This browser doesn’t allow full screen.'); return; }
+    const p = req.call(root, { navigationUI: 'hide' });
+    if (p && p.catch) p.catch(() => toast('Full screen was blocked by the browser.'));
+  }
+  function paintFs() {
+    const on = fsOn();
+    $('fsAll').innerHTML = on ? '&#10006;' : '&#9974;';
+    $('fsAll').title = $('fsAll').ariaLabel = on ? 'Exit full screen' : 'Full screen';
+    $('btnFs').innerHTML = on ? '&#10006;' : '&#9974;';
+  }
+  $('fsAll').addEventListener('click', toggleFullscreen);
+  $('btnFs').addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', paintFs);
+  document.addEventListener('webkitfullscreenchange', paintFs);
+  if (!(root.requestFullscreen || root.webkitRequestFullscreen)) $('fsAll').hidden = true;
   document.addEventListener('keydown', (e) => {
     if (!playerOpen || /INPUT|SELECT|TEXTAREA/.test((e.target && e.target.tagName) || '')) return;
     if (e.key === ' ' || e.key === 'k') { e.preventDefault(); $('btnPlay').click(); }

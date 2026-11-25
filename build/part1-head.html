@@ -52,6 +52,9 @@
     display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; overflow: hidden;
   }
   .me img { width: 100%; height: 100%; object-fit: cover; }
+  .navfs { width: 48px; height: 48px; border-radius: 12px; border: 0; background: var(--bg3); color: var(--text);
+    font-size: 20px; cursor: pointer; flex: none; }
+  .navfs:active { background: #2c3038; }
 
   .view { padding: 0 0 60px; min-height: calc(100vh - var(--navh)); }
   .pad { padding: 0 28px; }
@@ -241,6 +244,31 @@
     border: 1px solid #3a3d45; color: #fff; padding: 14px 22px; border-radius: 12px; font-size: 16px; max-width: 90vw;
     box-shadow: 0 8px 30px rgba(0,0,0,.5); }
   .toast[hidden] { display: none; }
+  /* radio mini-player */
+  .radiobar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 150; display: flex; align-items: center;
+    gap: 12px; padding: 10px 12px; background: rgba(28,30,36,.97); border: 1px solid #3a3d45; border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6); max-width: calc(100vw - 24px); }
+  .rb-logo { width: 52px; height: 52px; border-radius: 10px; overflow: hidden; flex: none; }
+  .rb-logo img { width: 100%; height: 100%; object-fit: cover; background: #fff; }
+  .rb-txt { min-width: 0; max-width: 360px; }
+  .rb-n { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rb-s { color: #aaa; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body:has(.radiobar:not([hidden])) .view { padding-bottom: 110px; }
+  .art img.logo { position: absolute; top: 50%; left: 50%; width: 38%; height: auto; max-height: 58%; object-fit: contain;
+    transform: translate(-50%, -62%); border-radius: 12px; background: #fff; padding: 6px; }
+  .art.has-logo .chan .n { font-size: 17px; }
+  .lc.now .art { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .lc.now .art::after { content: '♪ Playing'; position: absolute; top: 10px; left: 10px; background: var(--accent); color: #fff;
+    font-size: 12px; font-weight: 800; border-radius: 6px; padding: 3px 8px; }
+  /* loading placeholders and image fade-in */
+  .skel .art { background: linear-gradient(90deg, #1b1d22 0%, #262930 50%, #1b1d22 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; }
+  .skel .sk-line { height: 14px; width: 70%; margin-top: 10px; border-radius: 6px; background: #1f2126; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  img.fade { opacity: 0; transition: opacity .35s ease; }
+  img.fade.in { opacity: 1; }
+  @media (hover: hover) { .pc .art { transition: transform .18s ease, box-shadow .18s ease; }
+    .pc:hover .art { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,.5); } }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   /* ---------- Passenger gate ---------- */
   body.gated { overflow: hidden; }
@@ -295,6 +323,7 @@
     <form class="search" id="searchForm" role="search">
       <input id="searchIn" type="search" placeholder="Search movies, shows, channels" autocomplete="off" autocapitalize="off" spellcheck="false" />
     </form>
+    <button class="navfs" id="fsAll" type="button" aria-label="Full screen" title="Full screen">&#9974;</button>
     <a class="me" href="#/settings" id="meBtn" aria-label="Account and settings">&#9881;</a>
   </header>
 
