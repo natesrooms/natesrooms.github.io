@@ -103,6 +103,17 @@
   .libitem .meta { display: block; color: #9a9a95; font-size: 13px; margin-top: 2px; }
   .libitem .thumb { float: left; width: 112px; height: 63px; object-fit: cover; border-radius: 8px; margin-right: 14px; background: #000; }
   .libitem::after { content: ""; display: block; clear: both; }
+  .ytgrid { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; max-height: 680px; overflow-y: auto; }
+  .ytcard { text-align: left; background: #1b1b1e; color: #f2f2f0; border: 1px solid #2b2b2f; border-radius: 12px; padding: 0 0 12px; cursor: pointer; overflow: hidden; width: 100%; }
+  .ytcard:active { background: #26262b; }
+  .ytcard img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
+  .ytcard .t { display: block; font-size: 16px; font-weight: 600; line-height: 1.3; margin: 10px 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ytcard .m { display: block; color: #9a9a95; font-size: 13px; margin: 4px 12px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ytchips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .ytchip { background: #26262b; color: #f2f2f0; border: 1px solid #3a3a40; border-radius: 999px; padding: 9px 16px; font-size: 15px; cursor: pointer; }
+  .ytchip:active { background: #3a3a40; }
+  .ythelper { margin-top: 16px; }
+  .ythelper summary { color: #9a9a95; font-size: 14px; cursor: pointer; padding: 6px 0; }
 
   footer { margin-top: 32px; color: #77776f; font-size: 13px; border-top: 1px solid #232327; padding-top: 16px; }
   footer p { margin: 4px 0; }
@@ -193,16 +204,19 @@
 
   <section class="panel" aria-label="YouTube">
     <h2>YouTube</h2>
-    <p>Search YouTube and tap a result to watch it right here &mdash; your home helper converts the video so it plays in this player, in Drive too. You can also paste a YouTube link into the search box. The helper address is saved on this screen only.</p>
-    <label for="ytBase">Helper address</label>
-    <input type="text" id="ytBase" placeholder="https://your-helper-address" autocomplete="off" autocapitalize="off" spellcheck="false" />
-    <label for="ytQuery">Search or paste a link</label>
     <div class="row">
       <div class="grow"><input type="text" id="ytQuery" placeholder="Search YouTube" autocomplete="off" autocapitalize="off" spellcheck="false" /></div>
       <button class="abtn" id="btnYtSearch" type="button">Search</button>
     </div>
+    <div class="ytchips" id="ytChips"></div>
     <div class="status" id="ytMsg"></div>
-    <div class="liblist" id="ytList"></div>
+    <div class="ytgrid" id="ytList"></div>
+    <details class="ythelper" id="ytHelperBox">
+      <summary>Helper settings</summary>
+      <p>Videos are converted by the helper at home so they can play here, in Drive too. Enter its address once &mdash; it is saved on this screen only. You can also paste a YouTube link into the search box to play it directly.</p>
+      <label for="ytBase">Helper address</label>
+      <input type="text" id="ytBase" placeholder="https://your-helper-address" autocomplete="off" autocapitalize="off" spellcheck="false" />
+    </details>
   </section>
 
   <section class="panel" aria-label="Live TV">
@@ -1873,40 +1887,47 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function playYouTube(id, title) {
     var base = ytBase();
-    if (!base) { ytSetMsg('Enter the helper address above first.', true); return; }
+    if (!base) { ytSetMsg('The helper address is not set yet — open Helper settings below.', true); return; }
     ytSaveBase();
     ytSetMsg('Converting at home — the first play of a video can take a little while to start.');
     loadSource(base + '/stream?v=' + encodeURIComponent(id), title);
     try { stage.scrollIntoView({ block: 'start' }); } catch (e) {}
   }
-  function ytButton(r) {
+  function ytCard(r) {
     var b = document.createElement('button');
-    b.type = 'button'; b.className = 'libitem';
+    b.type = 'button'; b.className = 'ytcard';
     var img = document.createElement('img');
-    img.className = 'thumb'; img.src = r.thumb || ''; img.alt = '';
+    img.src = r.thumb || ''; img.alt = '';
     img.loading = 'lazy';
     b.appendChild(img);
-    b.appendChild(document.createTextNode(r.title));
+    var t = document.createElement('span');
+    t.className = 't'; t.textContent = r.title;
+    b.appendChild(t);
     var meta = [r.channel, fmtDur(r.duration)].filter(Boolean).join('  ·  ');
     if (meta) {
       var s = document.createElement('span');
-      s.className = 'meta'; s.textContent = meta;
+      s.className = 'm'; s.textContent = meta;
       b.appendChild(s);
     }
     b.addEventListener('click', function () { playYouTube(r.id, r.title); });
     return b;
   }
-  function runYtSearch() {
+  function runYtSearch(q) {
     var base = ytBase();
-    var q = ytQueryIn.value.trim();
-    if (!base) { ytSetMsg('Enter the helper address above first.', true); return; }
+    if (typeof q !== 'string') q = ytQueryIn.value.trim();
+    if (!base) {
+      ytSetMsg('The helper address is not set yet — open Helper settings below.', true);
+      var hb = $('ytHelperBox'); if (hb) hb.open = true;
+      return;
+    }
     if (!q) { ytSetMsg('Type what you want to watch.', true); return; }
     ytSaveBase();
     var direct = ytIdFrom(q);
     if (direct) { playYouTube(direct, 'YouTube video'); return; }
-    ytSetMsg('Searching YouTube…');
+    try { localStorage.setItem('dm_yt_lastq', q); } catch (e) {}
+    ytSetMsg('Loading…');
     ytList.innerHTML = '';
-    fetch(base + '/search?q=' + encodeURIComponent(q) + '&n=12')
+    fetch(base + '/search?q=' + encodeURIComponent(q) + '&n=18')
       .then(function (r) {
         if (!r.ok) throw new Error('helper answered HTTP ' + r.status);
         return r.json();
@@ -1914,15 +1935,45 @@ if (typeof module !== 'undefined' && module.exports) {
       .then(function (data) {
         var results = data.results || [];
         if (!results.length) { ytSetMsg('No results for that search.', true); return; }
-        ytSetMsg(results.length + ' results — tap one to watch.');
-        results.forEach(function (r) { ytList.appendChild(ytButton(r)); });
+        ytSetMsg('Tap a video to watch.');
+        results.forEach(function (r) { ytList.appendChild(ytCard(r)); });
       })
       .catch(function (e) {
-        ytSetMsg('Search failed: ' + e.message + ' — check the helper address and that the helper is running.', true);
+        ytSetMsg('Could not reach the helper: ' + e.message + ' — check Helper settings below.', true);
       });
   }
-  $('btnYtSearch').addEventListener('click', runYtSearch);
+  $('btnYtSearch').addEventListener('click', function () { runYtSearch(); });
   ytQueryIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') runYtSearch(); });
+  /* Quick-pick chips + an automatic first load, so opening YouTube shows
+     videos right away instead of an empty search box. The last search is
+     remembered and re-run on the next visit. */
+  var YT_CHIPS = [
+    ['Trailers', 'new movie trailers'],
+    ['Music', 'music videos'],
+    ['News', 'news live'],
+    ['Comedy', 'stand up comedy'],
+    ['Top Gear', 'top gear'],
+    ['Live', 'live streams']
+  ];
+  (function () {
+    var box = $('ytChips');
+    YT_CHIPS.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'ytchip'; b.textContent = c[0];
+      b.addEventListener('click', function () { ytQueryIn.value = c[1]; runYtSearch(c[1]); });
+      box.appendChild(b);
+    });
+    var savedBase = ytBase();
+    var hb = $('ytHelperBox');
+    if (hb && savedBase) hb.open = false;
+    if (savedBase) {
+      var last = '';
+      try { last = localStorage.getItem('dm_yt_lastq') || ''; } catch (e) {}
+      runYtSearch(last || YT_CHIPS[0][1]);
+    } else {
+      ytSetMsg('The helper address is not set yet — open Helper settings below.');
+    }
+  })();
 
   /* ---------- Live TV (free-to-air channels, iptv-org collection) ----------
      Verified 2026-11-24: every stream below is unencrypted MPEG-TS HLS with
