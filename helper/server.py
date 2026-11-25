@@ -590,13 +590,21 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(b"0\r\n\r\n")
 
     def _body_json(self, limit):
-        n = int(self.headers.get("Content-Length") or 0)
-        if n <= 0 or n > limit:
+        raw = self._raw
+        if not raw or len(raw) > limit:
             raise ValueError("body missing or too large")
-        return json.loads(self.rfile.read(n).decode("utf-8"))
+        return json.loads(raw.decode("utf-8"))
 
     def do_POST(self):
         u = urllib.parse.urlparse(self.path)
+        # Always read the whole body first, even when a route ignores it:
+        # leftover bytes on a reused (keep-alive) connection would be read
+        # as the start of the next request and break it.
+        n = int(self.headers.get("Content-Length") or 0)
+        if n > 2500000:
+            self.close_connection = True
+            return self._json(413, {"error": "request too large"})
+        self._raw = self.rfile.read(n) if n > 0 else b""
         try:
             if u.path == "/remote/new":
                 try:
