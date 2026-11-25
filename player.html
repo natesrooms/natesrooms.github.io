@@ -104,6 +104,13 @@
   .libitem .thumb { float: left; width: 112px; height: 63px; object-fit: cover; border-radius: 8px; margin-right: 14px; background: #000; }
   .libitem::after { content: ""; display: block; clear: both; }
   .ytgrid { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; max-height: 680px; overflow-y: auto; }
+  .usergrid { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .usertile { background: #1d1d21; border: 1px solid #333338; border-radius: 14px; color: #f2f2ef; padding: 18px 10px 14px; text-align: center; cursor: pointer; font: inherit; }
+  .usertile:active { background: #26262b; }
+  .usertile .uav { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px; background: #3a3a41; color: #fff; font-size: 28px; font-weight: 700; line-height: 64px; overflow: hidden; }
+  .usertile .uav img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .usertile .uname { display: block; font-size: 17px; font-weight: 600; }
+  .usertile .upin { display: inline-block; margin-top: 6px; font-size: 12px; color: #f5c518; border: 1px solid #f5c518; border-radius: 6px; padding: 1px 6px; letter-spacing: .06em; }
   .ytcard { text-align: left; background: #1b1b1e; color: #f2f2f0; border: 1px solid #2b2b2f; border-radius: 12px; padding: 0 0 12px; cursor: pointer; overflow: hidden; width: 100%; }
   .ytcard:active { background: #26262b; }
   .ytcard img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #000; }
@@ -220,11 +227,25 @@
       <p>Sign in with your Plex account, the same as in any Plex app. Your server is found automatically &mdash; nothing to type in, and it stays signed in on this screen.</p>
       <button class="abtn" id="btnPlexSignin" type="button">Sign in to Plex</button>
       <div class="status" id="plexSigninMsg"></div>
-      <p id="plexAuthLinkWrap" style="display:none;"><a id="plexAuthLink" href="#" target="_blank" rel="noopener">Tap here to go to PlexIf the Plex sign-in page didn&rsquo;t open, tap here to open itrsquo;s sign-in page</a></p>
+      <p id="plexAuthLinkWrap" style="display:none;"><a id="plexAuthLink" href="#" target="_blank" rel="noopener">Tap here to go to Plex&rsquo;s sign-in page</a></p>
+    </div>
+    <div id="plexUserBox" style="display:none;">
+      <p><strong>Who&rsquo;s watching?</strong> Pick your Plex profile &mdash; the same list the Plex app shows.</p>
+      <div class="usergrid" id="plexUserGrid"></div>
+      <div id="plexPinRow" style="display:none; margin-top:14px;">
+        <div class="row">
+          <div class="grow"><input type="password" id="plexPinInput" inputmode="numeric" autocomplete="off" placeholder="Profile PIN" /></div>
+          <button class="abtn" id="btnPlexPinGo" type="button">Use this profile</button>
+        </div>
+        <p class="hint">The PIN goes straight to Plex from this screen &mdash; it isn&rsquo;t stored.</p>
+      </div>
+      <div class="status" id="plexUserMsg"></div>
+      <p id="plexKeepUserWrap" style="display:none;"><a href="#" id="plexKeepUser">Keep watching as <span id="plexKeepUserName"></span></a></p>
     </div>
     <div id="plexMainBox" style="display:none;">
       <div class="row">
         <div class="grow"><span id="plexServerName"></span></div>
+        <button class="abtn abtn-ghost" id="btnPlexSwitchUser" type="button">Switch user</button>
         <button class="abtn abtn-ghost" id="btnPlexSignout" type="button">Sign out</button>
       </div>
     </div>
@@ -1132,7 +1153,8 @@ if (typeof module !== 'undefined' && module.exports) {
   var btnPlay = $('btnPlay'), btnFs = $('btnFs'), seek = $('seek');
   var timeLabel = $('timeLabel'), statusEl = $('status'), wcWarn = $('wcWarn');
   var urlIn = $('urlIn'), btnUrlPlay = $('btnUrlPlay'), btnTestStream = $('btnTestStream');
-  var btnPlexSignin = $('btnPlexSignin'), btnPlexSignout = $('btnPlexSignout');
+  var btnPlexSignin = $('btnPlexSignin'), btnPlexSignout = $('btnPlexSignout'),
+      btnPlexSwitchUser = $('btnPlexSwitchUser'), btnPlexPinGo = $('btnPlexPinGo');
   var plexMsg = $('plexMsg'), plexList = $('plexList');
   var ctx2d = canvas.getContext('2d');
 
@@ -2076,24 +2098,29 @@ if (typeof module !== 'undefined' && module.exports) {
   } catch (e) { plexClientId = 'nt-theater'; }
 
   var plexAuth = null;  // {token} — account token from plex.tv
+  var plexUser = null;  // {id, name, token} — chosen Plex Home profile
   var plexConn = null;  // {base, token, name} — chosen server connection
   var plexRediscovered = false;  // one automatic re-discovery per load failure
   try {
     var pa = localStorage.getItem('dm_plex_auth'); if (pa) plexAuth = JSON.parse(pa);
+    var pu = localStorage.getItem('dm_plex_user'); if (pu) plexUser = JSON.parse(pu);
     var pc = localStorage.getItem('dm_plex_conn'); if (pc) plexConn = JSON.parse(pc);
   } catch (e) {}
+  function plexActiveToken() { return plexUser ? plexUser.token : (plexAuth ? plexAuth.token : ''); }
   function plexBase() { return plexConn ? plexConn.base : ''; }
   function plexToken() { return plexConn ? plexConn.token : ''; }
 
-  function plexTv(path, method) {
+  function plexTv(path, method, token) {
+    var headers = {
+      'Accept': 'application/json',
+      'X-Plex-Client-Identifier': plexClientId,
+      'X-Plex-Product': "Nate's Theater",
+      'X-Plex-Version': '1.0'
+    };
+    if (token) headers['X-Plex-Token'] = token;
     return fetch('https://plex.tv' + path, {
       method: method || 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'X-Plex-Client-Identifier': plexClientId,
-        'X-Plex-Product': "Nate's Theater",
-        'X-Plex-Version': '1.0'
-      }
+      headers: headers
     }).then(function (r) {
       if (!r.ok) throw new Error('plex.tv answered HTTP ' + r.status);
       return r.json();
@@ -2102,8 +2129,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
   function showPlexMain() {
     $('plexSigninBox').style.display = 'none';
+    $('plexUserBox').style.display = 'none';
     $('plexMainBox').style.display = '';
-    $('plexServerName').textContent = 'Plex — ' + (plexConn ? plexConn.name : 'your server');
+    $('plexServerName').textContent = 'Plex — ' + (plexConn ? plexConn.name : 'your server') +
+      (plexUser ? ' · watching as ' + plexUser.name : '');
   }
   function showPlexSignin() {
     $('plexMainBox').style.display = 'none';
@@ -2129,7 +2158,7 @@ if (typeof module !== 'undefined' && module.exports) {
           try { localStorage.removeItem('dm_plex_pin'); } catch (e) {}
           plexAuth = { token: pin.authToken };
           try { localStorage.setItem('dm_plex_auth', JSON.stringify(plexAuth)); } catch (e) {}
-          discoverPlexServer();
+          showPlexUsers();
         }
       }).catch(function () {});
     }, 2000);
@@ -2160,7 +2189,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function discoverPlexServer() {
     plexSigninMsg('Signed in — finding your server…');
     plexSetMsg('Signed in — finding your server…');
-    plexTv('/api/v2/resources?includeHttps=1&includeRelay=1&X-Plex-Token=' + encodeURIComponent(plexAuth.token))
+    plexTv('/api/v2/resources?includeHttps=1&includeRelay=1&X-Plex-Token=' + encodeURIComponent(plexActiveToken()))
       .then(function (list) {
         var servers = (list || []).filter(function (r) {
           return (r.provides || '').split(',').indexOf('server') >= 0;
@@ -2227,13 +2256,127 @@ if (typeof module !== 'undefined' && module.exports) {
     });
   }
 
+  /* ---------- Plex Home profile picker ----------
+     After the account sign-in, Plex asks "who's watching?" — the same
+     profile list the Plex apps show. The list and the switch both run
+     against plex.tv with the account token. Switching hands back a
+     token for the chosen profile; a profile PIN, when the profile has
+     one, is typed here and sent straight to Plex — never stored. */
+  var plexPendingUser = null;
+  function plexUserMsg(msg, isErr) {
+    var el = $('plexUserMsg');
+    el.textContent = msg;
+    el.className = 'status' + (isErr ? ' err' : '');
+  }
+  function showPlexUsers() {
+    $('plexSigninBox').style.display = 'none';
+    $('plexMainBox').style.display = 'none';
+    $('plexUserBox').style.display = '';
+    $('plexPinRow').style.display = 'none';
+    plexPendingUser = null;
+    if (plexUser) {
+      $('plexKeepUserName').textContent = plexUser.name;
+      $('plexKeepUserWrap').style.display = '';
+    } else {
+      $('plexKeepUserWrap').style.display = 'none';
+    }
+    plexUserMsg('Loading your Plex profiles…');
+    plexTv('/api/v2/home/users', 'GET', plexAuth ? plexAuth.token : '').then(function (data) {
+      var users = [];
+      if (Array.isArray(data)) users = data;
+      else if (data && Array.isArray(data.users)) users = data.users;
+      if (!users.length) throw new Error('no profiles listed');
+      renderPlexUsers(users);
+      plexUserMsg('Tap your profile.');
+    }).catch(function () {
+      /* No picker available (account shape, or plex.tv hiccup): fall
+         back to watching as the account owner, like before. */
+      $('plexUserBox').style.display = 'none';
+      discoverPlexServer();
+    });
+  }
+  function renderPlexUsers(users) {
+    var grid = $('plexUserGrid');
+    grid.innerHTML = '';
+    users.forEach(function (u) {
+      var name = u.friendlyName || u.title || u.username || 'Profile';
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'usertile';
+      var av = document.createElement('div'); av.className = 'uav';
+      if (u.thumb) {
+        var img = document.createElement('img');
+        img.src = u.thumb; img.alt = '';
+        av.appendChild(img);
+      } else {
+        av.textContent = name.charAt(0).toUpperCase();
+      }
+      b.appendChild(av);
+      var nm = document.createElement('span');
+      nm.className = 'uname'; nm.textContent = name;
+      b.appendChild(nm);
+      if (u.protected) {
+        var pin = document.createElement('span');
+        pin.className = 'upin'; pin.textContent = 'PIN';
+        b.appendChild(pin);
+      }
+      b.addEventListener('click', function () { pickPlexUser(u, name); });
+      grid.appendChild(b);
+    });
+  }
+  function pickPlexUser(u, name) {
+    plexPendingUser = { id: u.uuid || u.id, name: name };
+    if (u.protected) {
+      $('plexPinRow').style.display = '';
+      $('plexPinInput').value = '';
+      plexUserMsg('“' + name + '” asks for a PIN.');
+      try { $('plexPinInput').focus(); } catch (e) {}
+    } else {
+      $('plexPinRow').style.display = 'none';
+      switchPlexUser('');
+    }
+  }
+  function switchPlexUser(pin) {
+    if (!plexPendingUser) return;
+    var u = plexPendingUser;
+    plexUserMsg('Switching to “' + u.name + '”…');
+    var path = '/api/v2/home/users/' + encodeURIComponent(u.id) + '/switch' +
+      (pin ? ('?pin=' + encodeURIComponent(pin)) : '');
+    plexTv(path, 'POST', plexAuth ? plexAuth.token : '').then(function (data) {
+      var tok = data && (data.authToken || data.authenticationToken);
+      if (!tok) throw new Error('Plex did not hand back a profile token.');
+      plexUser = { id: u.id, name: u.name, token: tok };
+      try { localStorage.setItem('dm_plex_user', JSON.stringify(plexUser)); } catch (e) {}
+      /* Server access tokens are per-profile: forget the old connection. */
+      plexConn = null;
+      try { localStorage.removeItem('dm_plex_conn'); } catch (e) {}
+      $('plexPinInput').value = '';
+      plexUserMsg('');
+      discoverPlexServer();
+    }).catch(function (e) {
+      plexUserMsg(pin ? 'That PIN didn’t work — try again.' :
+        ('Could not switch profiles: ' + e.message), true);
+    });
+  }
+  btnPlexPinGo.addEventListener('click', function () {
+    switchPlexUser(($('plexPinInput').value || '').trim());
+  });
+  btnPlexSwitchUser.addEventListener('click', showPlexUsers);
+  $('plexKeepUser').addEventListener('click', function (ev) {
+    ev.preventDefault();
+    $('plexUserBox').style.display = 'none';
+    if (plexConn) showPlexMain();
+    else if (plexUser) discoverPlexServer();
+    else showPlexSignin();
+  });
+
   btnPlexSignin.addEventListener('click', startPlexSignin);
   btnPlexSignout.addEventListener('click', function () {
     stopPlexPinPoll();
     stopPlexTranscode();
-    plexAuth = null; plexConn = null;
+    plexAuth = null; plexUser = null; plexConn = null;
     try {
       localStorage.removeItem('dm_plex_auth');
+      localStorage.removeItem('dm_plex_user');
       localStorage.removeItem('dm_plex_conn');
       localStorage.removeItem('dm_plex_pin');
     } catch (e) {}
@@ -2364,8 +2507,9 @@ if (typeof module !== 'undefined' && module.exports) {
      server chosen yet → find it. A sign-in still in progress (he went to
      Plex's page and came back) → resume waiting for it. */
   (function initPlex() {
-    if (plexAuth && plexConn) { showPlexMain(); loadPlexLibrary(); return; }
-    if (plexAuth) { discoverPlexServer(); return; }
+    if (plexAuth && plexUser && plexConn) { showPlexMain(); loadPlexLibrary(); return; }
+    if (plexAuth && plexUser) { discoverPlexServer(); return; }
+    if (plexAuth) { showPlexUsers(); return; }
     var pending = null;
     try { pending = JSON.parse(localStorage.getItem('dm_plex_pin') || 'null'); } catch (e) {}
     if (pending && pending.id && (Date.now() - pending.at) < 25 * 60 * 1000) {
