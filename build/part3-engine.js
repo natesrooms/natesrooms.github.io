@@ -519,7 +519,11 @@ var Engine = (function () {
         }
       }
     }
-    if (adecUsable()) {
+    // Only prepare ~4 s of sound ahead of what's playing. Scheduling it as
+    // far ahead as we've downloaded meant thousands of queued sound pieces
+    // - heavy for the car's computer, and a cause of crackle and dropouts.
+    var audioAhead = S.ctx ? S.nextAudioWhen - S.ctx.currentTime : 0;
+    if (adecUsable() && audioAhead < 4) {
       if (S.mode === 'hls' || S.mode === 'ts') {
         while (adecUsable() && S.adec.decodeQueueSize < 12 && aSamples.length) {
           var a = aSamples.shift();

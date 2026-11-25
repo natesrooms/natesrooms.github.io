@@ -2020,21 +2020,27 @@
     if (!MIR || !S.loaded || MIR.info.live) return;
     const n = MIR.carNow;
     if (!n || n.kind === 'idle') return;
-    // follow the car's pause / play
+    const carGoing = !!n.playing;   // false while the car is paused OR buffering
+    // Wait with the car: pause while it's paused or buffering, go when it goes.
     if (S.started && !S.ended) {
-      if (n.playing && !S.playing && !S.buffering) E.togglePlay();
-      else if (!n.playing && !n.buffering && S.playing) E.togglePlay();
+      if (carGoing && !S.playing) E.togglePlay();
+      else if (!carGoing && S.playing) E.togglePlay();
     }
-    if (!S.started || !S.firstFrameAt || S.buffering || !n.playing || Date.now() < MIR.fixing) return;
+    if (!S.started || !S.firstFrameAt || S.buffering || !carGoing) return;
     const target = carPosNow();
     if (target == null) return;
     const diff = E.dispPos(E.mediaNow()) - target;
-    if (Math.abs(diff) > 4) {
-      MIR.fixing = Date.now() + 8000;          // a big jump (the car skipped): reload at the car's spot
-      if (MIR.info.kind === 'plex') mirrorLoad(target + 1.5);
+    if (Math.abs(diff) > 15) {
+      // A real jump (the car skipped). Reloading starts a new conversion on
+      // the server, so do it at most once every 30 seconds.
+      if (Date.now() < MIR.fixing) return;
+      MIR.fixing = Date.now() + 30000;
+      if (MIR.info.kind === 'plex') mirrorLoad(target + 2);
       else E.seekTo(target + 0.5);
-    } else if (Math.abs(diff) > 0.12) {
-      E.nudge(Math.max(-0.5, Math.min(0.5, diff)));   // small drift: ease back into step
+    } else if (diff > 0.12) {
+      E.nudge(Math.min(0.5, diff));            // ahead: hold back a little
+    } else if (diff < -0.12) {
+      E.nudge(diff < -3 ? -1 : Math.max(-0.5, diff));   // behind: catch up without reloading
     }
   }
   function mirrorStop() {
