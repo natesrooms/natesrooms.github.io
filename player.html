@@ -105,6 +105,15 @@
   .libitem::after { content: ""; display: block; clear: both; }
   .ytgrid { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; max-height: 680px; overflow-y: auto; }
   .usergrid { margin-top: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 14px 10px; margin: 6px 0 18px; }
+  .pcard { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+  .pwrap { position: relative; border-radius: 10px; overflow: hidden; background: #232323; aspect-ratio: 2 / 3; }
+  .pwrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pwrap .pletter { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 800; color: #55554f; }
+  .pbar { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.25); }
+  .pbar i { display: block; height: 100%; background: #e50914; }
+  .ptitle { display: block; font-size: 14px; font-weight: 700; margin-top: 6px; line-height: 1.25; }
+  .pyear { display: block; font-size: 12px; color: #9a9a95; margin-top: 1px; }
   .usertile { background: #1d1d21; border: 1px solid #333338; border-radius: 14px; color: #f2f2ef; padding: 18px 10px 14px; text-align: center; cursor: pointer; font: inherit; }
   .usertile:active { background: #26262b; }
   .usertile .uav { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 10px; background: #3a3a41; color: #fff; font-size: 28px; font-weight: 700; line-height: 64px; overflow: hidden; }
@@ -2423,6 +2432,58 @@ if (typeof module !== 'undefined' && module.exports) {
     return b;
   }
 
+  function plexThumbUrl(item) {
+    if (!item.thumb) return '';
+    return plexBase() + item.thumb + (item.thumb.indexOf('?') >= 0 ? '&' : '?') +
+      'X-Plex-Token=' + encodeURIComponent(plexToken());
+  }
+
+  function posterCard(item, showProgress) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'pcard';
+    var wrap = document.createElement('div');
+    wrap.className = 'pwrap';
+    var url = plexThumbUrl(item);
+    if (url) {
+      var img = document.createElement('img');
+      img.src = url; img.alt = ''; img.loading = 'lazy';
+      wrap.appendChild(img);
+    } else {
+      var letter = document.createElement('div');
+      letter.className = 'pletter';
+      letter.textContent = (item.title || '?').charAt(0).toUpperCase();
+      wrap.appendChild(letter);
+    }
+    if (showProgress && item.viewOffset && item.duration) {
+      var bar = document.createElement('div');
+      bar.className = 'pbar';
+      var fill = document.createElement('i');
+      fill.style.width = Math.min(100, Math.round(item.viewOffset / item.duration * 100)) + '%';
+      bar.appendChild(fill);
+      wrap.appendChild(bar);
+    }
+    b.appendChild(wrap);
+    var t = document.createElement('span');
+    t.className = 'ptitle'; t.textContent = item.title;
+    b.appendChild(t);
+    var sub = document.createElement('span');
+    sub.className = 'pyear';
+    if (item.type === 'episode' && item.grandparentTitle) {
+      sub.textContent = item.grandparentTitle +
+        (item.parentIndex ? ' · S' + item.parentIndex + ' E' + (item.index || '?') : '');
+    } else if (item.type === 'show') {
+      sub.textContent = 'TV show' + (item.year ? ' · ' + item.year : '');
+    } else {
+      sub.textContent = item.year ? String(item.year) : 'Movie';
+    }
+    b.appendChild(sub);
+    b.addEventListener('click', function () {
+      if (item.type === 'show') loadEpisodes(item);
+      else playPlexItem(item.ratingKey, item.title);
+    });
+    return b;
+  }
+
   function renderLibrary(sections) {
     plexList.innerHTML = '';
     sections.forEach(function (sec) {
@@ -2430,20 +2491,19 @@ if (typeof module !== 'undefined' && module.exports) {
       head.className = 'libhead';
       head.textContent = sec.title;
       plexList.appendChild(head);
-      (sec.items || []).forEach(function (item) {
-        var label = item.title + (item.year ? ' (' + item.year + ')' : '');
-        var sub = item.type === 'show' ? 'TV show — tap to list episodes' : 'Movie';
-        plexList.appendChild(libButton(label, sub, function () {
-          if (item.type === 'show') loadEpisodes(item);
-          else playPlexItem(item.ratingKey, item.title);
-        }));
-      });
       if (!sec.items || !sec.items.length) {
         var empty = document.createElement('div');
         empty.className = 'status';
         empty.textContent = 'Nothing listed in this section.';
         plexList.appendChild(empty);
+        return;
       }
+      var grid = document.createElement('div');
+      grid.className = 'pgrid';
+      sec.items.forEach(function (item) {
+        grid.appendChild(posterCard(item, !!sec.cw));
+      });
+      plexList.appendChild(grid);
     });
   }
 
@@ -2466,26 +2526,40 @@ if (typeof module !== 'undefined' && module.exports) {
     }).catch(function (e) { plexSetMsg('Could not load episodes: ' + e.message, true); });
   }
 
+  function plexItemFromMeta(m) {
+    return {
+      ratingKey: m.ratingKey, title: m.title, year: m.year, type: m.type,
+      thumb: m.thumb, viewOffset: m.viewOffset, duration: m.duration,
+      grandparentTitle: m.grandparentTitle, parentIndex: m.parentIndex, index: m.index
+    };
+  }
+
   function loadPlexLibrary() {
     plexSetMsg('Contacting your Plex server…');
     plexList.innerHTML = '';
-    plexGet('/library/sections').then(function (data) {
-      var dirs = ((data.MediaContainer && data.MediaContainer.Directory) || [])
-        .filter(function (d) { return d.type === 'movie' || d.type === 'show'; });
-      if (!dirs.length) throw new Error('no movie or TV libraries found on that server.');
-      var sections = [];
-      var chain = Promise.resolve();
-      dirs.forEach(function (d) {
-        chain = chain.then(function () {
-          return plexGet('/library/sections/' + d.key + '/all').then(function (res) {
-            var items = ((res.MediaContainer && res.MediaContainer.Metadata) || []).map(function (m) {
-              return { ratingKey: m.ratingKey, title: m.title, year: m.year, type: m.type };
+    var cwPromise = plexGet('/library/onDeck').then(function (res) {
+      return ((res.MediaContainer && res.MediaContainer.Metadata) || [])
+        .filter(function (m) { return m.type === 'movie' || m.type === 'episode'; })
+        .map(plexItemFromMeta);
+    }).catch(function () { return []; });
+    cwPromise.then(function (cwItems) {
+      return plexGet('/library/sections').then(function (data) {
+        var dirs = ((data.MediaContainer && data.MediaContainer.Directory) || [])
+          .filter(function (d) { return d.type === 'movie' || d.type === 'show'; });
+        if (!dirs.length) throw new Error('no movie or TV libraries found on that server.');
+        var sections = [];
+        if (cwItems.length) sections.push({ title: 'Continue Watching', items: cwItems, cw: true });
+        var chain = Promise.resolve();
+        dirs.forEach(function (d) {
+          chain = chain.then(function () {
+            return plexGet('/library/sections/' + d.key + '/all').then(function (res) {
+              var items = ((res.MediaContainer && res.MediaContainer.Metadata) || []).map(plexItemFromMeta);
+              sections.push({ title: d.title, items: items });
             });
-            sections.push({ title: d.title, items: items });
           });
         });
+        return chain.then(function () { return sections; });
       });
-      return chain.then(function () { return sections; });
     }).then(function (sections) {
       plexRediscovered = false;
       renderLibrary(sections);
@@ -2535,22 +2609,26 @@ if (typeof module !== 'undefined' && module.exports) {
       if (!media || !part) throw new Error('no playable file listed for that item.');
       stopPlexTranscode();
       var base = plexBase(), tok = plexToken();
-      var container = (media.container || '').toLowerCase();
-      var vcodec = (media.videoCodec || '').toLowerCase();
-      if (container === 'mp4' && vcodec === 'h264' && part.key) {
-        plexPlayingRk = ratingKey;
-        loadSource(base + part.key + (part.key.indexOf('?') >= 0 ? '&' : '?') + 'X-Plex-Token=' + encodeURIComponent(tok), title);
-      } else {
-        plexPlayingRk = ratingKey;
-        var url = base + '/video/:/transcode/universal/start.m3u8?path=' + encodeURIComponent('/library/metadata/' + ratingKey) +
-          '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=0' +
-          '&directPlay=0&directStream=1&maxVideoBitrate=20000' +
-          '&X-Plex-Session-Identifier=' + encodeURIComponent(plexSid) +
-          '&X-Plex-Client-Identifier=' + encodeURIComponent(plexSid) +
-          '&X-Plex-Token=' + encodeURIComponent(tok);
-        loadSource(url, title);
+      /* Always stream through Plex's own HLS transcoder: it hands the
+         player small MPEG-TS segments one at a time (remuxing when the
+         codecs already fit, transcoding when they don't), so playback
+         starts in seconds and can resume mid-title. Never fetch the
+         raw file — that downloads the whole movie before frame one. */
+      plexPlayingRk = ratingKey;
+      var offset = 0;
+      if (meta.viewOffset && meta.duration && meta.viewOffset > 30000 &&
+          meta.viewOffset < meta.duration - 60000) {
+        offset = Math.floor(meta.viewOffset / 1000);
       }
-      plexSetMsg('“' + title + '” loaded in the player above — tap Play there.');
+      var url = base + '/video/:/transcode/universal/start.m3u8?path=' + encodeURIComponent('/library/metadata/' + ratingKey) +
+        '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=' + offset +
+        '&directPlay=0&directStream=1&maxVideoBitrate=10000' +
+        '&X-Plex-Session-Identifier=' + encodeURIComponent(plexSid) +
+        '&X-Plex-Client-Identifier=' + encodeURIComponent(plexSid) +
+        '&X-Plex-Token=' + encodeURIComponent(tok);
+      loadSource(url, title);
+      plexSetMsg('Streaming “' + title + '”' + (offset ? ' from where you left off' : '') +
+        ' — it starts in the player above, tap Play there.');
     }).catch(function (e) { plexSetMsg('Could not start that title: ' + e.message, true); });
   }
 
