@@ -66,6 +66,7 @@ var Engine = (function () {
     return fetch(url, opts).then(function (r) {
       if (!r.ok) {
         return r.text().catch(function () { return ''; }).then(function (t) {
+          try { var j = JSON.parse(t); if (j && j.error) t = j.error; } catch (e) {}
           t = (t || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
           var err = new Error('HTTP ' + r.status + (t ? ' (' + t + ')' : ''));
           err.status = r.status;
@@ -84,10 +85,21 @@ var Engine = (function () {
   function ensureCtx() {
     if (!S.ctx) {
       var AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) S.ctx = new AC();
+      if (AC) {
+        S.ctx = new AC();
+        // One volume control for everything the player plays (used to
+        // silence a mirrored screen whose sound comes from the car).
+        S.gain = S.ctx.createGain();
+        S.gain.gain.value = S.muted ? 0 : 1;
+        S.gain.connect(S.ctx.destination);
+      }
     }
     return S.ctx;
   }
+  function setMuted(m) { S.muted = !!m; ensureCtx(); if (S.gain) S.gain.gain.value = S.muted ? 0 : 1; }
+  /* Shift playback by a small amount without reloading (positive =
+     step back). Used to keep a mirrored screen in step with the car. */
+  function nudge(sec) { if (S.started && S.ctx && isFinite(sec)) S.ctxEpoch += sec; }
   function mediaNow() {
     if (!S.started || !S.ctx) return S.mediaTarget;
     return S.mediaTarget + Math.max(0, S.ctx.currentTime - S.ctxEpoch);
@@ -250,7 +262,7 @@ var Engine = (function () {
     S.nextAudioWhen = when + buf.duration;
     var src = S.ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(S.ctx.destination);
+    src.connect(S.gain || S.ctx.destination);
     src.onended = function () { S.audioSources.delete(src); };
     S.audioSources.add(src);
     try { src.start(when); } catch (e) {}
@@ -389,7 +401,12 @@ var Engine = (function () {
     // is a video still being converted: always start at the beginning.
     if (!pl.endList && pl.playlistType !== 'EVENT' && pl.segments.length > 4) {
       addSegments(track, pl);
-      track.nextSeq = pl.mediaSequence + pl.segments.length - 3;
+      track.nextSeq = track.demuxSeq = pl.mediaSequence + pl.segments.length - 3;
+      // Start the clock where we joined, not at the start of the
+      // playlist window - otherwise the picture waits (looks frozen)
+      // until the clock catches up with the segment we jumped to.
+      var joinAt = track.segments[track.nextSeq];
+      if (joinAt && S.tracks.length === 1) { S.mediaTarget = joinAt.start; S.dropAudioBefore = joinAt.start; }
     } else {
       addSegments(track, pl);
     }
@@ -811,6 +828,7 @@ var Engine = (function () {
     teardown();
     url = (url || '').trim();
     if (!url) { onEngineError('No stream address.'); return; }
+    S.srcUrl = url; S.srcOpts = opts || null;
     if (opts && opts.ts) loadTs(url, label || 'channel');
     else if (/\.mp4($|\?)/i.test(url) && !/\.m3u8/i.test(url)) loadMp4(url, label || 'MP4 file');
     else loadHls(url, label || 'stream', opts);
@@ -887,7 +905,7 @@ var Engine = (function () {
   });
 
   return {
-    S: S, hooks: hooks, hasWC: hasWC, fmt: fmt, fetchRead: fetchRead,
+    S: S, hooks: hooks, hasWC: hasWC, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge,
     load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo,
     ensureCtx: ensureCtx, mediaNow: mediaNow, dispPos: dispPos, dispDur: dispDur, canSeek: canSeek,
     setStatus: setStatus, updateTimeUi: updateTimeUi

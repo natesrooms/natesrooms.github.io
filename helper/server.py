@@ -21,8 +21,10 @@ Endpoints:
   GET  /remote/pair?code=NNNNNN -> {"room"}         (phone joins by code)
   POST /remote/<room>/cmd      phone -> car command (small JSON)
   GET  /remote/<room>/cmds     car long-polls for commands
-  POST /remote/<room>/state    car -> phone state (what's playing, lists)
-  GET  /remote/<room>/state?v= phone long-polls for newer state
+  POST /remote/<room>/state/<slot>  car -> phone data, in named slots
+                               ("now" small and frequent; "lists" large, rare)
+  GET  /remote/<room>/state?v= phone long-polls; gets only the slots that
+                               changed since version v, plus server time
   GET /iptv?k=<key>&u=<url>   -> IPTV relay (off unless IPTV_KEY and
                                  IPTV_HOSTS are set): fetches a channel
                                  list, HLS playlist or live .ts stream from
@@ -450,6 +452,7 @@ ROOMS = {}
 ROOMS_LOCK = threading.Lock()
 ROOM_IDLE = 8 * 3600
 CODE_TTL = 15 * 60
+MAX_PHONES = 3
 _PAIR_FAILS = {}  # ip -> [timestamps]
 
 
@@ -478,7 +481,7 @@ def room_new():
         while code in used_codes:
             code = "%06d" % secrets.randbelow(1000000)
         ROOMS[rid] = {"code": code, "code_at": time.time(), "used": time.time(),
-                      "cmds": [], "state": None, "ver": 0, "cond": threading.Condition()}
+                      "cmds": [], "slots": {}, "ver": 0, "cond": threading.Condition(), "phones": 0}
         return rid, code
 
 
@@ -490,6 +493,9 @@ def room_by_code(code, ip):
             return None, "too many wrong codes - try again later"
         for rid, r in ROOMS.items():
             if r["code"] == code and now - r["code_at"] < CODE_TTL:
+                if r["phones"] >= MAX_PHONES:
+                    return None, "three phones are already connected to this car - tap New code on the car to start over"
+                r["phones"] += 1
                 r["used"] = now
                 return rid, None
         fails.append(now)
@@ -598,25 +604,28 @@ class Handler(BaseHTTPRequestHandler):
                 except RuntimeError as e:
                     return self._json(503, {"error": str(e)})
                 return self._json(200, {"room": rid, "code": code, "code_ttl": CODE_TTL})
-            m = re.match(r"^/remote/([A-Za-z0-9_-]{16,40})/(cmd|state)$", u.path)
+            m = re.match(r"^/remote/([A-Za-z0-9_-]{16,40})/(cmd|state/([a-z]{1,16}))$", u.path)
             if m:
                 r = room_get(m.group(1))
                 if not r:
                     return self._json(404, {"error": "this remote has expired - pair again"})
+                is_cmd = m.group(2) == "cmd"
                 try:
-                    body = self._body_json(4096 if m.group(2) == "cmd" else 200000)
+                    body = self._body_json(4096 if is_cmd else 2000000)
                 except (ValueError, UnicodeDecodeError):
                     return self._json(400, {"error": "bad request body"})
                 with r["cond"]:
-                    if m.group(2) == "cmd":
+                    if is_cmd:
                         if not isinstance(body, dict) or not isinstance(body.get("type"), str):
                             return self._json(400, {"error": "bad command"})
                         r["cmds"] = (r["cmds"] + [body])[-50:]
                     else:
-                        r["state"] = body
+                        if len(r["slots"]) >= 8 and m.group(3) not in r["slots"]:
+                            return self._json(400, {"error": "too many slots"})
                         r["ver"] += 1
+                        r["slots"][m.group(3)] = (r["ver"], body)
                     r["cond"].notify_all()
-                return self._json(200, {"ok": True, "ver": r["ver"]})
+                return self._json(200, {"ok": True, "ver": r["ver"], "t": time.time() * 1000})
             return self._json(404, {"error": "unknown route"})
         except (BrokenPipeError, ConnectionResetError):
             pass
@@ -650,11 +659,12 @@ class Handler(BaseHTTPRequestHandler):
                 while not r["cmds"] and time.time() < deadline:
                     r["cond"].wait(max(0.05, deadline - time.time()))
                 out, r["cmds"] = r["cmds"], []
-                return self._json(200, {"cmds": out})
+                return self._json(200, {"cmds": out, "t": time.time() * 1000})
             have = int(qs.get("v", ["0"])[0] or 0)
             while r["ver"] <= have and time.time() < deadline:
                 r["cond"].wait(max(0.05, deadline - time.time()))
-            return self._json(200, {"ver": r["ver"], "state": r["state"] if r["ver"] > have else None})
+            changed = {k: v[1] for k, v in r["slots"].items() if v[0] > have}
+            return self._json(200, {"ver": r["ver"], "slots": changed, "t": time.time() * 1000})
 
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)

@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="dark" />
 <meta name="referrer" content="no-referrer" />
-<link rel="icon" href="data:," />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Theater" />
+<meta name="theme-color" content="#0c0d10" />
 <title>Nate's Theater</title>
 <style>
   :root {
@@ -35,13 +42,16 @@
   }
   .brand { font-size: 24px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
   .brand b { color: var(--accent); }
-  .tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+  @media (max-width: 1150px) { .brand { font-size: 20px; } .nav { gap: 10px; padding: 0 16px; } .tabs a { padding: 12px 8px; font-size: 15px; } }
   .tabs::-webkit-scrollbar { display: none; }
   .tabs a {
-    padding: 12px 16px; border-radius: 10px; font-size: 17px; font-weight: 600;
+    padding: 12px 10px; border-radius: 10px; font-size: 16px; font-weight: 600;
     color: var(--dim); white-space: nowrap; min-height: 48px; display: inline-flex; align-items: center;
   }
   .tabs a.on { color: var(--text); background: var(--bg3); }
+  .navgap { flex: 1; }
+  a.navfs { display: flex; align-items: center; justify-content: center; text-decoration: none; }
   .search { flex: 1; display: flex; justify-content: flex-end; min-width: 160px; }
   .search input {
     width: 100%; max-width: 360px; background: var(--bg2); border: 1px solid var(--line);
@@ -51,7 +61,11 @@
     width: 48px; height: 48px; border-radius: 50%; background: var(--bg3); flex: none;
     display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; overflow: hidden;
   }
-  .me img { width: 100%; height: 100%; object-fit: cover; }
+  .me { position: relative; border-radius: 12px; overflow: visible; }
+  .me .gear { font-size: 22px; line-height: 1; }
+  .mebadge { position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff;
+    font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid var(--bg); }
+  .mebadge img { width: 100%; height: 100%; object-fit: cover; }
   .navfs { width: 48px; height: 48px; border-radius: 12px; border: 0; background: var(--bg3); color: var(--text);
     font-size: 20px; cursor: pointer; flex: none; }
   .navfs:active { background: #2c3038; }
@@ -95,7 +109,7 @@
   .rm-link { margin-top: 18px; color: var(--dim); font-size: 15px; text-decoration: underline; }
   /* now playing */
   .rm-now { background: linear-gradient(160deg, #1d2027, #15171c); border: 1px solid var(--line); border-radius: 22px; padding: 18px;
-    box-shadow: 0 16px 40px rgba(0,0,0,.45); position: sticky; top: 10px; z-index: 5; }
+    box-shadow: 0 16px 40px rgba(0,0,0,.45); }
   .rm-head { display: flex; gap: 14px; align-items: center; }
   .rm-kind { width: 52px; height: 52px; flex: none; border-radius: 14px; background: #262a32; display: flex; align-items: center; justify-content: center; font-size: 26px; }
   .rm-kind img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
@@ -133,6 +147,33 @@
   .rm-is { color: var(--dim); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .rm-chev { color: #555a64; font-size: 24px; flex: none; }
   .rm-empty { color: var(--dim); text-align: center; padding: 30px 10px; font-size: 15px; }
+  /* remote poster rows */
+  .rm-searchrow { margin: 18px 0 4px; }
+  .rm-row { margin-top: 18px; }
+  .rm-rh { font-size: 17px; font-weight: 800; margin: 0 2px 10px; }
+  .rm-scroll { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 6px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+  .rm-scroll::-webkit-scrollbar { display: none; }
+  .rm-card { flex: none; scroll-snap-align: start; background: none; border: 0; padding: 0; color: var(--text); text-align: left; cursor: pointer; }
+  .rm-card.poster { width: 112px; } .rm-card.wide { width: 200px; } .rm-card.square { width: 120px; }
+  .rm-art { position: relative; border-radius: 12px; overflow: hidden; background: #1f2228; display: flex; align-items: center; justify-content: center; }
+  .rm-card.poster .rm-art { aspect-ratio: 2 / 3; } .rm-card.wide .rm-art { aspect-ratio: 16 / 9; } .rm-card.square .rm-art { aspect-ratio: 1; }
+  .rm-art img { width: 100%; height: 100%; object-fit: cover; }
+  .rm-art.logo { background: #1b1d22; } .rm-art.logo img { object-fit: contain; padding: 14%; }
+  .rm-art > span { padding: 8px; font-size: 14px; font-weight: 800; text-align: center; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+  .rm-card:active .rm-art { transform: scale(.97); }
+  .rm-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.25); }
+  .rm-prog i { display: block; height: 100%; background: var(--accent); }
+  .rm-ct { font-size: 13px; font-weight: 700; margin-top: 6px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .rm-cs { font-size: 11px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rm-card.skel .rm-art { background: linear-gradient(90deg, #17191e 0%, #20232a 50%, #17191e 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; }
+  .rm-tip { position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 60; display: flex; gap: 12px; align-items: center;
+    background: #26282e; border: 1px solid #3a3d45; border-radius: 14px; padding: 12px 14px; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .rm-tip b { color: #fff; } .rm-tip span { flex: 1; color: #d6d7da; }
+  .rm-tip button { background: none; border: 0; color: #aaa; font-size: 20px; padding: 4px 6px; cursor: pointer; }
+  .rm-watch { display: block; width: 100%; margin-top: 14px; background: var(--accent); color: #fff; border: 0; border-radius: 12px; font-size: 16px; font-weight: 800; padding: 13px; cursor: pointer; }
+  /* phone playing along (mirror) */
+  body.mirror-mode .pl-bottom .pl-row > :not(#btnFs), body.mirror-mode .seek { display: none !important; }
+  body.mirror-mode .pl-bottom { padding-top: 10px; }
   .skel-row { background: linear-gradient(90deg, #17191e 0%, #20232a 50%, #17191e 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; border-color: transparent; }
 
   .view { padding: 0 0 60px; min-height: calc(100vh - var(--navh)); }
@@ -172,6 +213,12 @@
   }
   .scroller::-webkit-scrollbar { display: none; }
   .scroller > * { flex: none; scroll-snap-align: start; }
+  /* magazine page-turn rows */
+  .flow { perspective: 1100px; perspective-origin: 50% 40%; }
+  .flow > * { transform-origin: 50% 50%; transition: transform .12s ease-out; will-change: transform; backface-visibility: hidden; }
+  .flow.rm-scroll { scroll-snap-type: x mandatory; }
+  .flow.rm-scroll > * { scroll-snap-align: center; }
+  @media (prefers-reduced-motion: reduce) { .flow > * { transform: none !important; } }
 
   /* Poster card */
   .pc { width: 168px; cursor: pointer; }
@@ -280,13 +327,13 @@
   .player.idle .pl-ui { opacity: 0; }
   .player.idle .pl-ui > * { pointer-events: none; }
   .player.idle { cursor: none; }
-  .pl-top { display: flex; align-items: center; gap: 16px; padding: 18px 22px 40px;
+  .pl-top { display: flex; align-items: center; gap: 16px; padding: max(18px, env(safe-area-inset-top)) max(22px, env(safe-area-inset-right)) 40px max(22px, env(safe-area-inset-left));
     background: linear-gradient(180deg, rgba(0,0,0,.8), rgba(0,0,0,0)); }
   .pl-top .tt { font-size: 22px; font-weight: 800; }
   .pl-top .ts { font-size: 15px; color: #c9cacd; }
   .pl-live { background: var(--accent); color: #fff; font-weight: 800; font-size: 13px; letter-spacing: .08em; border-radius: 6px; padding: 4px 10px; }
   .pl-live[hidden] { display: none; }
-  .pl-bottom { padding: 40px 22px 18px; background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0)); }
+  .pl-bottom { padding: 40px max(22px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-left)); background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0)); }
   .pl-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .pb { background: rgba(255,255,255,.12); border: 0; border-radius: 12px; color: #fff; font-size: 18px; font-weight: 700;
     min-height: 58px; min-width: 64px; padding: 8px 16px; cursor: pointer; }
@@ -397,17 +444,15 @@
       <a href="#/movies" data-tab="movies">Movies</a>
       <a href="#/tv" data-tab="tv">TV Shows</a>
       <a href="#/live" data-tab="live">Live TV</a>
-      <a href="#/iptv" data-tab="iptv">IPTV</a>
       <a href="#/youtube" data-tab="youtube">YouTube</a>
       <a href="#/radio" data-tab="radio">Radio</a>
       <a href="#/traffic" data-tab="traffic">Traffic</a>
     </nav>
-    <form class="search" id="searchForm" role="search">
-      <input id="searchIn" type="search" placeholder="Search movies, shows, channels" autocomplete="off" autocapitalize="off" spellcheck="false" />
-    </form>
+    <span class="navgap"></span>
+    <a class="navfs" href="#/search" id="searchBtn" aria-label="Search" title="Search">&#128269;</a>
     <button class="navfs" id="remoteBtn" type="button" aria-label="Phone remote" title="Phone remote">&#128241;</button>
     <button class="navfs" id="fsAll" type="button" aria-label="Full screen" title="Full screen">&#9974;</button>
-    <a class="me" href="#/settings" id="meBtn" aria-label="Account and settings">&#9881;</a>
+    <a class="me navfs" href="#/settings" id="meBtn" aria-label="Settings" title="Settings">&#9881;</a>
   </header>
 
   <div class="wcwarn" id="wcWarn" hidden>
@@ -1406,6 +1451,7 @@ var Engine = (function () {
     return fetch(url, opts).then(function (r) {
       if (!r.ok) {
         return r.text().catch(function () { return ''; }).then(function (t) {
+          try { var j = JSON.parse(t); if (j && j.error) t = j.error; } catch (e) {}
           t = (t || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
           var err = new Error('HTTP ' + r.status + (t ? ' (' + t + ')' : ''));
           err.status = r.status;
@@ -1424,10 +1470,21 @@ var Engine = (function () {
   function ensureCtx() {
     if (!S.ctx) {
       var AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) S.ctx = new AC();
+      if (AC) {
+        S.ctx = new AC();
+        // One volume control for everything the player plays (used to
+        // silence a mirrored screen whose sound comes from the car).
+        S.gain = S.ctx.createGain();
+        S.gain.gain.value = S.muted ? 0 : 1;
+        S.gain.connect(S.ctx.destination);
+      }
     }
     return S.ctx;
   }
+  function setMuted(m) { S.muted = !!m; ensureCtx(); if (S.gain) S.gain.gain.value = S.muted ? 0 : 1; }
+  /* Shift playback by a small amount without reloading (positive =
+     step back). Used to keep a mirrored screen in step with the car. */
+  function nudge(sec) { if (S.started && S.ctx && isFinite(sec)) S.ctxEpoch += sec; }
   function mediaNow() {
     if (!S.started || !S.ctx) return S.mediaTarget;
     return S.mediaTarget + Math.max(0, S.ctx.currentTime - S.ctxEpoch);
@@ -1590,7 +1647,7 @@ var Engine = (function () {
     S.nextAudioWhen = when + buf.duration;
     var src = S.ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(S.ctx.destination);
+    src.connect(S.gain || S.ctx.destination);
     src.onended = function () { S.audioSources.delete(src); };
     S.audioSources.add(src);
     try { src.start(when); } catch (e) {}
@@ -1729,7 +1786,12 @@ var Engine = (function () {
     // is a video still being converted: always start at the beginning.
     if (!pl.endList && pl.playlistType !== 'EVENT' && pl.segments.length > 4) {
       addSegments(track, pl);
-      track.nextSeq = pl.mediaSequence + pl.segments.length - 3;
+      track.nextSeq = track.demuxSeq = pl.mediaSequence + pl.segments.length - 3;
+      // Start the clock where we joined, not at the start of the
+      // playlist window - otherwise the picture waits (looks frozen)
+      // until the clock catches up with the segment we jumped to.
+      var joinAt = track.segments[track.nextSeq];
+      if (joinAt && S.tracks.length === 1) { S.mediaTarget = joinAt.start; S.dropAudioBefore = joinAt.start; }
     } else {
       addSegments(track, pl);
     }
@@ -2151,6 +2213,7 @@ var Engine = (function () {
     teardown();
     url = (url || '').trim();
     if (!url) { onEngineError('No stream address.'); return; }
+    S.srcUrl = url; S.srcOpts = opts || null;
     if (opts && opts.ts) loadTs(url, label || 'channel');
     else if (/\.mp4($|\?)/i.test(url) && !/\.m3u8/i.test(url)) loadMp4(url, label || 'MP4 file');
     else loadHls(url, label || 'stream', opts);
@@ -2227,7 +2290,7 @@ var Engine = (function () {
   });
 
   return {
-    S: S, hooks: hooks, hasWC: hasWC, fmt: fmt, fetchRead: fetchRead,
+    S: S, hooks: hooks, hasWC: hasWC, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge,
     load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo,
     ensureCtx: ensureCtx, mediaNow: mediaNow, dispPos: dispPos, dispDur: dispDur, canSeek: canSeek,
     setStatus: setStatus, updateTimeUi: updateTimeUi
@@ -2468,8 +2531,36 @@ var MiniQR = (function () {
     el.classList.add('pc');
     return el;
   }
+  /* Magazine-style rows: as a row scrolls, the cover in the middle faces
+     you and the ones toward the edges turn away like pages. Works on
+     any horizontally scrolling row; cards added later are picked up. */
+  function enableFlow(scroller) {
+    scroller.classList.add('flow');
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      if (!scroller.isConnected) return;
+      const r = scroller.getBoundingClientRect();
+      if (!r.width) return;
+      const cx = r.left + r.width / 2;
+      for (const el of scroller.children) {
+        const b = el.getBoundingClientRect();
+        const d = Math.max(-1, Math.min(1, ((b.left + b.width / 2) - cx) / (r.width / 2)));
+        const ang = -d * 32, sc = 1 - Math.abs(d) * 0.1, lift = Math.abs(d) < 0.15 ? -4 : 0;
+        el.style.transform = `translateY(${lift}px) rotateY(${ang.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
+        el.style.zIndex = String(100 - Math.round(Math.abs(d) * 100));
+      }
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(update); };
+    scroller.addEventListener('scroll', kick, { passive: true });
+    window.addEventListener('resize', kick, { passive: true });
+    new MutationObserver(kick).observe(scroller, { childList: true });
+    if ('ResizeObserver' in window) new ResizeObserver(kick).observe(scroller);
+    kick();
+    return scroller;
+  }
   function row(title, moreHref) {
-    const scroller = h('div', { class: 'scroller' });
+    const scroller = enableFlow(h('div', { class: 'scroller' }));
     const sec = h('section', { class: 'row' },
       h('div', { class: 'row-h' }, h('h2', { text: title }), moreHref ? h('a', { href: moreHref, text: 'See all ›' }) : null),
       scroller);
@@ -2995,7 +3086,7 @@ var MiniQR = (function () {
       if (cfg.type === 'm3u' && !/^https?:\/\//i.test(cfg.m3u)) { st.textContent = 'Paste the full playlist link (starting with http:// or https://).'; st.className = 'msg err'; return; }
       if (cfg.type === 'xtream' && (!cfg.server || !cfg.user || !cfg.pass)) { st.textContent = 'Fill in server, username and password.'; st.className = 'msg err'; return; }
       if (cfg.proxy && !cfg.key) { st.textContent = 'Routing through the helper needs the helper’s IPTV key.'; st.className = 'msg err'; return; }
-      store.set('dm_iptv', cfg); iptvData = null; invalidate('iptv');
+      store.set('dm_iptv', cfg); iptvData = null; invalidate('live/iptv');
       st.textContent = 'Saved on this screen — loading your channels…'; st.className = 'msg';
       loadIptv(true).then((d) => { st.textContent = `Saved and connected — ${d.channels.length} channels in ${d.cats.length} groups. It stays set up next time you open the app.`; if (onSaved) onSaved(); })
         .catch((e) => { st.textContent = 'Saved, but loading failed: ' + e.message; st.className = 'msg err'; });
@@ -3007,7 +3098,7 @@ var MiniQR = (function () {
         'Route through the home helper (needed for http:// providers, or ones that block web players)'),
       keyRow,
       h('div', { class: 'btns' }, h('button', { class: 'btn red', type: 'button', text: 'Save & load channels', onclick: save }),
-        iptvCfg() ? h('button', { class: 'btn ghost', type: 'button', text: 'Remove', onclick: () => { store.set('dm_iptv', null); iptvData = null; invalidate('iptv'); st.textContent = 'Removed.'; st.className = 'msg'; } }) : null),
+        iptvCfg() ? h('button', { class: 'btn ghost', type: 'button', text: 'Remove', onclick: () => { store.set('dm_iptv', null); iptvData = null; invalidate('live/iptv'); st.textContent = 'Removed.'; st.className = 'msg'; } }) : null),
       st);
   }
 
@@ -3143,18 +3234,17 @@ var MiniQR = (function () {
     try { fn(node, r.args); } catch (e) { node.appendChild(msg('Something went wrong on this page: ' + e.message, true)); }
   }
   window.addEventListener('hashchange', route);
-  $('searchForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const q = $('searchIn').value.trim();
-    if (q) go('#/search/' + enc(q));
-    $('searchIn').blur();
-  });
   function updateMe() {
+    // Always a clear gear; the Plex profile shows as a small badge on it.
     const me = $('meBtn');
-    me.replaceChildren();
-    if (plex.user && plex.user.thumb && okUrl(plex.user.thumb)) me.appendChild(h('img', { src: plex.user.thumb, alt: '' }));
-    else if (plex.user) me.textContent = (plex.user.name || '?').charAt(0).toUpperCase();
-    else me.textContent = '⚙';
+    me.replaceChildren(h('span', { class: 'gear', text: '⚙' }));
+    if (plex.user) {
+      const badge = h('span', { class: 'mebadge' });
+      if (plex.user.thumb && okUrl(plex.user.thumb)) badge.appendChild(h('img', { src: plex.user.thumb, alt: '' }));
+      else badge.textContent = (plex.user.name || '?').charAt(0).toUpperCase();
+      me.appendChild(badge);
+    }
+    me.title = 'Settings' + (plex.user ? ' · watching as ' + plex.user.name : '');
   }
 
   /* ---------- Home ---------- */
@@ -3379,12 +3469,18 @@ var MiniQR = (function () {
   /* ---------- Live TV ---------- */
   function myLists() { return store.get('dm_lists', []); }
   function myChannels() { return store.get('dm_mychans', []); }
-  VIEWS.live = (root, [src, cat]) => {
-    src = src || (favs().length ? 'fav' : 'verified');
-    const sources = [{ id: 'fav', label: '★ Favorites' }, { id: 'verified', label: 'Tested channels' }];
+  function liveSources() {
+    const sources = [{ id: 'fav', label: '★ Favorites' }, { id: 'iptv', label: iptvCfg() ? '📡 My IPTV' : '📡 Add IPTV' }, { id: 'verified', label: 'Tested channels' }];
     if (myChannels().length) sources.push({ id: 'mine', label: 'My channels' });
     myLists().forEach((l, i) => sources.push({ id: 'list' + i, label: l.name }));
     REGIONS.forEach(([cc, name]) => sources.push({ id: 'cc-' + cc, label: name }));
+    return sources;
+  }
+  VIEWS.live = (root, [src, cat, q]) => {
+    src = src || (favs().length ? 'fav' : 'verified');
+    if (src === 'iptv') { root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' })));
+      root.appendChild(chips(liveSources(), 'iptv', (c) => '#/live/' + c.id)); iptvBody(root, cat, q); return; }
+    const sources = liveSources();
     root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' }), h('a', { class: 'btn ghost', href: '#/settings', text: '+ Add your own list' })));
     root.appendChild(chips(sources, src, (c) => '#/live/' + c.id));
     const body = h('div'); root.appendChild(body);
@@ -3452,20 +3548,20 @@ var MiniQR = (function () {
   };
 
   /* ---------- IPTV ---------- */
-  VIEWS.iptv = (root, [cat, q]) => {
+  VIEWS.iptv = (root, [cat, q]) => { go('#/live/iptv' + (cat ? '/' + enc(cat) : '') + (q ? '/' + enc(q) : ''), true); };
+  function iptvBody(root, cat, q) {
     if (!iptvCfg()) {
-      root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'IPTV' })));
       root.appendChild(iptvSetupCard(() => { currentKey = null; render(parse()); }));
       return;
     }
     const search = h('input', { type: 'text', value: q || '', placeholder: 'Find a channel', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const catSel = h('select', {});
-    const doFilter = () => go('#/iptv/' + enc(catSel.value) + (search.value.trim() ? '/' + enc(search.value.trim()) : ''), true);
+    const doFilter = () => go('#/live/iptv/' + enc(catSel.value) + (search.value.trim() ? '/' + enc(search.value.trim()) : ''), true);
     search.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFilter(); });
     catSel.addEventListener('change', doFilter);
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'IPTV' }),
-      h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: 'Refresh list', onclick: () => { iptvData = null; invalidate('iptv'); currentKey = null; render(parse()); } }),
-        h('a', { class: 'btn ghost', href: '#/settings', text: 'Provider settings' }))));
+    root.appendChild(h('div', { class: 'pad', style: { display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' } },
+      h('button', { class: 'btn ghost', type: 'button', text: 'Refresh list', onclick: () => { iptvData = null; invalidate('live/iptv'); currentKey = null; render(parse()); } }),
+      h('a', { class: 'btn ghost', href: '#/settings', text: 'Provider settings' })));
     root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, catSel, search, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doFilter }))));
     const body = h('div'); root.appendChild(body);
     const loading = msg('Loading your channels — big lists can take a moment…'); body.appendChild(loading);
@@ -3489,7 +3585,7 @@ var MiniQR = (function () {
       step();
       if ('IntersectionObserver' in window) new IntersectionObserver((ents) => { if (ents.some((x) => x.isIntersecting) && !btn.hidden) step(); }, { rootMargin: '900px' }).observe(more);
     }).catch((e) => { loading.remove(); body.appendChild(msg('Could not load your channels: ' + e.message, true)); });
-  };
+  }
 
 
   /* ---------- Traffic (Waze live map) ---------- */
@@ -3568,8 +3664,12 @@ var MiniQR = (function () {
   /* ---------- Search ---------- */
   VIEWS.search = (root, [q]) => {
     q = q || '';
-    $('searchIn').value = q;
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: `Results for “${q}”` })));
+    const box = h('input', { type: 'search', value: q, placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const doSearch = () => { const v = box.value.trim(); if (v) go('#/search/' + enc(v)); };
+    box.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: q ? `Results for “${q}”` : 'Search' })));
+    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, box, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
+    if (!q) { setTimeout(() => box.focus(), 50); return; }
     const slots = [h('div'), h('div'), h('div'), h('div')]; slots.forEach((s) => root.appendChild(s));
     const ql = q.toLowerCase();
     let any = false;
@@ -3594,7 +3694,7 @@ var MiniQR = (function () {
       done.push(loadIptv().then((d) => {
         const hits = d.channels.filter((c) => c.name.toLowerCase().includes(ql)).slice(0, 40);
         if (!hits.length) return; any = true;
-        const r = row('IPTV', '#/iptv//' + enc(q)); hits.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[1].appendChild(r.sec);
+        const r = row('IPTV', '#/live/iptv//' + enc(q)); hits.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[1].appendChild(r.sec);
       }).catch(() => {}));
     }
     done.push(ytSearch(q, 16).then((res) => {
@@ -3791,6 +3891,16 @@ var MiniQR = (function () {
   E.hooks.onState = refreshOverlay;
   let watchChannel = null;
   E.hooks.onError = (m) => {
+    // Phone playing along: Plex often refuses the first stream request
+    // from a device it hasn't seen yet - retry, picking up the car's spot.
+    if (MIR && MIR.info.kind === 'plex' && /HTTP (400|404|409|5\d\d)|timed out|Failed to fetch/i.test(m || '') && (MIR.retries || 0) < 3) {
+      MIR.retries = (MIR.retries || 0) + 1;
+      E.setStatus('Getting it ready on this device…');
+      S.loading = true; refreshOverlay();
+      const mine = MIR;
+      setTimeout(() => { if (MIR === mine) mirrorLoad(carPosNow() || 0); }, 1500 * MIR.retries);
+      return;
+    }
     if (watchChannel && !watchChannel.done && !S.firstFrameAt) { watchChannel.done = true; markHealth(watchChannel.url, false); }
     if (P && /HTTP (400|404|409|5\d\d)|timed out|Failed to fetch/i.test(m || '') && (P.retries || 0) < 2) {
       P.retries = (P.retries || 0) + 1;
@@ -3802,6 +3912,7 @@ var MiniQR = (function () {
   };
   E.hooks.onFirstFrame = () => {
     if (P) P.retries = 0;
+    if (MIR) MIR.retries = 0;
     if (watchChannel && !watchChannel.done) { watchChannel.done = true; markHealth(watchChannel.url, true); } $('plNote').textContent = ''; refreshOverlay(); showUi(); };
 
   function openPlayerShell(title, sub) {
@@ -3986,7 +4097,7 @@ var MiniQR = (function () {
     if (S.ended && P) { startPlexAt(0, true); return; }
     E.togglePlay(); showUi();
   });
-  $('plBack').addEventListener('click', () => { if (sawAppView) history.back(); else go('#/home', true); });
+  $('plBack').addEventListener('click', () => { if (MIR) { mirrorStop(); return; } if (sawAppView) history.back(); else go('#/home', true); });
   /* Full screen: one toggle for the whole app (menu button and the
      player's button do the same thing), so browsing and watching stay
      full screen together and the two can't fight each other. */
@@ -4052,20 +4163,38 @@ var MiniQR = (function () {
      QR code / 6-digit code; a phone that joins sends small commands
      (play, skip, open this…) and reads back what's playing. Messages go
      through the helper because the car (mobile data) and the phone can't
-     reach each other directly. Nothing secret travels: no Plex tokens,
-     only titles and app addresses.
+     reach each other directly.
+     Data the car sends lives in named slots: "now" (small, every second
+     or so), "lists" and "results" (posters, sent once), "mirror" (what
+     the phone needs to play the same thing itself).
      ===================================================================== */
-  const REM = { room: null, code: '', gen: 0, phoneSeenAt: 0, lists: null, results: null, lastSent: '', autoUntil: 0 };
+  const REM = { room: null, code: '', gen: 0, phoneSeenAt: 0, lastNow: '', autoUntil: 0, srvOffset: 0 };
   function remoteApi(path, opts) { return E.fetchRead(ytBase() + '/remote' + path, 'json', 30000, opts); }
   function remotePost(path, body) {
     return remoteApi(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
-  function remoteLink(room) { return location.origin + location.pathname.replace(/player\.html$/, '') + '#/remote/' + room; }
+  /* Clock alignment with the helper, used to keep a mirrored screen in
+     step. Only quick round trips count (the long "wait for news" polls
+     would skew it by seconds); the quickest recent sample wins. */
+  let bestRtt = Infinity, bestAt = 0;
+  function noteServerTime(d, t0) {
+    if (!d || !d.t) return;
+    const now = Date.now(), rtt = now - t0;
+    if (rtt > 1500) { if (bestRtt === Infinity) REM.srvOffset = d.t - now; return; }
+    if (rtt <= bestRtt || now - bestAt > 60000) { bestRtt = rtt; bestAt = now; REM.srvOffset = d.t - (t0 + now) / 2; }
+  }
+  function serverNow() { return Date.now() + REM.srvOffset; }
+  function remoteLink(room) { return location.origin + location.pathname.replace(/(index|player)\.html$/, '') + '#/remote/' + room; }
+  function postSlot(name, data) {
+    if (!REM.room) return Promise.resolve();
+    const t0 = Date.now();
+    return remotePost('/' + REM.room + '/state/' + name, data).then((d) => noteServerTime(d, t0)).catch(() => { if (name === 'now') REM.lastNow = ''; });
+  }
 
   // ---- car side ----
   function carRemoteStart() {
     const saved = store.get('dm_remote_car', null);
-    if (saved && saved.room && Date.now() - saved.at < 7.5 * 3600 * 1000) {
+    if (saved && saved.room && Date.now() - (saved.used || saved.at) < 7.5 * 3600 * 1000) {
       REM.room = saved.room; REM.code = saved.code || '';
       carRemoteLoop();
       return Promise.resolve();
@@ -4085,7 +4214,9 @@ var MiniQR = (function () {
     updateRemoteBtn();
     const loop = () => {
       if (gen !== REM.gen) return;
+      const t0 = Date.now();
       remoteApi('/' + room + '/cmds?wait=20').then((d) => {
+        noteServerTime(d, t0);
         (d.cmds || []).forEach(handleRemoteCmd);
         setTimeout(loop, 50);
       }).catch((e) => {
@@ -4095,49 +4226,59 @@ var MiniQR = (function () {
     };
     loop();
   }
-  setInterval(() => { if (REM.room) publishRemoteState(false); }, 1500);
+  setInterval(() => { if (REM.room) publishNow(false); }, 1000);
   const artCache = {};
-  function posterData(path) {
-    if (!path || !plex.conn) return null;
-    if (artCache[path] !== undefined) return artCache[path];
-    artCache[path] = null;
-    fetch(pimg(path, 200, 300)).then((r) => r.ok ? r.blob() : null).then((b) => {
-      if (!b) return;
+  function posterData(path, w, hgt) {
+    // Small poster as image data, so no Plex token leaves the car.
+    if (!path || !plex.conn) return Promise.resolve(null);
+    const key = path + '@' + w;
+    if (artCache[key] !== undefined) return Promise.resolve(artCache[key]);
+    return fetch(pimg(path, w, hgt)).then((r) => r.ok ? r.blob() : null).then((b) => new Promise((ok) => {
+      if (!b) { ok(null); return; }
       const fr = new FileReader();
-      fr.onload = () => { artCache[path] = fr.result; publishRemoteState(true); };
+      fr.onload = () => ok(fr.result); fr.onerror = () => ok(null);
       fr.readAsDataURL(b);
-    }).catch(() => {});
-    return null;
+    })).then((v) => (artCache[key] = v)).catch(() => null);
   }
+  let nowArtVal = null, nowArtKey = '';
   function nowArt() {
-    if (P && P.meta) return posterData(P.meta.type === 'episode' ? (P.meta.grandparentThumb || P.meta.thumb) : P.meta.thumb);
-    const k = (watchKey || '').split('/');
-    if (k[0] === 'yt' && k[1]) return 'https://i.ytimg.com/vi/' + encodeURIComponent(k[1]) + '/hqdefault.jpg';
-    return null;
+    let key = '', fetcher = null;
+    if (P && P.meta) {
+      const path = P.meta.type === 'episode' ? (P.meta.grandparentThumb || P.meta.thumb) : P.meta.thumb;
+      key = 'p:' + path; fetcher = () => posterData(path, 200, 300);
+    } else {
+      const k = (watchKey || '').split('/');
+      if (k[0] === 'yt' && k[1]) return 'https://i.ytimg.com/vi/' + encodeURIComponent(k[1]) + '/hqdefault.jpg';
+      return null;
+    }
+    if (key !== nowArtKey) { nowArtKey = key; nowArtVal = null; fetcher().then((v) => { if (nowArtKey === key) { nowArtVal = v; publishNow(true); } }); }
+    return nowArtVal;
   }
   function nowState() {
-    if (playerOpen) {
+    if (playerOpen && !MIR) {
       return { kind: P ? 'plex' : (watchKey || '').split('/')[0], art: nowArt(), title: $('plTitle').textContent, sub: $('plSub').textContent,
-        pos: Math.round(E.dispPos(E.mediaNow())), dur: Math.round(E.dispDur() || 0), seek: E.canSeek(),
-        playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended };
+        pos: +E.dispPos(E.mediaNow()).toFixed(2), at: serverNow(), dur: Math.round(E.dispDur() || 0), seek: E.canSeek(), live: !!(S.isLive && !S.view),
+        playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended, mirrorable: true };
     }
-    if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false };
+    if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false, mirrorable: true };
     return { kind: 'idle' };
   }
-  function publishRemoteState(force) {
+  function publishNow(force) {
     if (!REM.room) return;
-    const st = { now: nowState(), lists: REM.lists, results: REM.results };
-    const s = JSON.stringify(st);
-    if (!force && s === REM.lastSent) return;
-    REM.lastSent = s;
-    remotePost('/' + REM.room + '/state', st).catch(() => { REM.lastSent = ''; });
+    const st = nowState();
+    const cmp = JSON.stringify(Object.assign({}, st, { at: 0, pos: Math.round(st.pos || 0) }));
+    if (!force && cmp === REM.lastNow) return;
+    REM.lastNow = cmp;
+    postSlot('now', st);
   }
   const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|traffic$|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
+    const saved = store.get('dm_remote_car', null);
+    if (saved && saved.room === REM.room && Date.now() - (saved.used || 0) > 60000) store.set('dm_remote_car', Object.assign(saved, { used: Date.now() }));
     updateRemoteBtn();
     const t = c && c.type;
-    if (t === 'hello') { REM.lastSent = ''; publishRemoteState(true); return; }
+    if (t === 'hello') { publishNow(true); return; }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
     else if (t === 'skip' && playerOpen) skip(Math.max(-600, Math.min(600, +c.s || 0)));
     else if (t === 'seek' && playerOpen && E.canSeek()) E.hooks.onSeekRequest(Math.max(0, +c.pos || 0));
@@ -4145,36 +4286,45 @@ var MiniQR = (function () {
     else if (t === 'stopradio') stopRadio();
     else if (t === 'go' && typeof c.hash === 'string' && SAFE_HASH.test(c.hash)) { REM.autoUntil = Date.now() + 8000; go(c.hash); }
     else if (t === 'radio' && c.st && okUrl(c.st.url_resolved || '')) playRadio(c.st);
-    else if (t === 'lists') buildRemoteLists().then((l) => { REM.lists = l; publishRemoteState(true); });
-    else if (t === 'find' && typeof c.q === 'string' && c.q.trim()) remoteFind(c.q.trim().slice(0, 80)).then((r) => { REM.results = r; publishRemoteState(true); });
-    setTimeout(() => publishRemoteState(true), 400);
+    else if (t === 'lists') buildRemoteLists().then((l) => postSlot('lists', l));
+    else if (t === 'find' && typeof c.q === 'string' && c.q.trim()) remoteFind(c.q.trim().slice(0, 80)).then((r) => postSlot('results', r));
+    else if (t === 'mirror') buildMirror().then((m) => postSlot('mirror', Object.assign({ req: c.req || 0 }, m)))
+      .catch((e) => postSlot('mirror', { req: c.req || 0, kind: 'error', error: e.message }));
+    setTimeout(() => publishNow(true), 400);
   }
-  function itemFromPlex(m) {
+  function plexEntry(m) {
     const isEp = m.type === 'episode';
     return { t: isEp ? m.grandparentTitle : m.title, s: isEp ? epCode(m) + ' — ' + m.title : (m.year ? String(m.year) : ''),
-      go: (m.type === 'show' || m.type === 'season') ? null : '#/watch/plex/' + m.ratingKey };
+      go: (m.type === 'show' || m.type === 'season') ? null : '#/watch/plex/' + m.ratingKey,
+      p: m.viewOffset && m.duration ? +(m.viewOffset / m.duration).toFixed(3) : 0,
+      _art: isEp ? (m.grandparentThumb || m.thumb) : m.thumb };
   }
-  function chanItem(ch) { return { t: ch.name, s: ch.cat || 'Live', go: channelHref(ch) }; }
-  function radioItem(st) {
-    return { t: st.name, s: (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', ') || 'Radio',
+  function withPosters(items) {
+    return Promise.all(items.map((it) => (it._art ? posterData(it._art, 120, 180) : Promise.resolve(null)).then((img) => {
+      const o = Object.assign({}, it); delete o._art; if (img) o.img = img; return o;
+    })));
+  }
+  function chanEntry(ch) { return { t: ch.name, s: ch.cat || 'Live', go: channelHref(ch), img: okUrl(ch.logo || '') ? ch.logo : null }; }
+  function radioEntry(st) {
+    return { t: st.name, s: (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', ') || 'Radio', img: okUrl(st.favicon || '') ? st.favicon : null,
       st: { stationuuid: st.stationuuid, name: st.name, url_resolved: st.url_resolved, favicon: st.favicon || '', tags: st.tags || '', bitrate: st.bitrate || 0 } };
   }
   function buildRemoteLists() {
     const out = { cont: [], recent: [], live: [], radio: [] };
     const jobs = [];
     if (plex.auth) {
-      jobs.push(pget('/library/onDeck?X-Plex-Container-Start=0&X-Plex-Container-Size=20').then((d) => {
-        out.cont = (MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').map(itemFromPlex);
-      }).catch(() => {}));
+      jobs.push(pget('/library/onDeck?X-Plex-Container-Start=0&X-Plex-Container-Size=20')
+        .then((d) => withPosters((MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').map(plexEntry)))
+        .then((l) => { out.cont = l; }).catch(() => {}));
       jobs.push(getSections().then((secs) => Promise.all(secs.map((sec) =>
-        pget(`/library/sections/${sec.key}/recentlyAdded?X-Plex-Container-Start=0&X-Plex-Container-Size=15`).then((d) => {
-          (MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').forEach((m) => out.recent.push(itemFromPlex(m)));
-        }).catch(() => {})))).catch(() => {}));
+        pget(`/library/sections/${sec.key}/recentlyAdded?X-Plex-Container-Start=0&X-Plex-Container-Size=15`)
+          .then((d) => (MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').map(plexEntry)).catch(() => []))))
+        .then((lists) => withPosters([].concat(...lists))).then((l) => { out.recent = l; }).catch(() => {}));
     }
-    out.live = favs().concat(VERIFIED).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i).slice(0, 60).map(chanItem);
-    out.radio = radioFavs().map(radioItem);
+    out.live = favs().concat(VERIFIED).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i).slice(0, 40).map(chanEntry);
+    out.radio = radioFavs().map(radioEntry);
     jobs.push(radioSearch({ countrycode: 'US', limit: '25' }).then((l) => {
-      l.forEach((st) => { if (!out.radio.some((x) => x.st.stationuuid === st.stationuuid)) out.radio.push(radioItem(st)); });
+      l.forEach((st) => { if (!out.radio.some((x) => x.st.stationuuid === st.stationuuid)) out.radio.push(radioEntry(st)); });
     }).catch(() => {}));
     return Promise.all(jobs).then(() => out);
   }
@@ -4182,16 +4332,31 @@ var MiniQR = (function () {
     const ql = q.toLowerCase(), res = { q, items: [] };
     const jobs = [];
     if (plex.auth) jobs.push(pget('/hubs/search?query=' + enc(q) + '&limit=15').then((d) => {
-      (MC(d).Hub || []).forEach((hub) => (hub.Metadata || []).forEach((m) => {
-        if (m.type === 'movie' || m.type === 'episode') res.items.push(Object.assign(itemFromPlex(m), { k: 'Plex' }));
-      }));
-    }).catch(() => {}));
+      const l = [];
+      (MC(d).Hub || []).forEach((hub) => (hub.Metadata || []).forEach((m) => { if (m.type === 'movie' || m.type === 'episode') l.push(Object.assign(plexEntry(m), { k: 'Plex' })); }));
+      return withPosters(l.slice(0, 20));
+    }).then((l) => { res.items.unshift(...l); }).catch(() => {}));
     favs().concat(myChannels(), VERIFIED).filter((c) => c.name.toLowerCase().includes(ql)).slice(0, 15)
-      .forEach((c) => res.items.push(Object.assign(chanItem(c), { k: 'Live TV' })));
-    jobs.push(ytSearch(q, 12).then((l) => l.forEach((r) => res.items.push({ t: r.title, s: r.channel || '', k: 'YouTube',
+      .forEach((c) => res.items.push(Object.assign(chanEntry(c), { k: 'Live TV' })));
+    jobs.push(ytSearch(q, 12).then((l) => l.forEach((r) => res.items.push({ t: r.title, s: r.channel || '', k: 'YouTube', img: okUrl(r.thumb || '') ? r.thumb : null,
       go: '#/watch/yt/' + enc(r.id) + '/' + enc(r.title || 'YouTube video') }))).catch(() => {}));
-    jobs.push(radioSearch({ name: q, countrycode: 'US', limit: '10' }).then((l) => l.forEach((st) => res.items.push(Object.assign(radioItem(st), { k: 'Radio' })))).catch(() => {}));
+    jobs.push(radioSearch({ name: q, countrycode: 'US', limit: '10' }).then((l) => l.forEach((st) => res.items.push(Object.assign(radioEntry(st), { k: 'Radio' })))).catch(() => {}));
     return Promise.all(jobs).then(() => res);
+  }
+  /* What a phone needs to play the same thing itself. For Plex the car
+     asks the server for a temporary access pass (not the account key). */
+  function buildMirror() {
+    if (!playerOpen && radioNow) return Promise.resolve({ kind: 'radio', st: radioEntry(radioNow).st, title: radioNow.name });
+    if (!playerOpen) return Promise.resolve({ kind: 'none' });
+    const title = $('plTitle').textContent, sub = $('plSub').textContent;
+    if (P) {
+      return pget('/security/token?type=delegation&scope=all').then((d) => {
+        const tok = MC(d).token || (d && d.token);
+        if (!tok) throw new Error('Plex didn’t give out a temporary pass');
+        return { kind: 'plex', base: plex.conn.base, token: tok, rk: P.rk, dur: P.duration, title, sub };
+      });
+    }
+    return Promise.resolve({ kind: (watchKey || '').split('/')[0], url: S.srcUrl, ts: !!(S.srcOpts && S.srcOpts.ts), live: !!(S.isLive && !S.view), title, sub });
   }
   function updateRemoteBtn() {
     const b = $('remoteBtn');
@@ -4206,9 +4371,8 @@ var MiniQR = (function () {
     box.appendChild(h('h2', { text: 'Phone remote' }));
     const body = h('div', {}, msg('Setting up…')); box.appendChild(body);
     carRemoteStart().then(() => {
-      const link = remoteLink(REM.room);
       let qr;
-      try { qr = MiniQR.toCanvas(link, 264); } catch (e) { qr = null; }
+      try { qr = MiniQR.toCanvas(remoteLink(REM.room), 264); } catch (e) { qr = null; }
       body.replaceChildren(
         h('div', { class: 'pairrow' }, qr ? h('div', { class: 'qr' }, qr) : null,
           h('div', { class: 'paircode', text: REM.code ? REM.code.replace(/(\d{3})(\d{3})/, '$1 $2') : '—' })),
@@ -4218,7 +4382,96 @@ var MiniQR = (function () {
     }).catch((e) => body.replaceChildren(msg('The remote needs the home helper, which isn’t answering (' + e.message + ').', true)));
   }
 
-  // ---- phone side ----
+  // ---- phone side: "Watch here too" ----
+  let MIR = null; // { info, carNow, sid, timer }
+  function carPosNow() {
+    const n = MIR && MIR.carNow;
+    if (!n || n.pos == null) return null;
+    return n.pos + (n.playing ? Math.max(0, serverNow() - (n.at || serverNow())) / 1000 : 0);
+  }
+  function mirrorPlexUrl(info, off) {
+    const q = QUALITIES.find((x) => x.id === '720');
+    return info.base + '/video/:/transcode/universal/start.m3u8?path=' + enc('/library/metadata/' + info.rk) +
+      '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=' + Math.max(0, Math.floor(off)) +
+      '&directPlay=0&directStream=1&directStreamAudio=1&subtitles=none&videoResolution=' + q.res + '&maxVideoBitrate=' + q.br +
+      '&videoQuality=100&session=' + enc(MIR.sid) + '&X-Plex-Session-Identifier=' + enc(MIR.sid) +
+      '&X-Plex-Client-Profile-Extra=' + enc(PROFILE_EXTRA) + '&' + plexQS(info.token);
+  }
+  function mirrorStopPlexSession() {
+    if (MIR && MIR.info.kind === 'plex' && MIR.sid) {
+      fetch(MIR.info.base + '/video/:/transcode/universal/stop?session=' + enc(MIR.sid) + '&' + plexQS(MIR.info.token), { keepalive: true }).catch(() => {});
+    }
+  }
+  function mirrorLoad(at) {
+    const info = MIR.info;
+    if (info.kind === 'plex') {
+      mirrorStopPlexSession();
+      MIR.sid = newSid();
+      E.load(mirrorPlexUrl(info, at || 0), info.title);
+      S.view = { offset: Math.floor(at || 0), duration: info.dur };
+    } else {
+      E.load(info.url, info.title, { ts: !!info.ts });
+    }
+    S.autoplay = true;
+  }
+  function paintMirrorSound() {
+    const b = $('mirSound'); if (!b) return;
+    b.textContent = S.muted ? '🔇 Sound: car speakers' : '🔊 Sound: this device';
+  }
+  function mirrorStart(info, carNow) {
+    if (info.kind === 'radio') { playRadio(info.st); toast('Playing the car’s station on this device.'); return; }
+    if (info.kind === 'none' || info.kind === 'error') { toast(info.kind === 'error' ? 'Couldn’t start it here: ' + info.error : 'Nothing is playing on the car.'); return; }
+    if (!E.hasWC) { toast('This browser can’t play video this way — try Chrome.'); return; }
+    mirrorStop();
+    MIR = { info, carNow, sid: null, timer: null, fixing: 0 };
+    E.ensureCtx(); try { S.ctx.resume(); } catch (e) {}
+    E.setMuted(store.get('dm_mirror_muted', true));
+    openPlayerShell(info.title, (info.sub ? info.sub + ' · ' : '') + 'Synced with the car');
+    document.body.classList.add('mirror-mode');
+    if (!$('mirSound')) {
+      const b = h('button', { class: 'pb', id: 'mirSound', type: 'button', onclick: () => { E.setMuted(!S.muted); store.set('dm_mirror_muted', S.muted); paintMirrorSound(); } });
+      document.querySelector('.pl-top').appendChild(b);
+    }
+    paintMirrorSound();
+    mirrorLoad(info.live ? 0 : (carPosNow() || 0));
+    MIR.timer = setInterval(mirrorSync, 1000);
+  }
+  function mirrorSync() {
+    if (!MIR || !S.loaded || MIR.info.live) return;
+    const n = MIR.carNow;
+    if (!n || n.kind === 'idle') return;
+    // follow the car's pause / play
+    if (S.started && !S.ended) {
+      if (n.playing && !S.playing && !S.buffering) E.togglePlay();
+      else if (!n.playing && !n.buffering && S.playing) E.togglePlay();
+    }
+    if (!S.started || !S.firstFrameAt || S.buffering || !n.playing || Date.now() < MIR.fixing) return;
+    const target = carPosNow();
+    if (target == null) return;
+    const diff = E.dispPos(E.mediaNow()) - target;
+    if (Math.abs(diff) > 4) {
+      MIR.fixing = Date.now() + 8000;          // a big jump (the car skipped): reload at the car's spot
+      if (MIR.info.kind === 'plex') mirrorLoad(target + 1.5);
+      else E.seekTo(target + 0.5);
+    } else if (Math.abs(diff) > 0.12) {
+      E.nudge(Math.max(-0.5, Math.min(0.5, diff)));   // small drift: ease back into step
+    }
+  }
+  function mirrorStop() {
+    if (!MIR) return;
+    clearInterval(MIR.timer);
+    mirrorStopPlexSession();
+    MIR = null;
+    document.body.classList.remove('mirror-mode');
+    const b = $('mirSound'); if (b) b.remove();
+    E.setMuted(false);
+    playerOpen = false; watchKey = null;
+    E.teardown();
+    $('player').hidden = true;
+    document.body.classList.remove('playing');
+  }
+
+  // ---- phone side: the remote page ----
   VIEWS.remote = (root, [room]) => {
     document.body.classList.add('remote-mode');
     dismissGate();
@@ -4227,6 +4480,16 @@ var MiniQR = (function () {
     const brand = (right) => h('div', { class: 'rm-top' },
       h('div', { class: 'rm-brand' }, 'Nate’s ', h('b', { text: 'Theater' })), right || h('span', { class: 'rm-pill', text: 'Remote' }));
 
+    // One-time tip: on iPhone, a web page can't hide Safari's bars, but a
+    // Home Screen app can - show how, once, and never inside the app itself.
+    const standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
+    if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !standalone && !store.get('dm_a2hs_tip', false)) {
+      const tip = h('div', { class: 'rm-tip' }, h('span', {}, 'For full screen: tap ', h('b', { text: 'Share ⬆' }), ', then ', h('b', { text: 'Add to Home Screen' }), '.'),
+        h('button', { type: 'button', 'aria-label': 'Close', text: '✕', onclick: () => { store.set('dm_a2hs_tip', true); tip.remove(); } }));
+      setTimeout(() => { if (alive()) root.appendChild(tip); }, 1500);
+    }
+    // Opened from the Home Screen icon: go straight back to the last car.
+    if (!room && standalone && store.get('dm_remote_phone', null)) { go('#/remote/' + store.get('dm_remote_phone', null), true); return; }
     if (!room) {
       const input = h('input', { class: 'rm-code', type: 'text', inputmode: 'numeric', maxlength: '6', placeholder: '••••••',
         autocomplete: 'one-time-code', 'aria-label': '6-digit code' });
@@ -4240,7 +4503,8 @@ var MiniQR = (function () {
         st.textContent = ''; btn.textContent = 'Connecting…'; btn.disabled = true;
         remoteApi('/pair?code=' + code).then((d) => { store.set('dm_remote_phone', d.room); go('#/remote/' + d.room, true); })
           .catch((e) => {
-            st.textContent = /HTTP 40[03]/.test(e.message) ? ((e.message.match(/\((.*)\)/) || [, 'That code didn’t work.'])[1]) : 'Can’t reach the car right now. Check your signal and try again.';
+            const why = (e.message.match(/\((.*)\)/) || [, 'That code didn’t work.'])[1];
+            st.textContent = /HTTP 40[03]/.test(e.message) ? why.charAt(0).toUpperCase() + why.slice(1) + '.' : 'Can’t reach the car right now. Check your signal and try again.';
             btn.textContent = 'Connect'; btn.disabled = false; busy = false; input.select();
           });
       };
@@ -4264,7 +4528,9 @@ var MiniQR = (function () {
     }
 
     store.set('dm_remote_phone', room);
-    const send = (cmd) => remotePost('/' + room + '/cmd', cmd).catch((e) => { if (/404/.test(e.message)) gone(); });
+    const send = (cmd) => { const t0 = Date.now(); return remotePost('/' + room + '/cmd', cmd).then((d) => noteServerTime(d, t0)).catch((e) => { if (/404/.test(e.message)) gone(); }); };
+    // keep the phone's clock estimate fresh while it plays along
+    const clockPing = setInterval(() => { if (!alive()) { clearInterval(clockPing); return; } if (MIR) { const t0 = Date.now(); remoteApi('/' + room + '/state?wait=0&v=999999999').then((d) => noteServerTime(d, t0)).catch(() => {}); } }, 5000);
     const dot = h('span', { class: 'rm-dot' });
     const conn = h('span', { class: 'rm-conn' }, dot, h('span', { text: 'Connecting…' }));
     const icon = h('div', { class: 'rm-kind', text: '🎬' });
@@ -4276,34 +4542,55 @@ var MiniQR = (function () {
     const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send({ type: 'skip', s: -10 }) }, h('span', { text: '↺' }), h('small', { text: '10' }));
     const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send({ type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
-    let dur = 0, lastHeard = 0, state = null, tab = 'cont';
+    let mirrorReq = 0;
+    const watchHere = h('button', { class: 'rm-watch', type: 'button', hidden: true, onclick: () => {
+      mirrorReq = Date.now(); watchHere.textContent = 'Starting…'; send({ type: 'mirror', req: mirrorReq });
+      setTimeout(() => { watchHere.textContent = '📲 Watch here too'; }, 6000);
+    } }, '📲 Watch here too');
+    let dur = 0, lastHeard = 0, now = null, lists = null, results = null;
     bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
     const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', url: '🎞', idle: '🚗' };
-    const KIND_ICON = { 'Plex': '🎬', 'Live TV': '📺', 'YouTube': '▶', 'Radio': '📻' };
-    const TAB_ICON = { cont: '🎬', recent: '🎬', live: '📺', radio: '📻' };
-    const TABS = [['cont', 'Continue'], ['recent', 'New'], ['live', 'Live TV'], ['radio', 'Radio'], ['find', 'Search']];
-    const tabsEl = h('div', { class: 'rm-tabs', role: 'tablist' });
-    const list = h('div', { class: 'rm-list' });
-    const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
-    const searchRow = h('div', { class: 'rm-searchrow', hidden: true }, search);
-    const doFind = () => { if (!search.value.trim()) return; search.blur(); list.replaceChildren(h('div', { class: 'rm-empty', text: 'Searching…' })); send({ type: 'find', q: search.value.trim() }); };
+    const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
+    const resultsEl = h('div');
+    const rowsEl = h('div');
+    const doFind = () => {
+      const q = search.value.trim(); if (!q) { resultsEl.replaceChildren(); return; }
+      search.blur(); results = null;
+      resultsEl.replaceChildren(h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: 'Searching…' }), h('div', { class: 'rm-scroll' }, ...skelCards(6, 'poster'))));
+      send({ type: 'find', q });
+    };
     search.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFind(); });
-    const drawTabs = () => tabsEl.replaceChildren(...TABS.map(([id, label]) => h('button', { class: 'rm-tab' + (id === tab ? ' on' : ''), type: 'button', role: 'tab', text: label,
-      onclick: () => { tab = id; drawTabs(); drawList(); if (id === 'find') setTimeout(() => search.focus(), 50); } })));
-    const pick = (it) => { if (it.st) send({ type: 'radio', st: it.st }); else if (it.go) send({ type: 'go', hash: it.go }); toast('Playing on the car: ' + it.t); };
-    function drawList() {
-      searchRow.hidden = tab !== 'find';
-      const L = state && state.lists;
-      const items = tab === 'find' ? (state && state.results && state.results.items) : (L && L[tab]);
-      if (tab !== 'find' && !L) { list.replaceChildren(...Array.from({ length: 5 }, () => h('div', { class: 'rm-item skel-row' }))); return; }
-      if (!items || !items.length) {
-        list.replaceChildren(h('div', { class: 'rm-empty', text: tab === 'find' ? (state && state.results ? 'Nothing found.' : 'Search everything the car can play.') : 'Nothing here yet.' }));
-        return;
-      }
-      list.replaceChildren(...items.filter((it) => it.go || it.st).map((it) => h('button', { class: 'rm-item', type: 'button', onclick: () => pick(it) },
-        h('div', { class: 'rm-ii', text: it.st ? '📻' : (KIND_ICON[it.k] || TAB_ICON[tab] || '🎬') }),
-        h('div', { class: 'rm-itx' }, h('div', { class: 'rm-it', text: it.t }), h('div', { class: 'rm-is', text: [tab === 'find' ? it.k : '', it.s].filter(Boolean).join(' · ') })),
-        h('div', { class: 'rm-chev', text: '›' }))));
+    search.addEventListener('search', () => { if (!search.value.trim()) resultsEl.replaceChildren(); });
+    const pick = (it) => { if (it.st) send({ type: 'radio', st: it.st }); else if (it.go) send({ type: 'go', hash: it.go }); toast('Playing on the car: ' + it.t); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    function skelCards(n, shape) { return Array.from({ length: n }, () => h('div', { class: 'rm-card ' + shape + ' skel' }, h('div', { class: 'rm-art' }))); }
+    function card(it, shape) {
+      const art = h('div', { class: 'rm-art', style: it.img ? null : { background: grad(it.t || '?') } });
+      if (it.img && /^(data:image\/|https:\/\/)/.test(it.img)) {
+        const im = h('img', { src: it.img, alt: '', loading: 'lazy' });
+        im.addEventListener('error', () => { im.remove(); art.style.background = grad(it.t || '?'); art.appendChild(h('span', { text: it.t })); });
+        art.appendChild(im);
+        if (shape !== 'poster') art.classList.add('logo');
+      } else art.appendChild(h('span', { text: it.t }));
+      if (it.p > 0.01 && it.p < 0.99) art.appendChild(h('div', { class: 'rm-prog' }, h('i', { style: { width: Math.round(it.p * 100) + '%' } })));
+      return h('button', { class: 'rm-card ' + shape, type: 'button', onclick: () => pick(it) }, art,
+        h('div', { class: 'rm-ct', text: it.t }), it.s ? h('div', { class: 'rm-cs', text: it.s }) : null);
+    }
+    function row(label, items, shape) {
+      if (!items || !items.length) return null;
+      return h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: label }),
+        enableFlow(h('div', { class: 'rm-scroll' }, ...items.filter((it) => it.go || it.st).map((it) => card(it, shape)))));
+    }
+    function drawRows() {
+      if (!lists) { rowsEl.replaceChildren(...['Continue Watching', 'Recently added'].map((l) => h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: l }), h('div', { class: 'rm-scroll' }, ...skelCards(5, 'poster'))))); return; }
+      rowsEl.replaceChildren(...[row('Continue Watching', lists.cont, 'poster'), row('Recently added', lists.recent, 'poster'),
+        row('Live TV', lists.live, 'wide'), row('Radio', lists.radio, 'square')].filter(Boolean));
+    }
+    function drawResults() {
+      if (!results) return;
+      if (!results.items.length) { resultsEl.replaceChildren(h('div', { class: 'rm-empty', text: 'Nothing found for “' + results.q + '”.' })); return; }
+      const by = (k) => results.items.filter((it) => (it.k || '') === k);
+      resultsEl.replaceChildren(...[row('Plex', by('Plex'), 'poster'), row('YouTube', by('YouTube'), 'wide'),
+        row('Live TV', by('Live TV'), 'wide'), row('Radio', by('Radio'), 'square')].filter(Boolean));
     }
     function drawNow(n) {
       const idle = !n || n.kind === 'idle';
@@ -4317,6 +4604,7 @@ var MiniQR = (function () {
       dur = (n && n.dur) || 0;
       const seek = !!(n && n.seek && dur);
       bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek; pp.disabled = idle; close.hidden = idle;
+      watchHere.hidden = idle || !(n && n.mirrorable) || !!MIR;
       if (dur && document.activeElement !== bar) bar.value = Math.round(1000 * (n.pos || 0) / dur);
       if (!dur) bar.value = 0;
       tl.textContent = idle ? '' : n.buffering ? 'Loading…' : dur ? E.fmt(n.pos || 0) : (n.kind === 'radio' ? 'Live radio' : 'Live');
@@ -4331,7 +4619,7 @@ var MiniQR = (function () {
     }
     function gone() {
       if (!alive()) return;
-      REM.gen++; store.set('dm_remote_phone', null);
+      REM.gen++; store.set('dm_remote_phone', null); mirrorStop();
       root.replaceChildren(h('div', { class: 'rm-page' }, brand(), h('div', { class: 'rm-connect' },
         h('div', { class: 'rm-icon', text: '⏱' }), h('h1', { text: 'Remote disconnected' }),
         h('p', { text: 'The pairing ended. Tap 📱 on the car screen for a new code.' }),
@@ -4341,21 +4629,21 @@ var MiniQR = (function () {
       h('div', { class: 'rm-now' },
         h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
         bar, h('div', { class: 'rm-times' }, tl, tr),
-        h('div', { class: 'rm-ctrls' }, back10, pp, fwd30)),
-      tabsEl, searchRow, list));
-    drawNow(null); drawTabs(); drawList(); paintConn();
+        h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere),
+      h('div', { class: 'rm-searchrow' }, search), resultsEl, rowsEl));
+    drawNow(null); drawRows(); paintConn();
     let ver = 0;
     const poll = () => {
       if (!alive()) return;
+      const t0 = Date.now();
       remoteApi('/' + room + '/state?wait=20&v=' + ver).then((d) => {
-        lastHeard = Date.now();
-        if (d.state) {
-          ver = d.ver;
-          const hadResults = state && state.results, hadLists = state && state.lists;
-          state = d.state;
-          drawNow(state.now);
-          if ((tab === 'find' && state.results !== hadResults) || (tab !== 'find' && !hadLists && state.lists)) drawList();
-        }
+        lastHeard = Date.now(); noteServerTime(d, t0);
+        ver = d.ver || ver;
+        const sl = d.slots || {};
+        if (sl.now) { now = sl.now; if (MIR) MIR.carNow = now; drawNow(now); }
+        if (sl.lists) { lists = sl.lists; drawRows(); }
+        if (sl.results) { results = sl.results; drawResults(); }
+        if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.textContent = '📲 Watch here too'; mirrorStart(sl.mirror, now); }
         setTimeout(poll, 100);
       }).catch((e) => { if (/404/.test(e.message)) { gone(); return; } setTimeout(poll, 3000); });
     };
