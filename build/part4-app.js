@@ -681,6 +681,59 @@
   }
 
 
+
+  /* ---------- Location (the browser's own location permission) ----------
+     Used only on this screen: shown in Settings and used to centre the
+     traffic map. The last position is kept in this browser so the map
+     can open near the car even before a fresh fix arrives. */
+  function getPosition(timeoutMs) {
+    return new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) { reject(new Error('this browser has no location support')); return; }
+      if (!window.isSecureContext) { reject(new Error('location only works on the secure (https) site')); return; }
+      navigator.geolocation.getCurrentPosition((p) => {
+        const pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, speed: p.coords.speed, at: Date.now() };
+        store.set('dm_lastpos', pos);
+        resolve(pos);
+      }, (err) => {
+        const why = err.code === 1 ? 'location permission was declined — allow it for this site in the browser, then try again'
+          : err.code === 3 ? 'no location fix yet (timed out) — try again in a moment'
+          : 'the car didn’t provide a location';
+        reject(new Error(why));
+      }, { enableHighAccuracy: true, timeout: timeoutMs || 15000, maximumAge: 30000 });
+    });
+  }
+  function fmtPos(p) {
+    const mph = p.speed != null && p.speed >= 0 ? ` · ${Math.round(p.speed * 2.23694)} mph` : '';
+    return `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} (within about ${Math.round(p.acc)} m)${mph}`;
+  }
+  function locationCard() {
+    const out = h('div', { class: 'kv', style: { marginTop: '12px' } });
+    const st = msg('');
+    let watchId = null, updates = 0;
+    const stop = () => { if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } };
+    const run = () => {
+      stop(); updates = 0; out.replaceChildren();
+      st.textContent = 'Asking the car for its location… (the browser may ask you to allow it)'; st.className = 'msg';
+      getPosition(20000).then((p) => {
+        st.textContent = 'Location is available — the car shares its position with this site.';
+        const posEl = h('span', { text: fmtPos(p) }), updEl = h('span', { text: '1 (watching for 60 seconds)' });
+        out.replaceChildren(h('b', { text: 'Position' }), posEl, h('b', { text: 'Updates' }), updEl,
+          h('b', { text: 'Map' }), h('a', { href: '#/traffic', style: { textDecoration: 'underline' }, text: 'Open the traffic map here' }));
+        updates = 1;
+        watchId = navigator.geolocation.watchPosition((q) => {
+          updates++;
+          const pos = { lat: q.coords.latitude, lon: q.coords.longitude, acc: q.coords.accuracy, speed: q.coords.speed, at: Date.now() };
+          store.set('dm_lastpos', pos);
+          posEl.textContent = fmtPos(pos); updEl.textContent = updates + ' (watching for 60 seconds)';
+        }, () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
+        setTimeout(() => { stop(); updEl.textContent = updates + ' in 60 seconds' + (updates > 3 ? ' — live updates work' : ''); }, 60000);
+      }).catch((e) => { st.textContent = 'No location: ' + e.message + '.'; st.className = 'msg err'; });
+    };
+    return h('div', { class: 'card' }, h('h2', { text: 'Location' }),
+      h('p', { text: 'Checks whether the car shares its GPS position with this site. Your position stays on this screen — it’s only used to centre the traffic map.' }),
+      h('button', { class: 'btn ghost', type: 'button', text: 'Test my location', onclick: run }), out, st);
+  }
+
   /* =====================================================================
      Router
      ===================================================================== */
@@ -722,7 +775,7 @@
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
     const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', iptv: 'IPTV', youtube: 'YouTube',
-      radio: 'Radio', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
+      radio: 'Radio', traffic: 'Traffic', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
     document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
     if (!['settings', 'signin', 'profiles'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
     if (cache.size > 20) cache.delete(cache.keys().next().value);
@@ -1078,6 +1131,34 @@
   };
 
 
+  /* ---------- Traffic (Waze live map) ---------- */
+  function wazeEmbed(lat, lon, zoom) {
+    return `https://embed.waze.com/iframe?zoom=${zoom}&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&pin=1&ct=livemap`;
+  }
+  VIEWS.traffic = (root) => {
+    const note = h('div', { class: 'msg', style: { padding: '8px 0 0' } });
+    const frame = h('iframe', { class: 'wazeframe', title: 'Waze live traffic map', loading: 'eager', referrerpolicy: 'no-referrer',
+      allow: 'geolocation' });
+    const show = (p, zoom, label) => { frame.src = wazeEmbed(p.lat, p.lon, zoom); note.textContent = label; };
+    const centre = () => {
+      note.textContent = 'Finding the car…';
+      getPosition(12000).then((p) => show(p, 14, 'Centred on the car · live traffic, police, hazards and accidents from Waze drivers.'))
+        .catch((e) => {
+          const last = store.get('dm_lastpos', null);
+          if (last) show(last, 13, `Showing the last known position (${new Date(last.at).toLocaleString()}) — ${e.message}.`);
+          else show({ lat: 39.5, lon: -98.35 }, 4, 'Couldn’t get the car’s location (' + e.message + '). Drag and zoom the map to your area.');
+        });
+    };
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Traffic' }),
+      h('div', { class: 'btns' },
+        h('button', { class: 'btn ghost', type: 'button', text: '◎ Centre on car', onclick: centre }),
+        h('a', { class: 'btn ghost', href: 'https://www.waze.com/live-map/', target: '_blank', rel: 'noopener', text: 'Open Waze live map' }))));
+    root.appendChild(h('div', { class: 'pad' }, note, frame));
+    const last = store.get('dm_lastpos', null);
+    if (last) show(last, 13, 'Showing the last known position while finding the car…');
+    centre();
+  };
+
   /* ---------- Radio ---------- */
   VIEWS.radio = (root, [cc, tag, q]) => {
     cc = 'US'; // US stations only
@@ -1284,6 +1365,7 @@
         ln.value = lu.value = ''; invalidate('live'); drawLists(); toast('Added — find it under Live TV.');
       } }))));
     root.appendChild(iptvSetupCard());
+    root.appendChild(locationCard());
     root.appendChild(backupCard());
     // Direct stream
     const du = h('input', { type: 'text', placeholder: 'https://example.com/stream.m3u8', autocapitalize: 'off', spellcheck: 'false' });

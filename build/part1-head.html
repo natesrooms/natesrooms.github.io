@@ -244,6 +244,8 @@
     border: 1px solid #3a3d45; color: #fff; padding: 14px 22px; border-radius: 12px; font-size: 16px; max-width: 90vw;
     box-shadow: 0 8px 30px rgba(0,0,0,.5); }
   .toast[hidden] { display: none; }
+  .wazeframe { display: block; width: 100%; height: calc(100vh - var(--navh) - 150px); min-height: 360px; border: 0;
+    border-radius: 14px; margin-top: 10px; background: #1b1d22; }
   /* radio mini-player */
   .radiobar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 150; display: flex; align-items: center;
     gap: 12px; padding: 10px 12px; background: rgba(28,30,36,.97); border: 1px solid #3a3d45; border-radius: 16px;
@@ -319,6 +321,7 @@
       <a href="#/iptv" data-tab="iptv">IPTV</a>
       <a href="#/youtube" data-tab="youtube">YouTube</a>
       <a href="#/radio" data-tab="radio">Radio</a>
+      <a href="#/traffic" data-tab="traffic">Traffic</a>
     </nav>
     <form class="search" id="searchForm" role="search">
       <input id="searchIn" type="search" placeholder="Search movies, shows, channels" autocomplete="off" autocapitalize="off" spellcheck="false" />
