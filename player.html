@@ -2074,6 +2074,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
   var plexAuth = null;  // {token} — account token from plex.tv
   var plexConn = null;  // {base, token, name} — chosen server connection
+  var plexRediscovered = false;  // one automatic re-discovery per load failure
   try {
     var pa = localStorage.getItem('dm_plex_auth'); if (pa) plexAuth = JSON.parse(pa);
     var pc = localStorage.getItem('dm_plex_conn'); if (pc) plexConn = JSON.parse(pc);
@@ -2150,6 +2151,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
   function discoverPlexServer() {
     plexSigninMsg('Signed in — finding your server…');
+    plexSetMsg('Signed in — finding your server…');
     plexTv('/api/v2/resources?includeHttps=1&includeRelay=1&X-Plex-Token=' + encodeURIComponent(plexAuth.token))
       .then(function (list) {
         var servers = (list || []).filter(function (r) {
@@ -2158,19 +2160,63 @@ if (typeof module !== 'undefined' && module.exports) {
         if (!servers.length) throw new Error('no Plex server was found on that account.');
         servers.sort(function (a, b) { return (b.owned ? 1 : 0) - (a.owned ? 1 : 0); });
         var srv = servers[0];
-        var conns = srv.connections || [];
-        var pick = null, i;
-        for (i = 0; i < conns.length; i++) { if (!conns[i].local && /^https:/.test(conns[i].uri)) { pick = conns[i]; break; } }
-        if (!pick) for (i = 0; i < conns.length; i++) { if (/^https:/.test(conns[i].uri)) { pick = conns[i]; break; } }
-        if (!pick && conns.length) pick = conns[0];
-        if (!pick) throw new Error('that server lists no way to connect to it.');
-        plexConn = { base: pick.uri.replace(/\/+$/, ''), token: srv.accessToken, name: srv.name };
-        try { localStorage.setItem('dm_plex_conn', JSON.stringify(plexConn)); } catch (e) {}
-        plexSigninMsg('');
-        showPlexMain();
-        loadPlexLibrary();
+        /* Candidate connections, best first. The home funnel door leads:
+           it rides the same pipe as the YouTube helper and does not
+           depend on Plex Remote Access reaching through the home
+           routers. Then Plex's own connections — remote https, relay
+           last, local addresses last of all (useless from the road). */
+        var cands = [{ uri: 'https://plex.tail56cd28.ts.net', local: false, relay: false }];
+        var rest = (srv.connections || []).slice();
+        rest.sort(function (a, b) {
+          function rank(c) {
+            var r = 0;
+            if (c.local) r += 8;
+            if (c.relay) r += 4;
+            if (!/^https:/.test(c.uri)) r += 2;
+            return r;
+          }
+          return rank(a) - rank(b);
+        });
+        rest.forEach(function (c) { cands.push(c); });
+        tryPlexConn(srv, cands, 0);
       })
-      .catch(function (e) { plexSigninMsg('Signed in, but your server could not be set up: ' + e.message, true); });
+      .catch(function (e) {
+        plexSigninMsg('Signed in, but your server could not be set up: ' + e.message, true);
+        plexSetMsg('Signed in, but your server could not be set up: ' + e.message, true);
+      });
+  }
+
+  /* Probe each candidate connection with a short timeout and keep the
+     first one that actually answers from this browser — the connection
+     Plex lists first is not always one that works from the road. */
+  function tryPlexConn(srv, cands, i) {
+    if (i >= cands.length) {
+      var msg = 'Signed in, but no connection to your server answered from here. Try again in a bit — if it keeps failing, the home side needs a look.';
+      plexSigninMsg(msg, true);
+      plexSetMsg(msg, true);
+      return;
+    }
+    var base = cands[i].uri.replace(/\/+$/, '');
+    var note = 'Trying a connection to “' + srv.name + '”… (' + (i + 1) + ' of ' + cands.length + ')';
+    plexSigninMsg(note);
+    plexSetMsg(note);
+    var ctl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, 6000) : null;
+    fetch(base + '/identity?X-Plex-Token=' + encodeURIComponent(srv.accessToken), {
+      headers: { 'Accept': 'application/json' },
+      signal: ctl ? ctl.signal : undefined
+    }).then(function (r) {
+      if (timer) clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      plexConn = { base: base, token: srv.accessToken, name: srv.name };
+      try { localStorage.setItem('dm_plex_conn', JSON.stringify(plexConn)); } catch (e) {}
+      plexSigninMsg('');
+      showPlexMain();
+      loadPlexLibrary();
+    }).catch(function () {
+      if (timer) clearTimeout(timer);
+      tryPlexConn(srv, cands, i + 1);
+    });
   }
 
   btnPlexSignin.addEventListener('click', startPlexSignin);
@@ -2290,9 +2336,18 @@ if (typeof module !== 'undefined' && module.exports) {
       });
       return chain.then(function () { return sections; });
     }).then(function (sections) {
+      plexRediscovered = false;
       renderLibrary(sections);
       plexSetMsg('Library loaded. Tap a title to play it.');
     }).catch(function (e) {
+      if (plexAuth && !plexRediscovered) {
+        plexRediscovered = true;
+        plexSetMsg('That connection went quiet — finding another way to your server…');
+        try { localStorage.removeItem('dm_plex_conn'); } catch (err) {}
+        plexConn = null;
+        discoverPlexServer();
+        return;
+      }
       plexSetMsg('Could not load the library: ' + e.message + ' — the server may be unreachable from here; if this keeps happening, sign out and back in.', true);
     });
   }
