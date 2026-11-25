@@ -385,7 +385,9 @@ var Engine = (function () {
     };
     S.tracks.push(track);
     // Live: start near the live edge (3 segments back), like other players.
-    if (!pl.endList && pl.segments.length > 4) {
+    // A growing EVENT playlist (YouTube via the helper, Plex transcodes)
+    // is a video still being converted: always start at the beginning.
+    if (!pl.endList && pl.playlistType !== 'EVENT' && pl.segments.length > 4) {
       addSegments(track, pl);
       track.nextSeq = pl.mediaSequence + pl.segments.length - 3;
     } else {
@@ -428,7 +430,7 @@ var Engine = (function () {
     if (!seg) { track.nextSeq++; return; }
     track.fetching = true;
     track.hasFetchedOnce = true;
-    fetchRead(seg.uri, 'bytes', 20000).then(function (ab) {
+    fetchRead(seg.uri, 'bytes', 20000, { cache: 'no-store' }).then(function (ab) {
       if (gen !== S.gen) return;
       var buf = new Uint8Array(ab);
       if (seg.disc || track.rebaseNext) {
@@ -566,7 +568,7 @@ var Engine = (function () {
     var ahead = videoAhead(t);
     if (!S.buffering) {
       if (ahead < 0.12 && !allTracksDone()) setBuffering(true);
-    } else if (ahead > (S.isLive ? 2 : 3.5) || allTracksDone()) {
+    } else if (ahead > (!S.firstFrameAt ? 1.2 : S.isLive ? 2 : 3.5) || allTracksDone()) {
       setBuffering(false);
     }
   }
@@ -664,6 +666,7 @@ var Engine = (function () {
           if (vpl.encrypted || vpl.hasMap) throw new Error('the chosen variant is encrypted or fMP4 — not supported.');
           S.duration = vpl.totalDuration; S.isLive = !vpl.endList;
           makeTrack(variant.audioGroup ? 'video' : 'muxed', variant.uri, vpl);
+          S.pendingStart = vpl;
           var audioUrl = null;
           if (variant.audioGroup) {
             var rend = pl.audioRenditions.filter(function (x) { return x.group === variant.audioGroup; });
@@ -676,16 +679,19 @@ var Engine = (function () {
             return fetchRead(audioUrl, 'text', 30000).then(function (atext) {
               if (gen !== S.gen) return;
               makeTrack('audio', audioUrl, dmParsePlaylist(atext, audioUrl));
+              applyStart(S.pendingStart);
               readyUp(label);
             }).catch(function () {
               if (gen === S.gen) { readyUp(label); setStatus('Separate audio track could not be loaded; playing video only.'); }
             });
           }
+          applyStart(vpl);
           readyUp(label);
         });
       }
       S.duration = pl.totalDuration; S.isLive = !pl.endList;
       makeTrack('muxed', url, pl);
+      applyStart(pl);
       readyUp(label);
     }).catch(function (e) {
       if (gen === S.gen) { teardown(); onEngineError('Could not load the stream: ' + e.message); }
@@ -768,6 +774,24 @@ var Engine = (function () {
       });
     }
     connect();
+  }
+
+  /* EXT-X-START: begin at that time instead of the first segment. The
+     playlist then runs on the title's own timeline (Plex lists the whole
+     movie and marks the resume / seek point), so no extra display offset
+     is needed. */
+  function applyStart(pl) {
+    if (!pl || !(pl.startOffset > 0)) return;
+    var t = pl.startOffset;
+    for (var i = 0; i < S.tracks.length; i++) {
+      var tr = S.tracks[i];
+      var seq = seqAtTime(tr, t);
+      tr.nextSeq = seq; tr.demuxSeq = seq;
+    }
+    var first = S.tracks[0] && S.tracks[0].segments[S.tracks[0].nextSeq];
+    S.mediaTarget = first ? first.start : t;
+    S.dropAudioBefore = S.mediaTarget;
+    if (S.view) S.view.offset = 0;
   }
 
   function readyUp(label) {

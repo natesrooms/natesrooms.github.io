@@ -1,0 +1,29 @@
+# Same setup as docker-compose.funnel.yml, in one block you can paste
+# straight into the NAS's Docker / Compose app - no files to copy.
+# It writes its own serve settings file at start-up, and keeps its
+# Tailscale identity in a named volume (yt-funnel-state).
+#
+# Before starting it, put your Tailscale auth key in place of
+# PASTE_AUTH_KEY_HERE (on the NAS only - never commit it anywhere).
+#
+# If the helper is not at 10.0.0.23:8799, change it in SERVE_JSON.
+
+services:
+  yt-funnel:
+    image: tailscale/tailscale:stable
+    container_name: yt-funnel
+    hostname: yt-helper
+    environment:
+      TS_HOSTNAME: yt-helper
+      TS_AUTHKEY: PASTE_AUTH_KEY_HERE
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"
+      SERVE_JSON: '{"TCP":{"443":{"HTTPS":true}},"Web":{"$${TS_CERT_DOMAIN}:443":{"Handlers":{"/":{"Proxy":"http://10.0.0.23:8799"}}}},"AllowFunnel":{"$${TS_CERT_DOMAIN}:443":true}}'
+    entrypoint: ["/bin/sh", "-c", "mkdir -p /config && printf '%s' \"$$SERVE_JSON\" > /config/serve.json && exec /usr/local/bin/containerboot"]
+    volumes:
+      - yt-funnel-state:/var/lib/tailscale
+    restart: unless-stopped
+
+volumes:
+  yt-funnel-state:

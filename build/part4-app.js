@@ -1222,7 +1222,7 @@
   function showUi() {
     player.classList.remove('idle');
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => { if (S.playing && !S.buffering && $('qMenu').hidden) player.classList.add('idle'); }, 3500);
+    idleTimer = setTimeout(() => { if (S.playing && !S.buffering) player.classList.add('idle'); }, 3500);
   }
   player.addEventListener('pointerdown', showUi);
   player.addEventListener('mousemove', showUi);
@@ -1237,8 +1237,6 @@
     $('btnBack10').hidden = $('btnFwd10').hidden = !E.canSeek();
     $('seek').disabled = !E.canSeek();
     $('plLive').hidden = !(S.isLive && !S.view) || !S.loaded;
-    $('btnQuality').hidden = !P;
-    if (P) $('btnQuality').textContent = (store.get('dm_quality', 'auto') === 'auto' ? 'Auto · ' : '') + P.level + 'p';
     if (err) player.classList.remove('idle');
   }
   E.hooks.onState = refreshOverlay;
@@ -1265,7 +1263,7 @@
     $('plTitle').textContent = title || '';
     $('plSub').textContent = sub || '';
     $('plNote').textContent = '';
-    $('upNext').hidden = true; $('qMenu').hidden = true;
+    $('upNext').hidden = true;
     showUi();
   }
   function closeWatch() {
@@ -1445,25 +1443,6 @@
     else if (player.requestFullscreen) player.requestFullscreen().catch(() => {});
     else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
   });
-  $('btnQuality').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const menu = $('qMenu');
-    if (!menu.hidden) { menu.hidden = true; return; }
-    const cur = store.get('dm_quality', 'auto');
-    menu.replaceChildren(
-      h('button', { type: 'button', class: cur === 'auto' ? 'on' : '', text: 'Automatic', onclick: () => pickQ('auto') }),
-      QUALITIES.map((q) => h('button', { type: 'button', class: cur === q.id ? 'on' : '', text: q.label, onclick: () => pickQ(q.id) })));
-    menu.hidden = false;
-  });
-  function pickQ(id) {
-    $('qMenu').hidden = true;
-    store.set('dm_quality', id);
-    if (!P) return;
-    const lvl = id === 'auto' ? startLevel() : id;
-    if (lvl === P.level) { refreshOverlay(); return; }
-    P.level = lvl; P.stalls = [];
-    startPlexAt(plexPos(), true);
-  }
   document.addEventListener('keydown', (e) => {
     if (!playerOpen || /INPUT|SELECT|TEXTAREA/.test((e.target && e.target.tagName) || '')) return;
     if (e.key === ' ' || e.key === 'k') { e.preventDefault(); $('btnPlay').click(); }

@@ -155,7 +155,8 @@ function dmParsePlaylist(text, baseUrl) {
   var out = {
     isMaster: false, variants: [], audioRenditions: [],
     segments: [], targetDuration: 0, mediaSequence: 0,
-    endList: false, totalDuration: 0, encrypted: false, hasMap: false
+    endList: false, totalDuration: 0, encrypted: false, hasMap: false, playlistType: '',
+    startOffset: 0
   };
   var pendingInf = null, pendingDur = null, pendingDisc = false;
   for (var i = 0; i < lines.length; i++) {
@@ -179,6 +180,13 @@ function dmParsePlaylist(text, baseUrl) {
       out.mediaSequence = parseInt(line.slice(23), 10) || 0;
     } else if (line.indexOf('#EXTINF:') === 0) {
       pendingDur = parseFloat(line.slice(8)) || 0;
+    } else if (line.indexOf('#EXT-X-START:') === 0) {
+      // Where playback should begin (Plex: the resume/seek point; the
+      // segments before it are empty placeholders).
+      var so = parseFloat(dmParseAttrs(line.slice(13))['TIME-OFFSET']);
+      if (so > 0) out.startOffset = so;
+    } else if (line.indexOf('#EXT-X-PLAYLIST-TYPE:') === 0) {
+      out.playlistType = line.slice(21).trim().toUpperCase();
     } else if (line === '#EXT-X-DISCONTINUITY') {
       pendingDisc = true;
     } else if (line === '#EXT-X-ENDLIST') {

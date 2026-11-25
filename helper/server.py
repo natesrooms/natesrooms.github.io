@@ -61,7 +61,9 @@ FFMPEG = os.environ.get("FFMPEG_BIN", "ffmpeg")
 CLIENT_SETS = [s.strip() for s in os.environ.get(
     "CLIENT_SETS", "web,android,ios;android;ios").split(";") if s.strip()]
 MAX_HEIGHT = 720
-HLS_TIME = "6"
+HLS_TIME = os.environ.get("HLS_TIME", "2")   # short segments = faster first frame
+INFO_TTL = 3 * 3600                          # YouTube media URLs stay valid ~6 h
+PREFETCH_TOP = int(os.environ.get("PREFETCH_TOP", "6"))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
 
 IPTV_KEY = os.environ.get("IPTV_KEY", "")
@@ -71,6 +73,10 @@ _DYN_LOCK = threading.Lock()
 
 SESSIONS = {}
 SESSIONS_LOCK = threading.Lock()
+_INFO = {}                         # vid -> (time, info, clients)
+_INFO_LOCK = threading.Lock()
+_INFO_INFLIGHT = {}                # vid -> threading.Event (lookup running)
+_PREFETCH_SEM = threading.Semaphore(2)  # keep the NAS responsive
 
 
 def log(msg):
@@ -93,6 +99,59 @@ def video_id_from(raw):
     if m:
         return m.group(1)
     return None
+
+
+def cached_info(vid):
+    """yt-dlp lookup with a cache shared by /stream and search prefetch.
+    If a lookup for the same video is already running (e.g. the prefetch
+    that a search started), wait for it instead of starting a second one."""
+    while True:
+        with _INFO_LOCK:
+            hit = _INFO.get(vid)
+            if hit and time.time() - hit[0] < INFO_TTL:
+                return hit[1], hit[2]
+            ev = _INFO_INFLIGHT.get(vid)
+            if ev is None:
+                ev = threading.Event()
+                _INFO_INFLIGHT[vid] = ev
+                mine = True
+            else:
+                mine = False
+        if not mine:
+            ev.wait(130)
+            with _INFO_LOCK:
+                hit = _INFO.get(vid)
+            if hit:
+                return hit[1], hit[2]
+            continue  # the other lookup failed; try ourselves
+        try:
+            info, clients = run_ytdlp_info(vid)
+            with _INFO_LOCK:
+                _INFO[vid] = (time.time(), info, clients)
+                if len(_INFO) > 300:
+                    for k in sorted(_INFO, key=lambda k: _INFO[k][0])[:100]:
+                        _INFO.pop(k, None)
+            return info, clients
+        finally:
+            with _INFO_LOCK:
+                _INFO_INFLIGHT.pop(vid, None)
+            ev.set()
+
+
+def prefetch(vids):
+    """Look up the first few search results in the background, so a tap
+    on one of them can start converting immediately."""
+    def one(v):
+        with _PREFETCH_SEM:
+            try:
+                cached_info(v)
+            except Exception as e:
+                log("prefetch %s failed: %s" % (v, e))
+    for v in vids:
+        with _INFO_LOCK:
+            fresh = v in _INFO and time.time() - _INFO[v][0] < INFO_TTL
+        if not fresh:
+            threading.Thread(target=one, args=(v,), daemon=True).start()
 
 
 def run_ytdlp_info(vid):
@@ -255,6 +314,14 @@ def session_complete(s):
 def start_session(vid):
     with SESSIONS_LOCK:
         s = SESSIONS.get(vid)
+        if s and (s["proc"].poll() is None or s["proc"].returncode == 0 or session_complete(s)):
+            pass  # handled below, under the lock
+        else:
+            s = None
+    if s is None:
+        cached_info(vid)  # slow part, done without blocking other videos
+    with SESSIONS_LOCK:
+        s = SESSIONS.get(vid)
         if s:
             if s["proc"].poll() is None:
                 return s  # conversion still running
@@ -270,7 +337,7 @@ def start_session(vid):
                 os.remove(os.path.join(sdir, old))
             except OSError:
                 pass
-        info, clients = run_ytdlp_info(vid)
+        info, clients = cached_info(vid)
         inputs, vargs, aargs, desc = pick_plan(info)
         cmd = [FFMPEG, "-nostdin", "-hide_banner", "-loglevel", "warning"]
         for u in inputs:
@@ -294,13 +361,13 @@ def start_session(vid):
 
 
 def wait_ready(s, timeout=90):
-    """Wait until the playlist exists with >=2 segments, or ffmpeg exits."""
+    """Wait until the playlist lists its first segment, or ffmpeg exits."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         pl = os.path.join(s["dir"], "index.m3u8")
         if os.path.exists(pl):
             segs = [f for f in os.listdir(s["dir"]) if f.endswith(".ts")]
-            if len(segs) >= 2:
+            if len(segs) >= 2 or (segs and b"#EXTINF" in open(pl, "rb").read()):
                 return True
         if s["proc"].poll() is not None:
             segs = [f for f in os.listdir(s["dir"]) if f.endswith(".ts")]
@@ -483,6 +550,7 @@ class Handler(BaseHTTPRequestHandler):
                     results = run_search(q, n)
                 except RuntimeError as e:
                     return self._json(502, {"error": "search failed", "detail": str(e)})
+                prefetch([r["id"] for r in results[:PREFETCH_TOP]])
                 return self._json(200, {"query": q, "results": results})
             if u.path == "/stream":
                 qs = urllib.parse.parse_qs(u.query)

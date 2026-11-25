@@ -329,7 +329,6 @@
           <button class="pb" id="btnFwd10" type="button" aria-label="Forward 30 seconds">30 &#8635;</button>
           <span class="timelabel" id="timeLabel"></span>
           <span class="status" id="status"></span>
-          <button class="pb" id="btnQuality" type="button" hidden>Quality</button>
           <button class="pb" id="btnFs" type="button" aria-label="Fullscreen">&#9974;</button>
         </div>
       </div>
@@ -342,7 +341,6 @@
         <button class="btn ghost" id="upNextNo" type="button">Cancel</button>
       </div>
     </div>
-    <div class="qmenu" id="qMenu" hidden></div>
   </div>
 
   <div class="toast" id="toast" hidden></div>
@@ -504,7 +502,8 @@ function dmParsePlaylist(text, baseUrl) {
   var out = {
     isMaster: false, variants: [], audioRenditions: [],
     segments: [], targetDuration: 0, mediaSequence: 0,
-    endList: false, totalDuration: 0, encrypted: false, hasMap: false
+    endList: false, totalDuration: 0, encrypted: false, hasMap: false, playlistType: '',
+    startOffset: 0
   };
   var pendingInf = null, pendingDur = null, pendingDisc = false;
   for (var i = 0; i < lines.length; i++) {
@@ -528,6 +527,13 @@ function dmParsePlaylist(text, baseUrl) {
       out.mediaSequence = parseInt(line.slice(23), 10) || 0;
     } else if (line.indexOf('#EXTINF:') === 0) {
       pendingDur = parseFloat(line.slice(8)) || 0;
+    } else if (line.indexOf('#EXT-X-START:') === 0) {
+      // Where playback should begin (Plex: the resume/seek point; the
+      // segments before it are empty placeholders).
+      var so = parseFloat(dmParseAttrs(line.slice(13))['TIME-OFFSET']);
+      if (so > 0) out.startOffset = so;
+    } else if (line.indexOf('#EXT-X-PLAYLIST-TYPE:') === 0) {
+      out.playlistType = line.slice(21).trim().toUpperCase();
     } else if (line === '#EXT-X-DISCONTINUITY') {
       pendingDisc = true;
     } else if (line === '#EXT-X-ENDLIST') {
@@ -1607,7 +1613,9 @@ var Engine = (function () {
     };
     S.tracks.push(track);
     // Live: start near the live edge (3 segments back), like other players.
-    if (!pl.endList && pl.segments.length > 4) {
+    // A growing EVENT playlist (YouTube via the helper, Plex transcodes)
+    // is a video still being converted: always start at the beginning.
+    if (!pl.endList && pl.playlistType !== 'EVENT' && pl.segments.length > 4) {
       addSegments(track, pl);
       track.nextSeq = pl.mediaSequence + pl.segments.length - 3;
     } else {
@@ -1650,7 +1658,7 @@ var Engine = (function () {
     if (!seg) { track.nextSeq++; return; }
     track.fetching = true;
     track.hasFetchedOnce = true;
-    fetchRead(seg.uri, 'bytes', 20000).then(function (ab) {
+    fetchRead(seg.uri, 'bytes', 20000, { cache: 'no-store' }).then(function (ab) {
       if (gen !== S.gen) return;
       var buf = new Uint8Array(ab);
       if (seg.disc || track.rebaseNext) {
@@ -1788,7 +1796,7 @@ var Engine = (function () {
     var ahead = videoAhead(t);
     if (!S.buffering) {
       if (ahead < 0.12 && !allTracksDone()) setBuffering(true);
-    } else if (ahead > (S.isLive ? 2 : 3.5) || allTracksDone()) {
+    } else if (ahead > (!S.firstFrameAt ? 1.2 : S.isLive ? 2 : 3.5) || allTracksDone()) {
       setBuffering(false);
     }
   }
@@ -1886,6 +1894,7 @@ var Engine = (function () {
           if (vpl.encrypted || vpl.hasMap) throw new Error('the chosen variant is encrypted or fMP4 — not supported.');
           S.duration = vpl.totalDuration; S.isLive = !vpl.endList;
           makeTrack(variant.audioGroup ? 'video' : 'muxed', variant.uri, vpl);
+          S.pendingStart = vpl;
           var audioUrl = null;
           if (variant.audioGroup) {
             var rend = pl.audioRenditions.filter(function (x) { return x.group === variant.audioGroup; });
@@ -1898,16 +1907,19 @@ var Engine = (function () {
             return fetchRead(audioUrl, 'text', 30000).then(function (atext) {
               if (gen !== S.gen) return;
               makeTrack('audio', audioUrl, dmParsePlaylist(atext, audioUrl));
+              applyStart(S.pendingStart);
               readyUp(label);
             }).catch(function () {
               if (gen === S.gen) { readyUp(label); setStatus('Separate audio track could not be loaded; playing video only.'); }
             });
           }
+          applyStart(vpl);
           readyUp(label);
         });
       }
       S.duration = pl.totalDuration; S.isLive = !pl.endList;
       makeTrack('muxed', url, pl);
+      applyStart(pl);
       readyUp(label);
     }).catch(function (e) {
       if (gen === S.gen) { teardown(); onEngineError('Could not load the stream: ' + e.message); }
@@ -1990,6 +2002,24 @@ var Engine = (function () {
       });
     }
     connect();
+  }
+
+  /* EXT-X-START: begin at that time instead of the first segment. The
+     playlist then runs on the title's own timeline (Plex lists the whole
+     movie and marks the resume / seek point), so no extra display offset
+     is needed. */
+  function applyStart(pl) {
+    if (!pl || !(pl.startOffset > 0)) return;
+    var t = pl.startOffset;
+    for (var i = 0; i < S.tracks.length; i++) {
+      var tr = S.tracks[i];
+      var seq = seqAtTime(tr, t);
+      tr.nextSeq = seq; tr.demuxSeq = seq;
+    }
+    var first = S.tracks[0] && S.tracks[0].segments[S.tracks[0].nextSeq];
+    S.mediaTarget = first ? first.start : t;
+    S.dropAudioBefore = S.mediaTarget;
+    if (S.view) S.view.offset = 0;
   }
 
   function readyUp(label) {
@@ -3317,7 +3347,7 @@ var Engine = (function () {
   function showUi() {
     player.classList.remove('idle');
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => { if (S.playing && !S.buffering && $('qMenu').hidden) player.classList.add('idle'); }, 3500);
+    idleTimer = setTimeout(() => { if (S.playing && !S.buffering) player.classList.add('idle'); }, 3500);
   }
   player.addEventListener('pointerdown', showUi);
   player.addEventListener('mousemove', showUi);
@@ -3332,8 +3362,6 @@ var Engine = (function () {
     $('btnBack10').hidden = $('btnFwd10').hidden = !E.canSeek();
     $('seek').disabled = !E.canSeek();
     $('plLive').hidden = !(S.isLive && !S.view) || !S.loaded;
-    $('btnQuality').hidden = !P;
-    if (P) $('btnQuality').textContent = (store.get('dm_quality', 'auto') === 'auto' ? 'Auto · ' : '') + P.level + 'p';
     if (err) player.classList.remove('idle');
   }
   E.hooks.onState = refreshOverlay;
@@ -3360,7 +3388,7 @@ var Engine = (function () {
     $('plTitle').textContent = title || '';
     $('plSub').textContent = sub || '';
     $('plNote').textContent = '';
-    $('upNext').hidden = true; $('qMenu').hidden = true;
+    $('upNext').hidden = true;
     showUi();
   }
   function closeWatch() {
@@ -3540,25 +3568,6 @@ var Engine = (function () {
     else if (player.requestFullscreen) player.requestFullscreen().catch(() => {});
     else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
   });
-  $('btnQuality').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const menu = $('qMenu');
-    if (!menu.hidden) { menu.hidden = true; return; }
-    const cur = store.get('dm_quality', 'auto');
-    menu.replaceChildren(
-      h('button', { type: 'button', class: cur === 'auto' ? 'on' : '', text: 'Automatic', onclick: () => pickQ('auto') }),
-      QUALITIES.map((q) => h('button', { type: 'button', class: cur === q.id ? 'on' : '', text: q.label, onclick: () => pickQ(q.id) })));
-    menu.hidden = false;
-  });
-  function pickQ(id) {
-    $('qMenu').hidden = true;
-    store.set('dm_quality', id);
-    if (!P) return;
-    const lvl = id === 'auto' ? startLevel() : id;
-    if (lvl === P.level) { refreshOverlay(); return; }
-    P.level = lvl; P.stalls = [];
-    startPlexAt(plexPos(), true);
-  }
   document.addEventListener('keydown', (e) => {
     if (!playerOpen || /INPUT|SELECT|TEXTAREA/.test((e.target && e.target.tagName) || '')) return;
     if (e.key === ' ' || e.key === 'k') { e.preventDefault(); $('btnPlay').click(); }
