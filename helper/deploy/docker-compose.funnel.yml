@@ -1,0 +1,28 @@
+# Public HTTPS door for the YouTube/IPTV helper, via Tailscale Funnel.
+#
+# Gives the helper (already running on the NAS at http://10.0.0.23:8799)
+# the address https://yt-helper.<your-tailnet>.ts.net, which the car can
+# reach from anywhere. Fixes the three problems the first attempt hit:
+#
+#   1. Fresh identity every boot  -> state is kept in ./ts-state
+#   2. 60-second sign-in race     -> signs in with an auth key, no browser step
+#   3. Crash on inline serve JSON -> serve settings live in a real file,
+#                                    ./ts-config/serve.json
+#
+# Setup steps: see README.md in this folder.
+
+services:
+  yt-funnel:
+    image: tailscale/tailscale:stable
+    container_name: yt-funnel
+    hostname: yt-helper
+    environment:
+      - TS_HOSTNAME=yt-helper
+      - TS_AUTHKEY=${TS_AUTHKEY}          # from the .env file next to this one (never commit it)
+      - TS_STATE_DIR=/var/lib/tailscale   # keeps the same machine identity across restarts
+      - TS_SERVE_CONFIG=/config/serve.json
+      - TS_USERSPACE=true                 # no special network permissions needed
+    volumes:
+      - ./ts-state:/var/lib/tailscale
+      - ./ts-config:/config:ro
+    restart: unless-stopped

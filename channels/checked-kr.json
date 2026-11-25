@@ -1,0 +1,219 @@
+{
+ "source": "https://iptv-org.github.io/iptv/countries/kr.m3u",
+ "checked": "2026-11-25T20:35:50+00:00",
+ "total": 72,
+ "ok": 34,
+ "why_failed": {
+  "http:// only": 25,
+  "unreachable": 8,
+  "HTTP 404": 3,
+  "HTTP 403": 1,
+  "DASH, not HLS": 1
+ },
+ "channels": [
+  {
+   "name": "ABN (720p)",
+   "cat": "General",
+   "url": "https://vod2.abn.co.kr/IPHONE/abn.m3u8",
+   "logo": "https://www.abn.co.kr/resources/images/logo.png"
+  },
+  {
+   "name": "Arirang TV HD (1080p)",
+   "cat": "General",
+   "url": "https://freem3u.xyz/api/live/play.m3u8?vid=111",
+   "logo": "https://i.imgur.com/Asu5pE9.png"
+  },
+  {
+   "name": "BTN TV (South Korea) (1080p)",
+   "cat": "Religious",
+   "url": "https://btn.nowcdn.co.kr/btn/btnlive2m/playlist.m3u8",
+   "logo": "https://i.imgur.com/sOoS7RQ.png"
+  },
+  {
+   "name": "CJ OnStyle (540p)",
+   "cat": "Shop",
+   "url": "https://live-ch1.cjonstyle.net/cjmalllive/stream2/playlist.m3u8",
+   "logo": "https://i.imgur.com/JiSfEBv.png"
+  },
+  {
+   "name": "CJ OnStyle+ (540p)",
+   "cat": "Shop",
+   "url": "https://live-ch2.cjonstyle.net/cjosplus/live2/playlist.m3u8",
+   "logo": "https://i.imgur.com/OYmOL20.png"
+  },
+  {
+   "name": "EBS 1TV (400p) [Not 24/7]",
+   "cat": "Education",
+   "url": "https://ebsonair.ebs.co.kr/ebs1familypc/familypc1m/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/EBS_1TV_Logo.svg/960px-EBS_1TV_Logo.svg.png"
+  },
+  {
+   "name": "EBS 2TV (400p) [Not 24/7]",
+   "cat": "Education",
+   "url": "https://ebsonair.ebs.co.kr/ebs2familypc/familypc1m/playlist.m3u8",
+   "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/EBS_2TV_Logo.svg/960px-EBS_2TV_Logo.svg.png"
+  },
+  {
+   "name": "EBS English (400p) [Not 24/7]",
+   "cat": "Education",
+   "url": "https://ebsonair.ebs.co.kr/plus3familypc/familypc1m/playlist.m3u8",
+   "logo": "https://i.imgur.com/5wLJzb0.png"
+  },
+  {
+   "name": "EBS Kids (400p) [Not 24/7]",
+   "cat": "Kids",
+   "url": "https://ebsonair.ebs.co.kr/ebsufamilypc/familypc1m/playlist.m3u8",
+   "logo": "https://i.imgur.com/62oo8Bx.png"
+  },
+  {
+   "name": "EBS Plus 1 (400p)",
+   "cat": "Education",
+   "url": "https://ebsonair.ebs.co.kr/plus1familypc/familypc1m/playlist.m3u8",
+   "logo": "https://i.imgur.com/aCeuhon.png"
+  },
+  {
+   "name": "EBS Plus 2 (400p)",
+   "cat": "Education",
+   "url": "https://ebsonair.ebs.co.kr/plus2familypc/familypc1m/playlist.m3u8",
+   "logo": "https://i.imgur.com/pllIMGi.png"
+  },
+  {
+   "name": "FGTV (South Korea) (720p)",
+   "cat": "Religious",
+   "url": "https://fgtvlive.fgtv.com/smil:fgtv.smil/playlist.m3u8",
+   "logo": "https://i.ibb.co/crxz0fd/yfgc-hearder-logo.png"
+  },
+  {
+   "name": "Gongyoung Home Shopping (720p)",
+   "cat": "Shop",
+   "url": "https://etv.publichs.com/live5.stream/playlist.m3u8",
+   "logo": "https://i.imgur.com/YL3rpd7.png"
+  },
+  {
+   "name": "GS My Shop (1080p)",
+   "cat": "Shop",
+   "url": "https://gstv-myshop.gsshop.com/myshop_hd/myshop_hd.stream/playlist.m3u8",
+   "logo": "https://i.imgur.com/ETPQwui.png"
+  },
+  {
+   "name": "GS Shop (1080p)",
+   "cat": "Shop",
+   "url": "https://gstv-gsshop.gsshop.com/gsshop_hd/gsshop_hd.stream/playlist.m3u8",
+   "logo": "https://i.imgur.com/F7QDbEy.png"
+  },
+  {
+   "name": "Gugak TV (1080p)",
+   "cat": "Music",
+   "url": "https://mgugaklive.nowcdn.co.kr/gugakvideo/gugakvideo.stream/playlist.m3u8",
+   "logo": "https://i.imgur.com/Ey7Htm8.png"
+  },
+  {
+   "name": "HLAN-DTV (480p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://stream.chmbc.co.kr/TV/myStream/playlist.m3u8",
+   "logo": "https://i.imgur.com/lthyx2P.png"
+  },
+  {
+   "name": "HLAT-DTV (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://5c3639aa99149.streamlock.net/live_TV/tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/3VSuYsn.png"
+  },
+  {
+   "name": "HLCQ-DTV (720p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://ns1.tjmbc.co.kr/live/myStream.sdp/playlist.m3u8",
+   "logo": "https://i.imgur.com/HCbvAiM.png"
+  },
+  {
+   "name": "HLCT-DTV (480p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://5ee1ec6f32118.streamlock.net/live/livetv/playlist.m3u8",
+   "logo": "https://i.imgur.com/LlYQR8m.png"
+  },
+  {
+   "name": "HLDH-DTV (1080p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://vod.ikbc.co.kr/KBCTV/tv/playlist.m3u8",
+   "logo": "https://i.imgur.com/Srsw4Mi.png"
+  },
+  {
+   "name": "HLDP-DTV (540p) [Not 24/7]",
+   "cat": "General",
+   "url": "https://stream.ubc.co.kr/hls/ubctvstream/index.m3u8",
+   "logo": "https://i.imgur.com/BBCoqIf.png"
+  },
+  {
+   "name": "Home & Shopping (720p)",
+   "cat": "Shop",
+   "url": "https://s28.qtcdn.co.kr/media/liveM3U8/idx/518045142/enc/1860408350/playlist.m3u8",
+   "logo": "https://i.imgur.com/IcexRXG.png"
+  },
+  {
+   "name": "Hyundai Home Shopping (720p)",
+   "cat": "Shop",
+   "url": "https://livejj.hyundaihmall.com:8443/live/ngrp:hmall.stream_pc/playlist.m3u8",
+   "logo": "https://i.imgur.com/NJpECmq.png"
+  },
+  {
+   "name": "Hyundai Home Shopping + Shop (720p)",
+   "cat": "Shop",
+   "url": "https://dtvstreaming.hyundaihmall.com/newcjp3/_definst_/newcjpstream.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/DoNOuZE.png"
+  },
+  {
+   "name": "KTV (South Korea) (1080p)",
+   "cat": "Legislative",
+   "url": "https://hlive.ktv.go.kr/live/klive_h.stream/playlist.m3u8",
+   "logo": "https://i.ibb.co/WkrLDJW/Screenshot-20230714-135036-removebg-preview.png"
+  },
+  {
+   "name": "Lotte Home Shopping (720p)",
+   "cat": "Shop",
+   "url": "https://pchlslivesw.lotteimall.com/live/livestream/lotteimalllive_mp4.m3u8",
+   "logo": "https://i.imgur.com/dJeNehc.png"
+  },
+  {
+   "name": "Lotte OneTV (720p)",
+   "cat": "Shop",
+   "url": "https://onetvhlslive.lotteimall.com/lotteonetvlive/lotteonetvlive.mp4.m3u8",
+   "logo": "https://i.imgur.com/bXe7tYE.png"
+  },
+  {
+   "name": "NBS (720p)",
+   "cat": "Education",
+   "url": "https://media.joycorp.co.kr:4443/live/ngrp:live_all/playlist.m3u8",
+   "logo": "https://i.imgur.com/pOSroOE.png"
+  },
+  {
+   "name": "OUN (1080p)",
+   "cat": "Education",
+   "url": "https://live.knou.ac.kr/knou1/live1/playlist.m3u8",
+   "logo": "https://i.imgur.com/7s6JtcU.png"
+  },
+  {
+   "name": "Shinsegae TV Shopping (720p)",
+   "cat": "Shop",
+   "url": "https://liveout.catenoid.net/live-02-shinsegaetvshopping/shinsegaetvshopping_720p/playlist.m3u8",
+   "logo": "https://i.imgur.com/Hq3yjqA.png"
+  },
+  {
+   "name": "Shopping NT (720p)",
+   "cat": "Shop",
+   "url": "https://live.shoppingntmall.com/live/10011.m3u8",
+   "logo": "https://i.imgur.com/BgbJp5X.png"
+  },
+  {
+   "name": "TBS TV (720p)",
+   "cat": "Undefined",
+   "url": "https://cdntv.tbs.seoul.kr/tbs/tbs_tv_web.smil/playlist.m3u8",
+   "logo": "https://i.imgur.com/iOnWS6V.png"
+  },
+  {
+   "name": "W Shopping (720p)",
+   "cat": "Shop",
+   "url": "https://liveout.catenoid.net/live-05-wshopping/wshopping_1500k/playlist.m3u8",
+   "logo": "https://i.imgur.com/hfXjVJd.png"
+  }
+ ]
+}

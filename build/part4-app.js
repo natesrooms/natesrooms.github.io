@@ -1243,8 +1243,18 @@
   }
   E.hooks.onState = refreshOverlay;
   let watchChannel = null;
-  E.hooks.onError = () => { if (watchChannel && !watchChannel.done && !S.firstFrameAt) { watchChannel.done = true; markHealth(watchChannel.url, false); } };
+  E.hooks.onError = (m) => {
+    if (watchChannel && !watchChannel.done && !S.firstFrameAt) { watchChannel.done = true; markHealth(watchChannel.url, false); }
+    if (P && /HTTP (400|404|409|5\d\d)|timed out|Failed to fetch/i.test(m || '') && (P.retries || 0) < 2) {
+      P.retries = (P.retries || 0) + 1;
+      const off = P.offset, auto = P.wantAuto, rk = P.rk;
+      E.setStatus('Plex is getting the video ready at ' + E.fmt(off) + '…');
+      S.loading = true; refreshOverlay();
+      setTimeout(() => { if (P && P.rk === rk && playerOpen) startPlexAt(off, auto, true); }, 1500 * P.retries);
+    }
+  };
   E.hooks.onFirstFrame = () => {
+    if (P) P.retries = 0;
     if (watchChannel && !watchChannel.done) { watchChannel.done = true; markHealth(watchChannel.url, true); } $('plNote').textContent = ''; refreshOverlay(); showUi(); };
 
   function openPlayerShell(title, sub) {
@@ -1259,6 +1269,7 @@
     showUi();
   }
   function closeWatch() {
+    endPlex();
     playerOpen = false; watchKey = null; watchChannel = null;
     clearUpNext();
     E.teardown();
@@ -1344,12 +1355,15 @@
     if (!sid || !plex.conn) return;
     fetch(plex.conn.base + '/video/:/transcode/universal/stop?session=' + enc(sid) + '&' + plexQS(), { keepalive: true }).catch(() => {});
   }
-  function startPlexAt(off, auto) {
+  function startPlexAt(off, auto, freshSession) {
     if (!P) return;
     off = Math.max(0, Math.min(Math.floor(off), Math.max(0, Math.floor(P.duration) - 5)));
     const q = QUALITIES.find((x) => x.id === P.level) || QUALITIES[1];
-    if (P.sid) stopTranscode(P.sid);
-    P.sid = newSid(); P.offset = off;
+    if (freshSession || !P.sid) {
+      if (P.sid) stopTranscode(P.sid);
+      P.sid = newSid();
+    }
+    P.offset = off; P.wantAuto = auto !== false;
     const conn = plex.conn;
     const url = conn.base + '/video/:/transcode/universal/start.m3u8?path=' + enc('/library/metadata/' + P.rk) +
       '&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&copyts=1&offset=' + off +
@@ -1384,7 +1398,7 @@
     if (!P || !S.started || S.ended) return;
     timeline(S.buffering ? 'buffering' : S.playing ? 'playing' : 'paused');
   }, 10000);
-  E.hooks.onTeardown = () => { if (!restarting) endPlex(); };
+  E.hooks.onTeardown = null;
   window.addEventListener('pagehide', () => { endPlex(); });
 
   E.hooks.onBuffering = (on) => {

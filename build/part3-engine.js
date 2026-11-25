@@ -64,7 +64,14 @@ var Engine = (function () {
     if (ctl) opts.signal = ctl.signal;
     var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms || 15000) : null;
     return fetch(url, opts).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) {
+        return r.text().catch(function () { return ''; }).then(function (t) {
+          t = (t || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+          var err = new Error('HTTP ' + r.status + (t ? ' (' + t + ')' : ''));
+          err.status = r.status;
+          throw err;
+        });
+      }
       return kind === 'json' ? r.json() : kind === 'text' ? r.text() : r.arrayBuffer();
     }).then(function (v) { if (timer) clearTimeout(timer); return v; },
       function (e) {
