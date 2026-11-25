@@ -110,6 +110,57 @@ def run_ytdlp_info(vid):
     raise RuntimeError(last_err)
 
 
+def run_search(q, n):
+    """YouTube search via yt-dlp (ytsearch), flat playlist.
+    Returns a list of {id, title, channel, duration, thumb} or raises
+    RuntimeError with the last yt-dlp error tail."""
+    last_err = ""
+    for clients in CLIENT_SETS:
+        cmd = [YTDLP, "-J", "--flat-playlist", "--no-warnings",
+               "--extractor-args", "youtube:player_client=" + clients,
+               "ytsearch%d:%s" % (n, q)]
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            last_err = "yt-dlp search timed out (clients=%s)" % clients
+            continue
+        if p.returncode != 0:
+            tail = (p.stderr or "").strip().splitlines()
+            last_err = tail[-1] if tail else "yt-dlp exit %d" % p.returncode
+            log("search clients=%s failed: %s" % (clients, last_err))
+            continue
+        try:
+            data = json.loads(p.stdout)
+        except ValueError:
+            last_err = "yt-dlp search returned unparseable output (clients=%s)" % clients
+            continue
+        out = []
+        for e in data.get("entries", []):
+            vid = e.get("id") or ""
+            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", vid):
+                continue
+            thumb = ""
+            thumbs = e.get("thumbnails") or []
+            for t in thumbs:
+                if 200 <= (t.get("width") or 0) <= 640 and t.get("url"):
+                    thumb = t["url"]
+                    break
+            if not thumb and thumbs:
+                thumb = thumbs[-1].get("url", "")
+            if not thumb:
+                thumb = "https://i.ytimg.com/vi/%s/mqdefault.jpg" % vid
+            out.append({"id": vid,
+                        "title": e.get("title") or "(untitled)",
+                        "channel": e.get("channel") or e.get("uploader") or "",
+                        "duration": e.get("duration"),
+                        "thumb": thumb})
+        if out:
+            return out
+        last_err = "clients=%s search yielded no usable results" % clients
+        log(last_err)
+    raise RuntimeError(last_err)
+
+
 def pick_plan(info):
     """Choose (inputs, vcodec_args, acodec_args, description).
     inputs: list of media URLs (1 = combined or video-only, 2 = video+audio).
@@ -293,7 +344,22 @@ class Handler(BaseHTTPRequestHandler):
                                         "ffmpeg": ver([FFMPEG, "-version"])})
             if u.path == "/":
                 return self._json(200, {"service": "nate-theater-youtube-helper",
-                                        "usage": "/stream?v=<youtube url or video id>"})
+                                        "usage": "/stream?v=<youtube url or video id>",
+                                        "search": "/search?q=<terms>&n=<count>"})
+            if u.path == "/search":
+                qs = urllib.parse.parse_qs(u.query)
+                q = (qs.get("q", [""])[0] or "").strip()
+                if not q:
+                    return self._json(400, {"error": "missing q parameter"})
+                try:
+                    n = max(1, min(24, int(qs.get("n", ["12"])[0])))
+                except ValueError:
+                    n = 12
+                try:
+                    results = run_search(q, n)
+                except RuntimeError as e:
+                    return self._json(502, {"error": "search failed", "detail": str(e)})
+                return self._json(200, {"query": q, "results": results})
             if u.path == "/stream":
                 qs = urllib.parse.parse_qs(u.query)
                 vid = video_id_from(qs.get("v", [""])[0])
