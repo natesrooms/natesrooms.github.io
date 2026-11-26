@@ -2501,7 +2501,7 @@
           h('p', { text: 'Enter the 6-digit code shown on the car screen.' }),
           input, st, btn,
           saved ? h('a', { class: 'rm-link', href: '#/remote/' + saved, text: 'Reconnect to the last car' }) : null,
-          h('a', { class: 'rm-link', href: '#/home', text: '📺 Not in the car? Watch on this phone' }))));
+          h('a', { class: 'rm-link', href: '#/home', text: 'Watch on this device' }))));
       setTimeout(() => input.focus(), 50);
       return;
     }
@@ -2547,14 +2547,84 @@
     };
     const pasteBtn = h('button', { class: 'rm-paste', type: 'button', text: '🔗 Paste link', onclick: () => {
       if (!(navigator.clipboard && navigator.clipboard.readText)) { search.focus(); toast('Paste the link into the search box.'); return; }
-      navigator.clipboard.readText().then((txt) => { if (!sendLink(txt)) toast('No link found — copy a video link first, then tap Paste link.'); })
+      navigator.clipboard.readText().then((txt) => { if (!offerLink(txt)) toast('No link found — copy a video link first, then tap Paste link.'); })
         .catch(() => { search.focus(); toast('Paste the link into the search box.'); });
     } });
+    /* Saved for the car: clips kept on this phone to play in the car later
+       (or here, when the car is off). */
+    const carUp = () => Date.now() - lastHeard < 30000 && !!(now && now.seen) && serverNow() - now.seen < 45000;
+    const savedClips = () => store.get('dm_saved_clips', []);
+    const savedEl = h('div');
+    function drawSaved() {
+      const l = savedClips();
+      if (!l.length) { savedEl.replaceChildren(); return; }
+      savedEl.replaceChildren(h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: 'Saved for the car' }),
+        enableFlow(h('div', { class: 'rm-scroll' }, ...l.map((c) => {
+          const art = h('div', { class: 'rm-art', style: c.img ? null : { background: grad(c.title || '?') } },
+            c.img ? h('img', { src: c.img, alt: '', loading: 'lazy' }) : h('span', { text: c.title }),
+            h('button', { class: 'rm-x', type: 'button', 'aria-label': 'Remove', text: '✕', onclick: (e) => {
+              e.stopPropagation(); store.set('dm_saved_clips', savedClips().filter((x) => x.hash !== c.hash)); drawSaved(); } }));
+          return h('button', { class: 'rm-card wide', type: 'button', onclick: () => playClip(c) }, art,
+            h('div', { class: 'rm-ct', text: c.title }), h('div', { class: 'rm-cs', text: 'Saved ' + podFmtDate(c.at) }));
+        })))));
+    }
+    function playClip(c) {
+      if (carUp()) { send({ type: 'go', hash: c.hash }); toast('Playing on the car: ' + c.title); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else { toast('Tesla is offline — playing on this device.'); go(c.hash); }
+    }
+    function saveClip(t) {
+      const yt = (t.hash.match(/^#\/watch\/yt\/([^/]+)/) || [])[1];
+      const clip = { hash: t.hash, title: t.label, img: yt ? 'https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg' : '', at: Date.now() };
+      store.set('dm_saved_clips', [clip].concat(savedClips().filter((x) => x.hash !== clip.hash)).slice(0, 100));
+      drawSaved(); toast('Saved for the car ⭐');
+      if (yt && (!t.label || t.label === 'YouTube video')) {
+        fetch('https://www.youtube.com/oembed?format=json&url=' + enc('https://www.youtube.com/watch?v=' + decodeURIComponent(yt))).then((r) => r.ok ? r.json() : null).then((d) => {
+          if (!d || !d.title) return;
+          store.set('dm_saved_clips', savedClips().map((x) => x.hash === clip.hash ? Object.assign(x, { title: d.title }) : x)); drawSaved();
+        }).catch(() => {});
+      }
+    }
+    // A link found: play it in the car now, or keep it for later.
+    const linkPanel = h('div', { class: 'rm-linkpanel', hidden: true });
+    function offerLink(text, title) {
+      const t = linkTarget(text, title);
+      if (!t) return false;
+      if (t.unsupported) { toast('That link can’t play in the car yet — YouTube and direct video links work.'); return true; }
+      search.value = ''; resultsEl.replaceChildren();
+      const up = carUp();
+      linkPanel.replaceChildren(
+        h('div', { class: 'rm-lp-t', text: '🔗 ' + (t.label || 'Video link') }),
+        h('div', { class: 'rm-lp-b' },
+          h('button', { class: 'rm-lp-go', type: 'button', text: up ? '▶ Play in the car' : '▶ Play on this phone', onclick: () => {
+            linkPanel.hidden = true;
+            if (carUp()) { send({ type: 'go', hash: t.hash }); toast('Sent to the car: ' + t.label); } else go(t.hash);
+          } }),
+          h('button', { class: 'rm-lp-save', type: 'button', text: '⭐ Save for later', onclick: () => { linkPanel.hidden = true; saveClip(t); } }),
+          h('button', { class: 'rm-lp-x', type: 'button', 'aria-label': 'Cancel', text: '✕', onclick: () => { linkPanel.hidden = true; } })));
+      linkPanel.hidden = false;
+      return true;
+    }
+    // Shared from another app: once we know whether the car is on, offer it
+    // (car on) or just save it (car off).
     const pend = store.get('dm_share', null);
-    if (pend) { store.set('dm_share', null); if (Date.now() - (pend.at || 0) < 10 * 60 * 1000) setTimeout(() => { if (alive() && !sendLink(pend.text, pend.title)) toast('That share didn’t include a video link.'); }, 800); }
+    if (pend) {
+      store.set('dm_share', null);
+      if (Date.now() - (pend.at || 0) < 10 * 60 * 1000) {
+        const t0 = Date.now();
+        const tryIt = () => {
+          if (!alive()) return;
+          if (!lastHeard && Date.now() - t0 < 8000) { setTimeout(tryIt, 400); return; }
+          const t = linkTarget(pend.text, pend.title);
+          if (!t) { toast('That share didn’t include a video link.'); return; }
+          if (t.unsupported || carUp()) offerLink(pend.text, pend.title);
+          else saveClip(t);
+        };
+        setTimeout(tryIt, 600);
+      }
+    }
     const doFind = () => {
       const q = search.value.trim(); if (!q) { resultsEl.replaceChildren(); return; }
-      if (/^https?:\/\//i.test(q) || /youtu\.?be/i.test(q)) { if (sendLink(q)) return; }
+      if (/^https?:\/\//i.test(q) || /youtu\.?be/i.test(q)) { if (offerLink(q)) return; }
       search.blur(); results = null;
       resultsEl.replaceChildren(h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: 'Searching…' }), h('div', { class: 'rm-scroll' }, ...skelCards(6, 'poster'))));
       send({ type: 'find', q });
@@ -2619,9 +2689,10 @@
       const home = Date.now() - lastHeard < 30000;
       const car = home && !!(now && now.seen) && serverNow() - now.seen < 45000;
       dot.className = 'rm-dot' + (car ? ' ok' : '');
-      conn.lastChild.textContent = car ? 'Connected' : home ? 'Car is offline' : 'Reconnecting…';
-      nowCard.classList.toggle('off', !car);
+      conn.lastChild.textContent = car ? 'Connected' : home ? 'Offline' : 'Reconnecting…';
       offline.hidden = car || !lastHeard;
+      nowCard.hidden = !offline.hidden;              // Tesla off: no stale now-playing card
+      nowCard.classList.toggle('off', !car);
       setTimeout(paintConn, 2000);
     }
     function gone() {
@@ -2632,11 +2703,9 @@
         h('p', { text: 'The pairing ended. Tap 📱 on the car screen for a new code.' }),
         h('a', { class: 'rm-btn', href: '#/remote', text: 'Enter a new code' }))));
     }
-    const watchPhone = () => h('a', { class: 'rm-btn ghost', href: '#/home', text: '📺 Watch on this phone' });
     const offline = h('div', { class: 'rm-offline', hidden: true },
-      h('b', { text: 'The car isn’t running the app right now' }),
-      h('p', { text: 'Open natesrooms.github.io on the car screen and this remote picks it up. The car can’t be woken from here.' }),
-      watchPhone());
+      h('b', { text: 'Tesla is offline' }),
+      h('a', { class: 'rm-off-btn', href: '#/home', text: 'Watch on this device' }));
     let nowCard;
     root.appendChild(h('div', { class: 'rm-page' }, brand(conn), offline,
       nowCard = h('div', { class: 'rm-now' },
@@ -2644,7 +2713,8 @@
         bar, h('div', { class: 'rm-times' }, tl, tr),
         h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere, phonesBtn),
       h('div', { class: 'rm-searchrow' }, search, pasteBtn),
-      h('a', { class: 'rm-phonelink', href: '#/home', text: '📺 Browse and watch on this phone instead' }),
+      linkPanel,
+      h('a', { class: 'rm-phonelink', href: '#/home', text: 'Watch on this device instead' }),
       h('details', { class: 'rm-help' }, h('summary', { text: 'Send videos from other apps' }),
         h('p', { text: 'Copy a YouTube or video link anywhere, then tap 🔗 Paste link. Or type it into the search box.' }),
         h('b', { text: 'Android' }),
@@ -2656,7 +2726,8 @@
           h('li', { text: 'Add the action “URL Encode” (it uses the Shortcut Input).' }),
           h('li', {}, 'Add the action “Open URLs” and type: ', h('code', { text: location.origin + location.pathname + '?send=' }), ' then insert the “URL Encoded Text” right after it.'),
           h('li', { text: 'Name it “Send to car”. Now tap Share in YouTube, Safari or Messages and pick Send to car.' })),
-        h('p', { class: 'rm-note', text: 'The shortcut opens Safari, so connect Safari to the car once with the 6-digit code too.' })), resultsEl, rowsEl));
+        h('p', { class: 'rm-note', text: 'The shortcut opens Safari, so connect Safari to the car once with the 6-digit code too.' })), resultsEl, savedEl, rowsEl));
+    drawSaved();
     drawNow(null); drawRows(); paintConn();
     let ver = 0;
     const poll = () => {

@@ -107,10 +107,20 @@
     font-size: 18px; font-weight: 800; padding: 16px; cursor: pointer; }
   .rm-btn[disabled] { opacity: .6; }
   .rm-link { margin-top: 18px; color: var(--dim); font-size: 15px; text-decoration: underline; display: block; }
-  .rm-offline { background: #22191b; border: 1px solid #4a2a30; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-  .rm-offline b { display: block; font-size: 16px; } .rm-offline p { color: var(--dim); font-size: 14px; margin: 6px 0 12px; line-height: 1.4; }
+  .rm-offline { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #1b1e24; border: 1px solid var(--line);
+    border-radius: 14px; padding: 12px 12px 12px 16px; margin-bottom: 14px; }
+  .rm-offline[hidden] { display: none; }
+  .rm-offline b { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .rm-offline b::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: #e0a32b; }
+  .rm-off-btn { flex: none; background: var(--accent); color: #fff; text-decoration: none; font-weight: 800; font-size: 14px; padding: 10px 14px; border-radius: 10px; }
   .rm-btn.ghost { display: block; text-align: center; background: #1f2228; color: var(--text); text-decoration: none; }
   .rm-now.off { opacity: .45; pointer-events: none; }
+  .rm-linkpanel { background: #1b1e24; border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 10px; }
+  .rm-lp-t { font-weight: 700; font-size: 15px; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rm-lp-b { display: flex; gap: 8px; }
+  .rm-lp-b button { border: 0; border-radius: 10px; padding: 11px 12px; font-size: 14px; font-weight: 800; cursor: pointer; color: #fff; }
+  .rm-lp-go { flex: 1; background: var(--accent); } .rm-lp-save { flex: 1; background: #2b2f37; } .rm-lp-x { background: none; color: var(--dim) !important; }
+  .rm-x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; cursor: pointer; }
   .rm-phonelink { display: block; margin: 12px 2px 0; color: var(--dim); font-size: 14px; }
   /* now playing */
   .rm-now { background: linear-gradient(160deg, #1d2027, #15171c); border: 1px solid var(--line); border-radius: 22px; padding: 18px;
