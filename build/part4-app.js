@@ -490,15 +490,25 @@
     document.querySelectorAll('.rstar').forEach((b) => { if (b.dataset.id === st.stationuuid) paintStar(b, isRadioFav(st)); });
   }
   function paintStar(b, on) { b.textContent = on ? '★' : '☆'; b.style.color = on ? '#f5c518' : '#fff'; }
-  const radio = h('audio', { preload: 'none' });
+  const plainAudio = h('audio', { preload: 'none' });
+  const musicAudio = h('audio', { preload: 'none', crossorigin: 'anonymous' });
+  let radio = plainAudio, musicWired = false;
+  function useAudio(el) {
+    if (radio === el) return;
+    try { radio.pause(); radio.removeAttribute('src'); radio.load(); } catch (e) {}
+    radio = el;
+  }
+  // Same handlers on both elements; each only acts for the one in use.
+  function onAudio(ev, fn) { [plainAudio, musicAudio].forEach((el) => el.addEventListener(ev, (x) => { if (el === radio) fn(x); })); }
   let radioBar = null, radioNow = null;
-  radio.addEventListener('error', () => { if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow) toast(radioNow.pod ? 'That episode couldn’t be loaded — try another one.' : `${radioNow.name} isn’t broadcasting right now — try another station.`); });
+  onAudio('error', () => { if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow) toast(radioNow.pod ? 'That episode couldn’t be loaded — try another one.' : `${radioNow.name} isn’t broadcasting right now — try another station.`); });
   function markPlayingCards() {
     document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
   }
   function playRadio(st) {
     if (playerOpen) closeWatch();
     if (radioNow && radioNow.pod) savePodNow();
+    useAudio(plainAudio);
     radioNow = st;
     radio.preload = 'none';
     radio.src = st.url_resolved;
@@ -629,6 +639,7 @@
     if (!okUrl(ep.url_resolved)) { toast('That episode can’t be played here.'); return; }
     if (playerOpen) closeWatch();
     savePodNow();
+    useAudio(plainAudio);
     radioNow = ep;
     const saved = podPos()[ep.guid];
     const start = at != null ? Math.max(0, at) : (saved && !saved.done ? Math.max(0, saved.t - 3) : 0);
@@ -674,14 +685,14 @@
     podTimeEl.textContent = E.fmt(radio.currentTime || 0) + (d ? ' / ' + E.fmt(d) : '');
     if (podPP) podPP.textContent = radio.paused ? '▶' : '❚❚';
   }
-  radio.addEventListener('timeupdate', () => {
+  onAudio('timeupdate', () => {
     if (!(radioNow && radioNow.pod)) return;
     paintPodTime();
     if (Date.now() - podLastSave > 10000) { podLastSave = Date.now(); savePodNow(); }
   });
-  radio.addEventListener('play', paintPodTime);
-  radio.addEventListener('pause', () => { paintPodTime(); savePodNow(); });
-  radio.addEventListener('ended', () => {
+  onAudio('play', paintPodTime);
+  onAudio('pause', () => { paintPodTime(); savePodNow(); });
+  onAudio('ended', () => {
     if (!(radioNow && radioNow.pod)) return;
     savePodPos(radioNow, podDur(), podDur(), true);
     toast('Finished: ' + radioNow.name);
@@ -723,6 +734,15 @@
      turned into 320k MP3 by Plex (a quarter of the data on LTE).
      ===================================================================== */
   let musicSecs = null;
+  // ‹ Back and ⌂ Home for pages inside Music and Podcasts. Back goes to the
+  // previous page in the app, or to the section's main page if there isn't one.
+  let inAppNavs = 0;
+  window.addEventListener('hashchange', () => { inAppNavs++; });
+  function subNav(fallback) {
+    return h('div', { class: 'subnav' },
+      h('button', { class: 'btn ghost', type: 'button', text: '‹ Back', onclick: () => { if (inAppNavs > 0) history.back(); else go(fallback); } }),
+      h('a', { class: 'btn ghost', href: '#/home', text: '⌂ Home' }));
+  }
   function musicSections() {
     const uid = plex.user ? plex.user.id : 'owner';
     if (musicSecs && musicSecs.uid === uid) return Promise.resolve(musicSecs.list);
@@ -738,18 +758,34 @@
       albumRk: t.parentRatingKey ? String(t.parentRatingKey) : '', thumb: t.parentThumb || t.thumb || t.grandparentThumb || '',
       dur: (t.duration || 0) / 1000, codec: String(m.audioCodec || '').toLowerCase(), part: p.key || '' };
   }
+  const DIRECT_CODECS = /^(mp3|aac|flac|opus|vorbis)$/;
+  function musicLossless() { return store.get('dm_music_q', onPhone ? 'saver' : 'lossless') === 'lossless'; }
+  function trackDirect(t) { return !!t.part && (t.codec === 'mp3' || (musicLossless() && DIRECT_CODECS.test(t.codec))); }
   function trackUrl(t) {
     const c = plex.conn;
-    if (t.part && t.codec === 'mp3') return c.base + t.part + '?' + plexQS(c.token);
+    if (trackDirect(t)) return c.base + t.part + '?' + plexQS(c.token);
     return c.base + '/music/:/transcode/universal/start.mp3?path=' + enc('/library/metadata/' + t.rk) +
       '&mediaIndex=0&partIndex=0&protocol=http&directPlay=0&directStream=0&maxAudioBitrate=320&session=' + enc(plexClientId + '-m' + Date.now()) +
       '&X-Plex-Client-Profile-Extra=' + enc('add-transcode-target(type=musicProfile&context=streaming&protocol=http&container=mp3&audioCodec=mp3)') +
       '&' + plexQS(c.token);
   }
+  // The same song stored twice (same artist, same title, same length within
+  // 2 s) shows and plays once - the FLAC copy if there is one.
+  function dedupeTracks(list) {
+    const out = [], seen = new Map();
+    list.forEach((t) => {
+      const k = (t.artist || '').toLowerCase().trim() + '|' + (t.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      const hits = seen.get(k) || [];
+      const j = hits.findIndex((x) => Math.abs((out[x].dur || 0) - (t.dur || 0)) <= 2);
+      if (j < 0) { hits.push(out.length); seen.set(k, hits); out.push(t); }
+      else if (t.codec === 'flac' && out[hits[j]].codec !== 'flac') out[hits[j]] = t;
+    });
+    return out;
+  }
   const MQ = { list: [], i: 0 };
   function shuffled(l) { l = l.slice(); for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; } return l; }
   function playMusic(tracks, start, shuffle) {
-    const l = tracks.map((t) => (t.rk ? t : trackItem(t))).filter((t) => t.part);
+    const l = dedupeTracks(tracks.map((t) => (t.rk ? t : trackItem(t))).filter((t) => t.part));
     if (!l.length) { toast('Nothing playable there.'); return; }
     MQ.list = shuffle ? shuffled(l) : l;
     playTrackAt(shuffle ? 0 : Math.max(0, Math.min(l.length - 1, start || 0)));
@@ -760,6 +796,25 @@
       if (playerOpen) closeWatch();
       savePodNow();
       MQ.i = i;
+      // Files the server sends as they are can go through the bass/treble path;
+      // Plex's on-the-fly MP3 can't (it doesn't allow that), so it plays plain.
+      const fx = !onPhone && trackDirect(t);
+      useAudio(fx ? musicAudio : plainAudio);
+      if (fx && !musicWired) {
+        const input = E.soundInput();
+        if (input) { try { S.ctx.createMediaElementSource(musicAudio).connect(input); musicWired = true; } catch (e) {} }
+      }
+      if (fx) {
+        try { S.ctx.resume(); } catch (e) {}
+        // If the browser hasn't allowed sound through the app's audio path yet,
+        // play this song the plain way instead of silently.
+        setTimeout(() => {
+          if (radio !== musicAudio || !radioNow || radioNow.t !== t || (S.ctx && S.ctx.state === 'running')) return;
+          const at = musicAudio.currentTime || 0; useAudio(plainAudio);
+          radio.src = trackUrl(t); radio.addEventListener('loadedmetadata', function j() { radio.removeEventListener('loadedmetadata', j); try { radio.currentTime = at; } catch (e) {} });
+          radio.play().catch(() => {});
+        }, 1500);
+      }
       radioNow = { music: true, name: t.title, show: t.artist, stationuuid: 'm' + t.rk, favicon: '', dur: t.dur, t };
       radio.preload = 'auto';
       radio.src = trackUrl(t);
@@ -804,10 +859,10 @@
     mTimeEl.textContent = E.fmt(radio.currentTime || 0) + (d ? ' / ' + E.fmt(d) : '') + (MQ.list.length > 1 ? '  ·  ' + (MQ.i + 1) + ' of ' + MQ.list.length : '');
     if (mPP) mPP.textContent = radio.paused ? '▶' : '❚❚';
   }
-  radio.addEventListener('timeupdate', paintMusicTime);
-  radio.addEventListener('play', paintMusicTime);
-  radio.addEventListener('pause', paintMusicTime);
-  radio.addEventListener('ended', () => { if (radioNow && radioNow.music) { scrobble(radioNow.t); musicNext(); } });
+  onAudio('timeupdate', paintMusicTime);
+  onAudio('play', paintMusicTime);
+  onAudio('pause', paintMusicTime);
+  onAudio('ended', () => { if (radioNow && radioNow.music) { scrobble(radioNow.t); musicNext(); } });
 
   function albumCard(m) {
     return h('a', { class: 'pc sq', href: '#/music/album/' + enc(m.ratingKey) },
@@ -839,7 +894,7 @@
           h('button', { class: 'btn ghost', type: 'button', text: '🔀 Shuffle', onclick: () => playMusic(tracks(), 0, true) }))));
   }
   function musicView(root, [sec, a, b]) {
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Music' }), audioSwitch('music')));
+    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, sec ? subNav('#/music') : null, h('h1', { text: 'Music' })), audioSwitch('music')));
     if (!plex.auth) {
       root.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Your music, from Plex' }),
         h('p', { text: 'Sign in with Plex to play the music library on your server.' }), h('a', { class: 'btn red', href: '#/signin', text: 'Sign in with Plex' })));
@@ -854,7 +909,7 @@
       const fail = (e) => body.appendChild(msg('Couldn’t load that: ' + e.message, true));
       if (sec === 'album' || sec === 'playlist') {
         const meta = sec === 'album' ? pget('/library/metadata/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {}) : pget('/playlists/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {});
-        const items = pget(sec === 'album' ? '/library/metadata/' + enc(a) + '/children' : '/playlists/' + enc(a) + '/items').then((d) => (MC(d).Metadata || []).map(trackItem));
+        const items = pget(sec === 'album' ? '/library/metadata/' + enc(a) + '/children' : '/playlists/' + enc(a) + '/items').then((d) => dedupeTracks((MC(d).Metadata || []).map(trackItem)));
         return Promise.all([meta, items]).then(([m, tracks]) => {
           body.appendChild(musicHero(mArt(m.composite || m.thumb, 600), m.title || '', sec === 'album' ? [m.parentTitle, m.year].filter(Boolean).join(' · ') : tracks.length + ' songs', () => tracks));
           body.appendChild(h('div', { class: 'pad podeps' }, tracks.map((t, i) => trackRow(t, i, tracks, sec === 'playlist' || t.artist !== m.parentTitle))));
@@ -877,7 +932,8 @@
             h('div', { class: 'pod-info' }, h('h1', { text: m.title || '' }), h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album' : ' albums') }),
               h('div', { class: 'btns' },
                 h('button', { class: 'btn red', type: 'button', text: '🔀 Shuffle ' + (m.title || ''), onclick: () => all().then((l) => playMusic(l, 0, true)) })))));
-          const g = h('div', { class: 'grid sq pad' }); albums.forEach((x) => g.appendChild(albumCard(x))); body.appendChild(g);
+          const g = h('div', { class: 'grid sq pad' }); const seenA = {};
+          albums.filter((x) => { const k = String(x.title || '').toLowerCase().trim(); return seenA[k] ? false : (seenA[k] = 1); }).forEach((x) => g.appendChild(albumCard(x))); body.appendChild(g);
         }).catch(fail);
       }
       // Main page: search, shuffle, playlists, recently added, artists
@@ -895,7 +951,7 @@
             const l = hub.Metadata || []; if (!l.length) return;
             if (hub.type === 'artist') { any = true; const r = row('Artists'); l.forEach((m) => r.scroller.appendChild(artistCard(m))); body.appendChild(r.sec); }
             else if (hub.type === 'album') { any = true; const r = row('Albums'); l.forEach((m) => r.scroller.appendChild(albumCard(m))); body.appendChild(r.sec); }
-            else if (hub.type === 'track') { any = true; const tr = l.map(trackItem);
+            else if (hub.type === 'track') { any = true; const tr = dedupeTracks(l.map(trackItem));
               body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Songs' }), h('div', { class: 'podeps' }, tr.map((t, i) => trackRow(t, i, tr, true))))); }
           });
           if (!any) body.appendChild(h('div', { class: 'empty', text: 'Nothing found for “' + a + '”.' }));
@@ -929,11 +985,11 @@
       h('a', { href: '#/music', class: cur === 'music' ? 'on' : '', text: '🎵 Music' }));
   }
   function podcastsView(root, [sec, a]) {
-    if (sec === 'show') { podShowPage(root, a); return; }
+    if (sec === 'show') { root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, subNav('#/podcasts'), h('h1', { text: 'Podcasts' })), audioSwitch('podcasts'))); podShowPage(root, a); return; }
     const input = h('input', { type: 'text', placeholder: 'Search podcasts', value: sec === 'search' ? (a || '') : '', autocomplete: 'off', spellcheck: 'false' });
     const submit = () => { const v = input.value.trim(); if (v) go('#/podcasts/search/' + enc(v)); };
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Podcasts' }), audioSwitch('podcasts')));
+    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, sec === 'search' ? subNav('#/podcasts') : null, h('h1', { text: 'Podcasts' })), audioSwitch('podcasts')));
     root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }))));
     const cur = sec === 'genre' ? 'g' + a : sec ? '' : 'g';
     root.appendChild(chips(POD_GENRES.map(([id, label]) => ({ id: 'g' + id, label })), cur, (c) => c.id === 'g' ? '#/podcasts' : '#/podcasts/genre/' + c.id.slice(1)));
@@ -986,7 +1042,7 @@
   }
 
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_tone', 'dm_music_q', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
@@ -1505,7 +1561,7 @@
     const input = h('input', { type: 'text', value: q, placeholder: 'Find a station (name, city, show…)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const doSearch = () => go(href(cc, tag === '★' ? '' : tag, input.value.trim()));
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Radio' }), audioSwitch('radio')));
+    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, (tag || q) ? subNav('#/radio') : null, h('h1', { text: 'Radio' })), audioSwitch('radio')));
     root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
     root.appendChild(chips([{ id: '', label: 'Popular' }, { id: '★', label: '★ Your stations' }].concat(RADIO_TAGS.map(([id, label]) => ({ id, label }))),
       tag, (c) => href(cc, c.id, '')));
@@ -1707,7 +1763,16 @@
         const cs = h('select', { onchange: (e) => { store.set('dm_color', e.target.value); applyPicture(); toast(e.target.value === 'soft' ? 'Softer colour on' : 'Natural colour'); } },
           h('option', { value: 'natural', text: 'Natural' }), h('option', { value: 'soft', text: 'Softer — tames faces that look too red' }));
         cs.value = store.get('dm_color', 'natural'); return cs; })()),
-      h('p', { class: 'msg', style: { padding: '8px 0 0' }, text: 'In the player: 🗣 Voice makes talking easier to hear, ☀ brightens the picture.' })));
+      h('label', { class: 'lbl', text: 'Sound — movies, TV, YouTube and music' }), h('div', { class: 'field' }, (() => {
+        const ts = h('select', { onchange: (e) => { store.set('dm_tone', e.target.value); applyTone(); toast('Sound: ' + e.target.selectedOptions[0].text); } },
+          TONES.map((t) => h('option', { value: t.id, text: t.label })));
+        ts.value = toneNow().id; return ts; })()),
+      h('label', { class: 'lbl', text: 'Music quality' }), h('div', { class: 'field' }, (() => {
+        const mq = h('select', { onchange: (e) => { store.set('dm_music_q', e.target.value); toast(e.target.value === 'lossless' ? 'Lossless music on' : 'Data saver music on'); } },
+          h('option', { value: 'lossless', text: 'Lossless — full CD quality, bass & treble apply (about 1 Mbps)' }),
+          h('option', { value: 'saver', text: 'Data saver — 320k MP3 (about a quarter of the data)' }));
+        mq.value = musicLossless() ? 'lossless' : 'saver'; return mq; })()),
+      h('p', { class: 'msg', style: { padding: '8px 0 0' }, text: 'In the player: 🗣 Voice makes talking easier to hear, ☀ brightens the picture. The car’s own Audio settings (equalizer, Immersive Sound) add on top.' })));
     root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Phone remote' }),
       h('p', { text: 'Control the car screen from a phone. Tap 📱 on the car for the code.' }),
       h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '📱 Show pairing code (car)', onclick: showRemotePairing }),
@@ -2116,7 +2181,11 @@
     const on = !store.get('dm_voice', false);
     store.set('dm_voice', on); applyVoice(); toast(on ? 'Dialogue boost on — voices louder, booms softer' : 'Dialogue boost off');
   });
-  applyPicture(); applyVoice();
+  const TONES = [{ id: 'flat', label: 'Flat — as recorded', b: 0, t: 0 }, { id: 'rich', label: 'Rich — fuller bass, crisp highs', b: 5, t: 2 },
+    { id: 'bass', label: 'Bass boost — big low end', b: 9, t: 1.5 }, { id: 'bright', label: 'Bright — clearer highs', b: 2, t: 5 }];
+  function toneNow() { const id = store.get('dm_tone', 'rich'); return TONES.find((t) => t.id === id) || TONES[1]; }
+  function applyTone() { const t = toneNow(); E.setTone(t.b, t.t); }
+  applyPicture(); applyVoice(); applyTone();
   document.addEventListener('fullscreenchange', paintFs);
   document.addEventListener('webkitfullscreenchange', paintFs);
   if (!(root.requestFullscreen || root.webkitRequestFullscreen)) $('fsAll').hidden = true;

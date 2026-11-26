@@ -98,12 +98,28 @@ var Engine = (function () {
     }
     return S.ctx;
   }
-  /* Dialogue boost: less rumble, more of the speech range, and a gentle
-     compressor so quiet talking comes up and loud bangs come down. */
+  /* Sound path for everything the app plays through WebAudio:
+     volume -> headroom -> bass -> treble -> [dialogue boost] -> limiter -> speakers.
+     Bass/treble are shelf filters; the headroom cut plus a brick-wall
+     limiter keep a big bass boost from distorting. */
   function wireDialogue() {
     var c = S.ctx; if (!c || !S.gain) return;
-    try { S.gain.disconnect(); } catch (e) {}
-    if (!S.dialogue) { S.gain.connect(c.destination); return; }
+    if (!S.eq) {
+      var pre = c.createGain();
+      var bass = c.createBiquadFilter(); bass.type = 'lowshelf'; bass.frequency.value = 95;
+      var treb = c.createBiquadFilter(); treb.type = 'highshelf'; treb.frequency.value = 8500;
+      var lim = c.createDynamicsCompressor();
+      lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.12;
+      pre.connect(bass); bass.connect(treb); lim.connect(c.destination);
+      try { S.gain.disconnect(); } catch (e) {}
+      S.gain.connect(pre);
+      S.eq = { pre: pre, bass: bass, treb: treb, lim: lim };
+    }
+    var b = S.bassDb || 0, t = S.trebleDb || 0;
+    S.eq.bass.gain.value = b; S.eq.treb.gain.value = t;
+    S.eq.pre.gain.value = Math.pow(10, -(Math.max(b, t, 0) * 0.55) / 20);
+    try { S.eq.treb.disconnect(); } catch (e) {}
+    if (!S.dialogue) { S.eq.treb.connect(S.eq.lim); return; }
     if (!S.dlg) {
       var low = c.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 180; low.gain.value = -5;
       var mid = c.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 2600; mid.Q.value = 0.9; mid.gain.value = 6;
@@ -111,12 +127,15 @@ var Engine = (function () {
       var comp = c.createDynamicsCompressor();
       comp.threshold.value = -26; comp.knee.value = 18; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.25;
       var make = c.createGain(); make.gain.value = 1.2;
-      low.connect(mid); mid.connect(pres); pres.connect(comp); comp.connect(make); make.connect(c.destination);
+      low.connect(mid); mid.connect(pres); pres.connect(comp); comp.connect(make); make.connect(S.eq.lim);
       S.dlg = low;
     }
-    S.gain.connect(S.dlg);
+    S.eq.treb.connect(S.dlg);
   }
   function setDialogue(on) { S.dialogue = !!on; if (S.ctx) wireDialogue(); }
+  function setTone(bassDb, trebleDb) { S.bassDb = +bassDb || 0; S.trebleDb = +trebleDb || 0; if (S.ctx) wireDialogue(); }
+  // Where other audio (the music player) joins the sound path.
+  function soundInput() { ensureCtx(); return S.eq ? S.eq.pre : null; }
   function setMuted(m) { S.muted = !!m; ensureCtx(); if (S.gain) S.gain.gain.value = S.muted ? 0 : 1; }
   /* Shift playback by a small amount without reloading (positive =
      step back). Used to keep a mirrored screen in step with the car. */
@@ -1015,7 +1034,7 @@ var Engine = (function () {
   });
 
   return {
-    S: S, hooks: hooks, hasWC: hasWC, bufferedAhead: bufferedAhead, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge, setDialogue: setDialogue,
+    S: S, hooks: hooks, hasWC: hasWC, bufferedAhead: bufferedAhead, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge, setDialogue: setDialogue, setTone: setTone, soundInput: soundInput,
     load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo, livePos: livePos, liveTimeOf: liveTimeOf,
     ensureCtx: ensureCtx, mediaNow: mediaNow, dispPos: dispPos, dispDur: dispDur, canSeek: canSeek,
     setStatus: setStatus, updateTimeUi: updateTimeUi
