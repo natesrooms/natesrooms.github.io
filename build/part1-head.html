@@ -485,6 +485,54 @@
     .det-in .poster { width: 140px; }
     .ep .art { width: 150px; }
   }
+
+  /* ---------- Phones (the full app away from the car) ---------- */
+  @media (max-width: 600px) {
+    :root { --navh: 106px; }
+    .nav { height: auto; flex-wrap: wrap; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 0; }
+    .brand { font-size: 19px; }
+    .navgap { flex: 1; }
+    .navfs { width: 40px; height: 40px; font-size: 17px; border-radius: 10px; }
+    #fsAll { display: none; }
+    .mebadge { width: 18px; height: 18px; font-size: 9px; }
+    .tabs { order: 10; flex-basis: 100%; margin: 0 -12px; padding: 2px 8px 6px; }
+    .tabs a { min-height: 40px; padding: 8px 11px; font-size: 15px; }
+    .pad { padding: 0 14px; }
+    .page-h { padding: 16px 14px 4px; } .page-h h1 { font-size: 26px; }
+    .chips.pad { padding: 8px 14px 4px; } .chip { font-size: 14px; padding: 8px 12px; }
+    .row { margin: 18px 0 4px; } .row-h { padding: 0 14px; } .row-h h2 { font-size: 19px; }
+    .scroller { gap: 10px; padding: 10px 14px 6px; }
+    .flow > * { transform: none !important; }   /* page-flip is for the big car screen */
+    .pc { width: 116px; } .pc.sq { width: 128px; } .lc { width: 236px; }
+    .pc .t { font-size: 14px; } .pc .s { font-size: 12px; }
+    .grid { gap: 16px 10px; padding: 8px 14px; }
+    .grid.posters { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .grid.wide { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .grid.sq { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+    #view:has(.azbar) .grid.posters { padding-right: 34px; }
+    .azbar button { padding: 0 7px; }
+    .hero { min-height: 300px; } .hero .in { padding: 30px 14px 22px; }
+    .hero h1 { font-size: 27px; } .hero p { font-size: 15px; }
+    .det .hero { min-height: 0; } .det-in { padding: 30px 14px 20px; gap: 16px; } .det-in .poster { width: 120px; }
+    .field { gap: 8px; } .field input { min-width: 0; flex: 1 1 150px; } .field select { flex: 1 1 100%; min-width: 0; }
+    .card { margin-left: 14px; margin-right: 14px; padding: 16px; }
+    .pod-info h1 { font-size: 24px; }
+    .podep .t { font-size: 15px; }
+    /* player */
+    .pl-top { gap: 8px; flex-wrap: wrap; padding: max(10px, env(safe-area-inset-top)) 12px 24px; }
+    .pl-top .pb { font-size: 14px; padding: 8px 10px; min-height: 38px; }
+    .pl-top > div { flex: 1 1 100%; order: 5; min-width: 0; }
+    .pl-top .tt { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pl-top .ts { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pl-bottom { padding: 24px 12px max(12px, env(safe-area-inset-bottom)); }
+    .pl-row { gap: 8px; } .pl-row .pb { font-size: 15px; padding: 8px 10px; }
+    .timelabel { font-size: 13px; } .pl-ahead { display: none; }
+    /* audio bar */
+    .radiobar { left: 8px; right: 8px; transform: none; bottom: max(8px, env(safe-area-inset-bottom)); gap: 6px; padding: 8px; flex-wrap: wrap; }
+    .rb-logo { width: 42px; height: 42px; } .rb-txt { flex: 1; max-width: none; }
+    .radiobar .pb { font-size: 14px; padding: 8px 10px; min-height: 38px; }
+    body:has(.radiobar:not([hidden])) .view { padding-bottom: 150px; }
+  }
 </style>
 </head>
 <body class="gated">
