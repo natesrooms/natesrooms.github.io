@@ -1837,7 +1837,7 @@
       return { kind: P ? 'plex' : (watchKey || '').split('/')[0], art: nowArt(), title: $('plTitle').textContent, sub: $('plSub').textContent,
         pos: +E.dispPos(E.mediaNow()).toFixed(2), at: serverNow(), dur: Math.round(E.dispDur() || 0), seek: E.canSeek(), live: !!(S.isLive && !S.view),
         playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended, mirrorable: true,
-        liveRef: E.livePos() };
+        liveRef: E.livePos(), key: contentKey() };
     }
     if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false, mirrorable: true };
     return { kind: 'idle' };
@@ -1924,6 +1924,7 @@
   }
   /* What a phone needs to play the same thing itself. For Plex the car
      asks the server for a temporary access pass (not the account key). */
+  function contentKey() { return P ? 'plex/' + P.rk : watchKey; }   // same title = same key, even after a seek
   function buildMirror() {
     if (!playerOpen && radioNow) return Promise.resolve({ kind: 'radio', st: radioEntry(radioNow).st, title: radioNow.name });
     if (!playerOpen) return Promise.resolve({ kind: 'none' });
@@ -1932,11 +1933,11 @@
       return pget('/security/token?type=delegation&scope=all').then((d) => {
         const tok = MC(d).token || (d && d.token);
         if (!tok) throw new Error('Plex didn’t give out a temporary pass');
-        return { kind: 'plex', base: plex.conn.base, token: tok, rk: P.rk, dur: P.duration, title, sub };
+        return { kind: 'plex', base: plex.conn.base, token: tok, rk: P.rk, dur: P.duration, title, sub, key: contentKey() };
       });
     }
     return Promise.resolve({ kind: (watchKey || '').split('/')[0], url: S.srcUrl, ts: !!(S.srcOpts && S.srcOpts.ts),
-      live: !!(S.isLive && !S.isEvent && !S.view), liveRef: E.livePos(), at: serverNow(), title, sub });
+      live: !!(S.isLive && !S.isEvent && !S.view), liveRef: E.livePos(), at: serverNow(), title, sub, key: contentKey() });
   }
   function updateRemoteBtn() {
     const b = $('remoteBtn');
@@ -2056,12 +2057,14 @@
       if (Date.now() < MIR.fixing) return;
       MIR.fixing = Date.now() + 30000; mirrorLoad(0); return;
     }
-    if (Math.abs(diff) > 15) {
-      // A real jump (the car skipped). Reloading starts a new conversion on
-      // the server, so do it at most once every 30 seconds.
+    const isPlex = MIR.info.kind === 'plex';
+    if (Math.abs(diff) > (isPlex ? 15 : 4)) {
+      // A real jump (the car skipped). For Plex a reload starts a new
+      // conversion on the server, so at most once every 30 s; other videos
+      // just jump, at most every 8 s.
       if (Date.now() < MIR.fixing) return;
-      MIR.fixing = Date.now() + 30000;
-      if (MIR.info.kind === 'plex') mirrorLoad(target + 2);
+      MIR.fixing = Date.now() + (isPlex ? 30000 : 8000);
+      if (isPlex) mirrorLoad(target + 2);
       else E.seekTo(target + 0.5);
     } else if (diff > 0.12) {
       E.nudge(Math.min(0.5, diff));            // ahead: hold back a little
@@ -2257,7 +2260,13 @@
         lastHeard = Date.now(); noteServerTime(d, t0);
         ver = d.ver || ver;
         const sl = d.slots || {};
-        if (sl.now) { now = sl.now; if (MIR) MIR.carNow = now; drawNow(now); }
+        if (sl.now) {
+          now = sl.now; if (MIR) MIR.carNow = now; drawNow(now);
+          // The car switched to something else: follow it on this device.
+          if (MIR && !mirrorReq && now.key && MIR.info.key && now.key !== MIR.info.key && now.mirrorable) {
+            mirrorReq = Date.now(); send({ type: 'mirror', req: mirrorReq });
+          }
+        }
         if (sl.lists) { lists = sl.lists; drawRows(); }
         if (sl.results) { results = sl.results; drawResults(); }
         if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.textContent = '📲 Watch here too'; mirrorStart(sl.mirror, now); }
