@@ -106,7 +106,12 @@
   .rm-btn { width: 100%; max-width: 320px; display: block; text-align: center; background: var(--accent); color: #fff; border: 0; border-radius: 14px;
     font-size: 18px; font-weight: 800; padding: 16px; cursor: pointer; }
   .rm-btn[disabled] { opacity: .6; }
-  .rm-link { margin-top: 18px; color: var(--dim); font-size: 15px; text-decoration: underline; }
+  .rm-link { margin-top: 18px; color: var(--dim); font-size: 15px; text-decoration: underline; display: block; }
+  .rm-offline { background: #22191b; border: 1px solid #4a2a30; border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+  .rm-offline b { display: block; font-size: 16px; } .rm-offline p { color: var(--dim); font-size: 14px; margin: 6px 0 12px; line-height: 1.4; }
+  .rm-btn.ghost { display: block; text-align: center; background: #1f2228; color: var(--text); text-decoration: none; }
+  .rm-now.off { opacity: .45; pointer-events: none; }
+  .rm-phonelink { display: block; margin: 12px 2px 0; color: var(--dim); font-size: 14px; }
   /* now playing */
   .rm-now { background: linear-gradient(160deg, #1d2027, #15171c); border: 1px solid var(--line); border-radius: 22px; padding: 18px;
     box-shadow: 0 16px 40px rgba(0,0,0,.45); }
@@ -4753,8 +4758,9 @@ var MiniQR = (function () {
     const cmp = JSON.stringify(Object.assign({}, st, { at: 0, pos: Math.round(st.pos || 0) }));
     if (!force && cmp === REM.lastNow) return;
     REM.lastNow = cmp;
-    postSlot('now', st);
+    postSlot('now', Object.assign({}, st, { seen: serverNow() }));
   }
+  setInterval(() => { if (REM.room) publishNow(true); }, 20000);
   const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|podcasts|traffic$|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
@@ -5070,7 +5076,8 @@ var MiniQR = (function () {
           h('h1', { text: 'Connect to your car' }),
           h('p', { text: 'Enter the 6-digit code shown on the car screen.' }),
           input, st, btn,
-          saved ? h('a', { class: 'rm-link', href: '#/remote/' + saved, text: 'Reconnect to the last car' }) : null)));
+          saved ? h('a', { class: 'rm-link', href: '#/remote/' + saved, text: 'Reconnect to the last car' }) : null,
+          h('a', { class: 'rm-link', href: '#/home', text: '📺 Not in the car? Watch on this phone' }))));
       setTimeout(() => input.focus(), 50);
       return;
     }
@@ -5185,9 +5192,12 @@ var MiniQR = (function () {
     }
     function paintConn() {
       if (!alive()) return;
-      const ok = Date.now() - lastHeard < 30000;
-      dot.className = 'rm-dot' + (ok ? ' ok' : '');
-      conn.lastChild.textContent = ok ? 'Connected' : 'Waiting for the car…';
+      const home = Date.now() - lastHeard < 30000;
+      const car = home && !!(now && now.seen) && serverNow() - now.seen < 45000;
+      dot.className = 'rm-dot' + (car ? ' ok' : '');
+      conn.lastChild.textContent = car ? 'Connected' : home ? 'Car is offline' : 'Reconnecting…';
+      nowCard.classList.toggle('off', !car);
+      offline.hidden = car || !lastHeard;
       setTimeout(paintConn, 2000);
     }
     function gone() {
@@ -5198,12 +5208,19 @@ var MiniQR = (function () {
         h('p', { text: 'The pairing ended. Tap 📱 on the car screen for a new code.' }),
         h('a', { class: 'rm-btn', href: '#/remote', text: 'Enter a new code' }))));
     }
-    root.appendChild(h('div', { class: 'rm-page' }, brand(conn),
-      h('div', { class: 'rm-now' },
+    const watchPhone = () => h('a', { class: 'rm-btn ghost', href: '#/home', text: '📺 Watch on this phone' });
+    const offline = h('div', { class: 'rm-offline', hidden: true },
+      h('b', { text: 'The car isn’t running the app right now' }),
+      h('p', { text: 'Open natesrooms.github.io on the car screen and this remote picks it up. The car can’t be woken from here.' }),
+      watchPhone());
+    let nowCard;
+    root.appendChild(h('div', { class: 'rm-page' }, brand(conn), offline,
+      nowCard = h('div', { class: 'rm-now' },
         h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
         bar, h('div', { class: 'rm-times' }, tl, tr),
         h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere, phonesBtn),
       h('div', { class: 'rm-searchrow' }, search, pasteBtn),
+      h('a', { class: 'rm-phonelink', href: '#/home', text: '📺 Browse and watch on this phone instead' }),
       h('details', { class: 'rm-help' }, h('summary', { text: 'Send videos from other apps' }),
         h('p', { text: 'Copy a YouTube or video link anywhere, then tap 🔗 Paste link. Or type it into the search box.' }),
         h('b', { text: 'Android' }),
@@ -5269,7 +5286,10 @@ var MiniQR = (function () {
   updateMe();
   if (parse().name === 'remote') { document.body.classList.add('remote-mode'); dismissGate(); }
   else if (plex.auth && !plex.user && parse().name !== 'profiles') go('#/profiles', true);
-  $('remoteBtn').addEventListener('click', showRemotePairing);
+  $('remoteBtn').addEventListener('click', () => {
+    if (!REM.room && store.get('dm_remote_phone', null) && !store.get('dm_remote_car', null)) { go('#/remote/' + store.get('dm_remote_phone', null)); return; }
+    showRemotePairing();
+  });
   if (store.get('dm_remote_car', null)) carRemoteStart().catch(() => {});
   route();
 })();

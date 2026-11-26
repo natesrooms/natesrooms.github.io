@@ -2182,8 +2182,9 @@
     const cmp = JSON.stringify(Object.assign({}, st, { at: 0, pos: Math.round(st.pos || 0) }));
     if (!force && cmp === REM.lastNow) return;
     REM.lastNow = cmp;
-    postSlot('now', st);
+    postSlot('now', Object.assign({}, st, { seen: serverNow() }));
   }
+  setInterval(() => { if (REM.room) publishNow(true); }, 20000);
   const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|podcasts|traffic$|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
@@ -2499,7 +2500,8 @@
           h('h1', { text: 'Connect to your car' }),
           h('p', { text: 'Enter the 6-digit code shown on the car screen.' }),
           input, st, btn,
-          saved ? h('a', { class: 'rm-link', href: '#/remote/' + saved, text: 'Reconnect to the last car' }) : null)));
+          saved ? h('a', { class: 'rm-link', href: '#/remote/' + saved, text: 'Reconnect to the last car' }) : null,
+          h('a', { class: 'rm-link', href: '#/home', text: '📺 Not in the car? Watch on this phone' }))));
       setTimeout(() => input.focus(), 50);
       return;
     }
@@ -2614,9 +2616,12 @@
     }
     function paintConn() {
       if (!alive()) return;
-      const ok = Date.now() - lastHeard < 30000;
-      dot.className = 'rm-dot' + (ok ? ' ok' : '');
-      conn.lastChild.textContent = ok ? 'Connected' : 'Waiting for the car…';
+      const home = Date.now() - lastHeard < 30000;
+      const car = home && !!(now && now.seen) && serverNow() - now.seen < 45000;
+      dot.className = 'rm-dot' + (car ? ' ok' : '');
+      conn.lastChild.textContent = car ? 'Connected' : home ? 'Car is offline' : 'Reconnecting…';
+      nowCard.classList.toggle('off', !car);
+      offline.hidden = car || !lastHeard;
       setTimeout(paintConn, 2000);
     }
     function gone() {
@@ -2627,12 +2632,19 @@
         h('p', { text: 'The pairing ended. Tap 📱 on the car screen for a new code.' }),
         h('a', { class: 'rm-btn', href: '#/remote', text: 'Enter a new code' }))));
     }
-    root.appendChild(h('div', { class: 'rm-page' }, brand(conn),
-      h('div', { class: 'rm-now' },
+    const watchPhone = () => h('a', { class: 'rm-btn ghost', href: '#/home', text: '📺 Watch on this phone' });
+    const offline = h('div', { class: 'rm-offline', hidden: true },
+      h('b', { text: 'The car isn’t running the app right now' }),
+      h('p', { text: 'Open natesrooms.github.io on the car screen and this remote picks it up. The car can’t be woken from here.' }),
+      watchPhone());
+    let nowCard;
+    root.appendChild(h('div', { class: 'rm-page' }, brand(conn), offline,
+      nowCard = h('div', { class: 'rm-now' },
         h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
         bar, h('div', { class: 'rm-times' }, tl, tr),
         h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere, phonesBtn),
       h('div', { class: 'rm-searchrow' }, search, pasteBtn),
+      h('a', { class: 'rm-phonelink', href: '#/home', text: '📺 Browse and watch on this phone instead' }),
       h('details', { class: 'rm-help' }, h('summary', { text: 'Send videos from other apps' }),
         h('p', { text: 'Copy a YouTube or video link anywhere, then tap 🔗 Paste link. Or type it into the search box.' }),
         h('b', { text: 'Android' }),
@@ -2698,7 +2710,10 @@
   updateMe();
   if (parse().name === 'remote') { document.body.classList.add('remote-mode'); dismissGate(); }
   else if (plex.auth && !plex.user && parse().name !== 'profiles') go('#/profiles', true);
-  $('remoteBtn').addEventListener('click', showRemotePairing);
+  $('remoteBtn').addEventListener('click', () => {
+    if (!REM.room && store.get('dm_remote_phone', null) && !store.get('dm_remote_car', null)) { go('#/remote/' + store.get('dm_remote_phone', null)); return; }
+    showRemotePairing();
+  });
   if (store.get('dm_remote_car', null)) carRemoteStart().catch(() => {});
   route();
 })();
