@@ -335,40 +335,39 @@
      Live TV sources
      ===================================================================== */
   const VERIFIED = [
-    ["MovieSphere", "Movies", "https://amg00353-lionsgatestudio-moviesphere-xumo-zh5u0.amagi.tv/playlist.m3u8"],
-    ["Gravitas Movies", "Movies", "https://d6dg3ebeih71x.cloudfront.net/Gravitas_Movies.m3u8"],
-    ["24 Hour Free Movies", "Movies", "https://d1j2u714xk898n.cloudfront.net/scheduler/scheduleMaster/145.m3u8"],
-    ["Charge!", "Movies", "https://fast-channels.sinclairstoryline.com/CHARGE/index.m3u8"],
-    ["ION", "Series", "https://wurlewscripps.global.transmit.live/hls/68b9b0338cacd6fc468c222c/v1/scripps_ion_1/vizio_us/latest/main/hls/playlist.m3u8"],
-    ["ION Mystery", "Series", "https://bdd9b4ef.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/Vml6aW9fSU9OTXlzdGVyeV9ITFM/playlist.m3u8"],
-    ["The Carol Burnett Show", "Classic TV", "https://vizioaaaa-carol-burnett-vizio-xam92.amagi.tv/playlist/vizioAAAA-carol-burnett-vizio/playlist.m3u8"],
-    ["Story Television", "Classic TV", "https://2-fss-1.streamhoster.com/pl_122/206858-4412976-1/playlist.m3u8"],
-    ["FailArmy", "Comedy", "https://failarmy-international-au.samsung.wurl.tv/playlist.m3u8"],
-    ["Comet", "Sci-Fi", "https://fast-channels.sinclairstoryline.com/COMET/index.m3u8"],
-    ["DUST", "Sci-Fi", "https://dqi7ayt2o24fn.cloudfront.net/playlist.m3u8"],
-    ["Midnight Pulp", "Horror", "https://linear-897.frequency.stream/dist/cineverse/897/hls/master/playlist.m3u8"],
-    ["RetroCrush", "Anime", "https://linear-899.frequency.stream/dist/cineverse/899/hls/master/playlist.m3u8"],
-    ["Hell's Kitchen", "Reality", "https://amg00654-itv-amg00654c1-samsung-au-1072.playouts.now.amagi.tv/itv-hellskitchen-samsung/playlist.m3u8"],
-    ["Fear Factor", "Reality", "https://amg00627-banijaygroup-fearfactor-samsungau-9vdod.amagi.tv/playlist/amg00627-banijaygroup-fearfactor-samsungau/playlist.m3u8"],
-    ["American Ninja Warrior", "Reality", "https://d4whmvwm0rdvi.cloudfront.net/10007/99951318/hls/master.m3u8?ads.xumo_channelId=99951318"],
-    ["Court TV", "Crime", "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01438-ewscrippscompan-courttv-tablo/playlist.m3u8"],
-    ["Unsolved Mysteries", "Crime", "https://d31z96rdrmwfsp.cloudfront.net/master.m3u8"],
-    ["Top Gear", "Entertainment", "https://amg00793-amg00793c5-vizio-us-2666.playouts.now.amagi.tv/playlist/amg00793-bbcstudios-bbctopgear8minother-vizious/playlist.m3u8"],
-    ["Tastemade", "Entertainment", "https://rakutenaa-tm-intl-aus-rakuten-eu-n1gtg.amagi.tv/playlist/rakutenAA-tm-intl-aus-rakuten-eu/playlist.m3u8"],
-    ["NBC News NOW", "News", "https://d1si3n1st4nkgb.cloudfront.net/10502/88896001/hls/master.m3u8?ads.xumo_channelId=88896001"],
-    ["DW English", "News", "https://amg01644-amg01644c1-amgplt0343.playout.now3.amagi.tv/ts-eu-w1-n2/playlist/amg01644-amg01644c1-amgplt0343/playlist.m3u8"],
-    ["Bloomberg TV+", "News", "https://bloomberg.com/media-manifest/streams/us.m3u8"],
-    ["Sky News", "News", "https://dash4.antik.sk/live/test_skynews/playlist.m3u8"],
-    ["PBS Kids", "Kids", "https://livestream.pbskids.org/out/v1/14507d931bbe48a69287e4850e53443c/est.m3u8"],
-    ["MeTV Toons", "Kids", "https://sr-live-weigel1.akamaized.net/out/v1/0d1dbf29e64e47bc991796cc24fbeb97/index_2.m3u8"],
-    ["The Weather Channel", "Weather", "https://twcprod-live.twc-tv.com/v1/manifest/b4d4d63a49309cc5140171fb2e92485c31be1e9e/DSP_6228e4760505741a116f1ba2_twcprod-live/6bf09ce5-366b-463c-b67e-c4b799f73c3f/4.m3u8"],
-    ["AccuWeather NOW", "Weather", "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8"]
-  ].map(([name, cat, url]) => ({ name, cat, url, logo: '' }));
+    ["MovieSphere", "Movies", "https://amg00353-lionsgatestudio-moviesphere-xumo-zh5u0.amagi.tv/playlist.m3u8", "https://i.imgur.com/h1ejU90.png"],
+    ["Gravitas Movies", "Movies", "https://d6dg3ebeih71x.cloudfront.net/Gravitas_Movies.m3u8", "https://i.imgur.com/H2hD4vT.png"],
+    ["24 Hour Free Movies", "Movies", "https://d1j2u714xk898n.cloudfront.net/scheduler/scheduleMaster/145.m3u8", "https://i.imgur.com/iSVnzR1.png"],
+    ["Charge!", "Movies", "https://fast-channels.sinclairstoryline.com/CHARGE/index.m3u8", "https://static.wikia.nocookie.net/logopedia/images/0/09/Charge!_network_logo.png/revision/latest/scale-to-width-down/512/"],
+    ["ION", "Series", "https://wurlewscripps.global.transmit.live/hls/68b9b0338cacd6fc468c222c/v1/scripps_ion_1/vizio_us/latest/main/hls/playlist.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Ion_logo.svg/960px-Ion_logo.svg.png"],
+    ["ION Mystery", "Series", "https://bdd9b4ef.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/Vml6aW9fSU9OTXlzdGVyeV9ITFM/playlist.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/ION_Mystery_logo.svg/960px-ION_Mystery_logo.svg.png"],
+    ["The Carol Burnett Show", "Classic TV", "https://vizioaaaa-carol-burnett-vizio-xam92.amagi.tv/playlist/vizioAAAA-carol-burnett-vizio/playlist.m3u8", "https://i.imgur.com/1a03FlX.png"],
+    ["Story Television", "Classic TV", "https://2-fss-1.streamhoster.com/pl_122/206858-4412976-1/playlist.m3u8", "https://upload.wikimedia.org/wikipedia/en/e/e1/Story_television_logo.png"],
+    ["FailArmy", "Comedy", "https://failarmy-international-au.samsung.wurl.tv/playlist.m3u8", "https://i.imgur.com/VIpQJxL.png"],
+    ["Comet", "Sci-Fi", "https://fast-channels.sinclairstoryline.com/COMET/index.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Comet_logo.svg/960px-Comet_logo.svg.png"],
+    ["DUST", "Sci-Fi", "https://dqi7ayt2o24fn.cloudfront.net/playlist.m3u8", "https://i.imgur.com/FxYhME9.png"],
+    ["Midnight Pulp", "Horror", "https://linear-897.frequency.stream/dist/cineverse/897/hls/master/playlist.m3u8", "https://provider-static.plex.tv/a/epg/channels/logos/gracenote/a1a2cdc3d6f0714c586e9959732580c7.png"],
+    ["RetroCrush", "Anime", "https://linear-899.frequency.stream/dist/cineverse/899/hls/master/playlist.m3u8", "https://i.imgur.com/M40b4YI.png"],
+    ["Hell's Kitchen", "Reality", "https://amg00654-itv-amg00654c1-samsung-au-1072.playouts.now.amagi.tv/itv-hellskitchen-samsung/playlist.m3u8", "https://i.imgur.com/P9eT0O9.png"],
+    ["Fear Factor", "Reality", "https://amg00627-banijaygroup-fearfactor-samsungau-9vdod.amagi.tv/playlist/amg00627-banijaygroup-fearfactor-samsungau/playlist.m3u8", "https://i.imgur.com/CIYnLWz.png"],
+    ["American Ninja Warrior", "Reality", "https://d4whmvwm0rdvi.cloudfront.net/10007/99951318/hls/master.m3u8?ads.xumo_channelId=99951318", "https://raw.githubusercontent.com/RoqueDJ/iptv-svg/main/1792421696158.png"],
+    ["Court TV", "Crime", "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01438-ewscrippscompan-courttv-tablo/playlist.m3u8", "https://i.imgur.com/jOKA735.png"],
+    ["Unsolved Mysteries", "Crime", "https://d31z96rdrmwfsp.cloudfront.net/master.m3u8", "https://i.imgur.com/De3khrX.png"],
+    ["Top Gear", "Entertainment", "https://amg00793-amg00793c5-vizio-us-2666.playouts.now.amagi.tv/playlist/amg00793-bbcstudios-bbctopgear8minother-vizious/playlist.m3u8", "https://i.imgur.com/S6Su6QH.png"],
+    ["Tastemade", "Entertainment", "https://rakutenaa-tm-intl-aus-rakuten-eu-n1gtg.amagi.tv/playlist/rakutenAA-tm-intl-aus-rakuten-eu/playlist.m3u8", "https://i.imgur.com/xP7Ehn8.png"],
+    ["NBC News NOW", "News", "https://d1si3n1st4nkgb.cloudfront.net/10502/88896001/hls/master.m3u8?ads.xumo_channelId=88896001", "https://i.imgur.com/JZt2qh5.png"],
+    ["DW English", "News", "https://amg01644-amg01644c1-amgplt0343.playout.now3.amagi.tv/ts-eu-w1-n2/playlist/amg01644-amg01644c1-amgplt0343/playlist.m3u8", "https://i.imgur.com/MNKkgfa.png"],
+    ["Bloomberg TV+", "News", "https://bloomberg.com/media-manifest/streams/us.m3u8", "https://i.imgur.com/OuogLHx.png"],
+    ["Sky News", "News", "https://dash4.antik.sk/live/test_skynews/playlist.m3u8", "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1404.png"],
+    ["PBS Kids", "Kids", "https://livestream.pbskids.org/out/v1/14507d931bbe48a69287e4850e53443c/est.m3u8", "https://i.imgur.com/fg8c9WK.png"],
+    ["MeTV Toons", "Kids", "https://sr-live-weigel1.akamaized.net/out/v1/0d1dbf29e64e47bc991796cc24fbeb97/index_2.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/MeTV_Toons.png/250px-MeTV_Toons.png"],
+    ["The Weather Channel", "Weather", "https://twcprod-live.twc-tv.com/v1/manifest/b4d4d63a49309cc5140171fb2e92485c31be1e9e/DSP_6228e4760505741a116f1ba2_twcprod-live/6bf09ce5-366b-463c-b67e-c4b799f73c3f/4.m3u8", "https://i.imgur.com/PIaNjfa.png"],
+    ["AccuWeather NOW", "Weather", "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8", "https://i.imgur.com/M8wbVYK.png"]
+  ].map(([name, cat, url, logo]) => ({ name, cat, url, logo: logo || '' }));
 
   const REGIONS = [
-    ['us', 'USA'], ['ca', 'Canada'], ['uk', 'UK'], ['ie', 'Ireland'], ['au', 'Australia'], ['nz', 'New Zealand'],
-    ['mx', 'México'], ['es', 'España'], ['fr', 'France'], ['de', 'Deutschland'], ['it', 'Italia'], ['nl', 'Nederland'],
-    ['br', 'Brasil'], ['in', 'India'], ['jp', '日本'], ['kr', '한국']
+    // English-speaking channels only
+    ['us', 'USA'], ['ca', 'Canada'], ['uk', 'UK'], ['ie', 'Ireland'], ['au', 'Australia'], ['nz', 'New Zealand']
   ];
   function parseM3U(text, allowHttp) {
     const out = []; let cur = null;
@@ -447,10 +446,11 @@
       onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleFav(ch); e.currentTarget.textContent = isFav(ch.url) ? '★' : '☆'; e.currentTarget.style.color = isFav(ch.url) ? '#f5c518' : '#fff'; }
     });
     const card = wideCard({ channel: ch.logo ? '' : ch.name, cat: ch.logo ? '' : ch.cat, img: '', live: true, href: channelHref(ch), star,
-      title: ch.name, sub: ch.logo ? ch.name : '' });
+      title: ch.name, sub: ch.logo ? (ch.cat || '') : '' });
     if (ch.logo) {
       const box = card.querySelector('.art');
       box.style.background = '#1b1d22';
+      const ph = box.querySelector('.ph'); if (ph) ph.remove();
       const im = h('img', { src: ch.logo, alt: '', loading: 'lazy', style: { objectFit: 'contain', padding: '22px' } });
       im.addEventListener('error', () => { im.remove(); box.style.background = grad(ch.cat || ch.name); box.appendChild(h('div', { class: 'chan' }, h('div', { class: 'n', text: ch.name }))); });
       box.insertBefore(im, box.firstChild);
@@ -471,6 +471,16 @@
     const m = raw.match(/[?&]v=([A-Za-z0-9_-]{11})/) || raw.match(/youtu\.be\/([A-Za-z0-9_-]{11})/) ||
       raw.match(/\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/);
     return m ? m[1] : null;
+  }
+  /* Send to car: turn a shared or pasted link into something the car can
+     play. YouTube (videos, Shorts, live) and direct video links for now. */
+  function linkTarget(text, title) {
+    text = String(text || '');
+    const id = ytIdFrom(text) || (text.match(/https?:\/\/\S+/g) || []).map(ytIdFrom).find(Boolean);
+    if (id) return { hash: '#/watch/yt/' + enc(id) + '/' + enc((title || 'YouTube video').slice(0, 120)), label: title || 'YouTube video' };
+    const url = (text.match(/https?:\/\/[^\s"'<>]+/) || [])[0];
+    if (url && /\.(m3u8|mp4|m4v|mov|ts)(\?|#|$)/i.test(url)) return { hash: '#/watch/url/' + enc(url), label: 'Video link' };
+    return url ? { unsupported: url } : null;
   }
   const ytCache = {};
   function ytSearch(q, n) {
@@ -529,14 +539,17 @@
   function paintStar(b, on) { b.textContent = on ? '★' : '☆'; b.style.color = on ? '#f5c518' : '#fff'; }
   const radio = h('audio', { preload: 'none' });
   let radioBar = null, radioNow = null;
-  radio.addEventListener('error', () => { if (radioNow) toast(`${radioNow.name} isn’t broadcasting right now — try another station.`); });
+  radio.addEventListener('error', () => { if (radioNow) toast(radioNow.pod ? 'That episode couldn’t be loaded — try another one.' : `${radioNow.name} isn’t broadcasting right now — try another station.`); });
   function markPlayingCards() {
-    document.querySelectorAll('.lc[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
+    document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
   }
   function playRadio(st) {
     if (playerOpen) closeWatch();
+    if (radioNow && radioNow.pod) savePodNow();
     radioNow = st;
+    radio.preload = 'none';
     radio.src = st.url_resolved;
+    radio.defaultPlaybackRate = radio.playbackRate = 1;
     radio.play().catch((e) => toast('That station would not start: ' + e.message));
     if (!radioBar) {
       radioBar = h('div', { class: 'radiobar' });
@@ -556,7 +569,7 @@
     );
     markPlayingCards();
   }
-  function stopRadio() { radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
+  function stopRadio() { if (radioNow && radioNow.pod) savePodNow(); radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
   function stationCard(st) {
     const tag = (st.tags || '').split(',').filter(Boolean)[0] || st.countrycode || 'Radio';
     const star = h('button', { class: 'badge rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station',
@@ -574,6 +587,236 @@
     }
     if (radioNow && radioNow.stationuuid === st.stationuuid) card.classList.add('now');
     return card;
+  }
+
+  /* =====================================================================
+     Podcasts — Apple's public podcast directory (search, top charts,
+     episodes; no helper needed). Episodes play through the same audio
+     element as radio, with resume, skip and speed.
+     ===================================================================== */
+  const POD_GENRES = [['', 'Top shows'], ['1488', 'True Crime'], ['1303', 'Comedy'], ['1311', 'News'], ['1487', 'History'],
+    ['1324', 'Society & Culture'], ['1545', 'Sports'], ['1304', 'Education'], ['1318', 'Technology'], ['1321', 'Business'],
+    ['1533', 'Science'], ['1305', 'Kids & Family']];
+  const POD_SPEEDS = [1, 1.25, 1.5, 2, 0.8];
+  const podCache = new Map();
+  function podJson(url) {
+    const hit = podCache.get(url);
+    if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.p;
+    const p = fetch(url).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    podCache.set(url, { p, at: Date.now() }); p.catch(() => podCache.delete(url));
+    return p;
+  }
+  const podArt = (u, size) => (u || '').replace(/\/\d+x\d+(bb)?\.(jpg|png|webp)$/i, '/' + size + 'x' + size + 'bb.jpg');
+  function podShowOf(r) {
+    return { id: String(r.collectionId || r.trackId), name: r.collectionName || r.trackName || 'Podcast', by: r.artistName || '',
+      art: r.artworkUrl600 || r.artworkUrl100 || '', genre: r.primaryGenreName || '' };
+  }
+  function podSearch(q) {
+    return podJson('https://itunes.apple.com/search?media=podcast&country=US&limit=40&term=' + enc(q)).then((d) => (d.results || []).map(podShowOf));
+  }
+  function podTop(genre) {
+    return podJson('https://itunes.apple.com/us/rss/toppodcasts/limit=50/' + (genre ? 'genre=' + genre + '/' : '') + 'json').then((d) => {
+      let e = (d.feed && d.feed.entry) || []; if (!Array.isArray(e)) e = [e];
+      return e.map((x) => ({ id: x.id.attributes['im:id'], name: x['im:name'].label, by: (x['im:artist'] || {}).label || '',
+        art: podArt(((x['im:image'] || []).slice(-1)[0] || {}).label, 600), genre: ((x.category || {}).attributes || {}).label || '' }));
+    });
+  }
+  function podEpisodes(id) {
+    return podJson('https://itunes.apple.com/lookup?id=' + enc(id) + '&media=podcast&entity=podcastEpisode&limit=100&country=US').then((d) => {
+      const rs = d.results || [];
+      const top = rs.find((r) => r.wrapperType === 'track');
+      const show = top ? podShowOf(top) : { id: String(id), name: 'Podcast', by: '', art: '' };
+      const eps = rs.filter((r) => r.wrapperType === 'podcastEpisode' && r.episodeUrl && okUrl(r.episodeUrl)).map((r) => podEp({
+        guid: String(r.episodeGuid || r.trackId), name: r.trackName, show: show.name, showId: show.id, url_resolved: r.episodeUrl,
+        favicon: r.artworkUrl600 || r.artworkUrl160 || show.art, date: r.releaseDate, dur: Math.round((r.trackTimeMillis || 0) / 1000),
+        desc: (r.description || '').replace(/\s+/g, ' ').slice(0, 260) }));
+      return { show, eps };
+    });
+  }
+  // Only the fields we use, as plain strings - also used on episodes a phone sends.
+  function podEp(x) {
+    const s = (v, n) => String(v == null ? '' : v).slice(0, n);
+    return { pod: true, guid: s(x.guid, 200), stationuuid: 'pod:' + s(x.guid, 200), name: s(x.name, 300), show: s(x.show, 200), showId: s(x.showId, 30),
+      url_resolved: s(x.url_resolved, 2000), favicon: okUrl(x.favicon || '') ? s(x.favicon, 1000) : '', date: s(x.date, 40), dur: +x.dur || 0, desc: s(x.desc, 300) };
+  }
+  const podSubs = () => store.get('dm_podsubs', []);
+  const isPodSub = (id) => podSubs().some((s) => s.id === id);
+  function togglePodSub(s) {
+    let l = podSubs();
+    if (isPodSub(s.id)) { l = l.filter((x) => x.id !== s.id); toast('Unfollowed ' + s.name); }
+    else { l.unshift({ id: s.id, name: s.name, by: s.by, art: s.art }); toast('Following ' + s.name); }
+    store.set('dm_podsubs', l.slice(0, 100)); invalidate('podcasts');
+  }
+  const podPos = () => store.get('dm_podpos', {});
+  function savePodPos(ep, t, dur, done) {
+    const all = podPos();
+    all[ep.guid] = { t: Math.floor(t || 0), dur: Math.round(dur || ep.dur || 0), at: Date.now(), done: !!done, ep: Object.assign(podEp(ep), { desc: '' }) };
+    Object.keys(all).sort((a, b) => all[b].at - all[a].at).slice(80).forEach((k) => delete all[k]);
+    store.set('dm_podpos', all); invalidate('podcasts'); invalidate('home');
+  }
+  function savePodNow() {
+    if (radioNow && radioNow.pod && radio.currentTime > 5) {
+      const d = isFinite(radio.duration) ? radio.duration : radioNow.dur;
+      savePodPos(radioNow, radio.currentTime, d, !!d && radio.currentTime > d - 30);
+    }
+  }
+  function podInProgress() {
+    return Object.values(podPos()).filter((x) => !x.done && x.t > 30).sort((a, b) => b.at - a.at).map((x) => x.ep);
+  }
+  function podFmtDate(d) {
+    const t = new Date(d); if (isNaN(t)) return '';
+    return t.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: t.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  }
+  function podDur() { return isFinite(radio.duration) && radio.duration > 0 ? radio.duration : (radioNow && radioNow.dur) || 0; }
+  function podSkip(s) { if (!(radioNow && radioNow.pod)) return; try { radio.currentTime = Math.max(0, Math.min(podDur() - 1, radio.currentTime + s)); } catch (e) {} }
+  function podSeek(t) { if (!(radioNow && radioNow.pod)) return; try { radio.currentTime = Math.max(0, Math.min(podDur() - 1, t)); } catch (e) {} }
+
+  function playPodcast(ep, at) {
+    ep = podEp(ep);
+    if (!okUrl(ep.url_resolved)) { toast('That episode can’t be played here.'); return; }
+    if (playerOpen) closeWatch();
+    savePodNow();
+    radioNow = ep;
+    const saved = podPos()[ep.guid];
+    const start = at != null ? Math.max(0, at) : (saved && !saved.done ? Math.max(0, saved.t - 3) : 0);
+    radio.preload = 'auto';
+    radio.src = ep.url_resolved;
+    const sp = +store.get('dm_podspeed', 1) || 1;
+    radio.defaultPlaybackRate = radio.playbackRate = sp;
+    if (start > 0) {
+      const jump = () => { radio.removeEventListener('loadedmetadata', jump); try { radio.currentTime = start; } catch (e) {} };
+      radio.addEventListener('loadedmetadata', jump);
+    }
+    radio.play().catch((e) => toast('That episode would not start: ' + e.message));
+    drawPodBar();
+    markPlayingCards();
+    if (start > 0 && at == null) toast('Picking up where you left off (' + E.fmt(start) + ')');
+  }
+  let podTimeEl = null, podPP = null, podLastSave = 0;
+  function drawPodBar() {
+    const ep = radioNow;
+    if (!radioBar) { radioBar = h('div', { class: 'radiobar' }); document.body.appendChild(radioBar); }
+    radioBar.hidden = false;
+    podTimeEl = h('span', { class: 'rb-time' });
+    podPP = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } });
+    const speed = h('button', { class: 'pb rb-speed', type: 'button', 'aria-label': 'Playback speed', onclick: () => {
+      const cur = radio.playbackRate || 1, nx = POD_SPEEDS[(POD_SPEEDS.indexOf(cur) + 1) % POD_SPEEDS.length];
+      radio.defaultPlaybackRate = radio.playbackRate = nx; store.set('dm_podspeed', nx); speed.textContent = nx + '×';
+    } });
+    speed.textContent = (radio.playbackRate || 1) + '×';
+    radioBar.replaceChildren(
+      h('a', { class: 'rb-logo', href: '#/podcasts/show/' + enc(ep.showId), style: { background: grad(ep.show) } },
+        ep.favicon ? h('img', { src: podArt(ep.favicon, 160), alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
+      h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: ep.name }), h('div', { class: 'rb-s' }, h('span', { text: ep.show + ' · ' }), podTimeEl)),
+      h('button', { class: 'pb', type: 'button', text: '↺ 15', 'aria-label': 'Back 15 seconds', onclick: () => podSkip(-15) }),
+      podPP,
+      h('button', { class: 'pb', type: 'button', text: '30 ↻', 'aria-label': 'Forward 30 seconds', onclick: () => podSkip(30) }),
+      speed,
+      h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio }));
+    paintPodTime();
+  }
+  function paintPodTime() {
+    if (!(radioNow && radioNow.pod) || !podTimeEl) return;
+    const d = podDur();
+    podTimeEl.textContent = E.fmt(radio.currentTime || 0) + (d ? ' / ' + E.fmt(d) : '');
+    if (podPP) podPP.textContent = radio.paused ? '▶' : '❚❚';
+  }
+  radio.addEventListener('timeupdate', () => {
+    if (!(radioNow && radioNow.pod)) return;
+    paintPodTime();
+    if (Date.now() - podLastSave > 10000) { podLastSave = Date.now(); savePodNow(); }
+  });
+  radio.addEventListener('play', paintPodTime);
+  radio.addEventListener('pause', () => { paintPodTime(); savePodNow(); });
+  radio.addEventListener('ended', () => {
+    if (!(radioNow && radioNow.pod)) return;
+    savePodPos(radioNow, podDur(), podDur(), true);
+    toast('Finished: ' + radioNow.name);
+    paintPodTime();
+  });
+
+  function podShowCard(s) {
+    return h('a', { class: 'pc sq', href: '#/podcasts/show/' + enc(s.id) },
+      artBox(s.art ? podArt(s.art, 400) : '', s.name, []),
+      h('div', { class: 't', text: s.name }), s.by ? h('div', { class: 's', text: s.by }) : null);
+  }
+  function podEpCard(ep) {
+    const sv = podPos()[ep.guid];
+    const p = sv && sv.dur ? sv.t / sv.dur : 0;
+    const left = sv && sv.dur ? E.fmt(Math.max(0, sv.dur - sv.t)) + ' left' : ep.show;
+    return h('div', { class: 'pc sq', 'data-station': ep.stationuuid, onclick: () => playPodcast(ep) },
+      artBox(ep.favicon ? podArt(ep.favicon, 400) : '', ep.name, [progressBar(p), h('div', { class: 'play', text: '▶' })]),
+      h('div', { class: 't', text: ep.name }), h('div', { class: 's', text: left }));
+  }
+  function podEpRow(ep) {
+    const sv = podPos()[ep.guid];
+    const dur = (sv && sv.dur) || ep.dur;
+    const p = sv ? (sv.done ? 1 : dur ? sv.t / dur : 0) : 0;
+    const meta = [podFmtDate(ep.date), ep.dur ? Math.max(1, Math.round(ep.dur / 60)) + ' min' : '',
+      sv && sv.done ? '✓ Played' : sv && sv.t > 30 && dur ? E.fmt(Math.max(0, dur - sv.t)) + ' left' : ''].filter(Boolean).join(' · ');
+    return h('button', { class: 'podep', type: 'button', 'data-station': ep.stationuuid, onclick: () => playPodcast(ep) },
+      h('div', { class: 'podep-play', text: '▶' }),
+      h('div', { class: 'podep-txt' }, h('div', { class: 't', text: ep.name }), h('div', { class: 's', text: meta }),
+        ep.desc ? h('div', { class: 'd', text: ep.desc }) : null,
+        p > 0.01 ? h('div', { class: 'podep-bar' }, h('i', { style: { width: Math.min(100, Math.round(p * 100)) + '%' } })) : null));
+  }
+  function podGrid(list) { const g = h('div', { class: 'grid sq' }); list.forEach((s) => g.appendChild(podShowCard(s))); return g; }
+
+  function podcastsView(root, [sec, a]) {
+    if (sec === 'show') { podShowPage(root, a); return; }
+    const input = h('input', { type: 'text', placeholder: 'Search podcasts', value: sec === 'search' ? (a || '') : '', autocomplete: 'off', spellcheck: 'false' });
+    const submit = () => { const v = input.value.trim(); if (v) go('#/podcasts/search/' + enc(v)); };
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Podcasts' })));
+    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }))));
+    const cur = sec === 'genre' ? 'g' + a : sec ? '' : 'g';
+    root.appendChild(chips(POD_GENRES.map(([id, label]) => ({ id: 'g' + id, label })), cur, (c) => c.id === 'g' ? '#/podcasts' : '#/podcasts/genre/' + c.id.slice(1)));
+    const body = h('div'); root.appendChild(body);
+    if (sec === 'search' && a) {
+      body.appendChild(msg('Searching…'));
+      podSearch(a).then((l) => body.replaceChildren(l.length ? podGrid(l) : h('div', { class: 'empty', text: 'No podcasts found.' })))
+        .catch((e) => body.replaceChildren(msg('Podcast search isn’t answering (' + e.message + ').', true)));
+      return;
+    }
+    if (!sec) {
+      const cont = podInProgress();
+      if (cont.length) { const r = row('Continue listening'); cont.forEach((ep) => r.scroller.appendChild(podEpCard(ep))); body.appendChild(r.sec); }
+      const subs = podSubs();
+      if (subs.length) { const r = row('Your shows'); subs.forEach((s) => r.scroller.appendChild(podShowCard(s))); body.appendChild(r.sec); }
+      // Shows played lately (finished or not), newest first.
+      const seen = new Set(), recent = [];
+      Object.values(podPos()).sort((x, y) => y.at - x.at).forEach((x) => {
+        const ep = x.ep || {};
+        if (ep.showId && !seen.has(ep.showId)) { seen.add(ep.showId); recent.push({ id: ep.showId, name: ep.show, by: 'Played ' + podFmtDate(x.at), art: ep.favicon }); }
+      });
+      if (recent.length) { const r = row('Recently played'); recent.slice(0, 20).forEach((s) => r.scroller.appendChild(podShowCard(s))); body.appendChild(r.sec); }
+    }
+    const g = POD_GENRES.find(([id]) => id === (sec === 'genre' ? a : '')) || POD_GENRES[0];
+    const chart = h('div'); body.appendChild(chart);
+    chart.appendChild(h('div', { class: 'row-h pad' }, h('h2', { text: sec === 'genre' ? 'Top in ' + g[1] : 'Top podcasts in the US' })));
+    const load = msg('Loading…'); chart.appendChild(load);
+    podTop(sec === 'genre' ? a : '').then((l) => { load.remove(); chart.appendChild(podGrid(l)); })
+      .catch((e) => { load.replaceWith(msg('Couldn’t load the charts (' + e.message + ').', true)); });
+  }
+  function podShowPage(root, id) {
+    const wait = msg('Loading episodes…'); root.appendChild(wait);
+    podEpisodes(id).then(({ show, eps }) => {
+      wait.remove();
+      const label = () => isPodSub(show.id) ? '✓ Following' : '+ Follow';
+      const follow = h('button', { class: 'btn ghost', type: 'button', text: label(), onclick: (e) => { togglePodSub(show); e.currentTarget.textContent = label(); } });
+      const sv = podPos();
+      const resume = eps.find((ep) => sv[ep.guid] && !sv[ep.guid].done && sv[ep.guid].t > 30);
+      root.appendChild(h('div', { class: 'pod-hero pad' },
+        h('div', { class: 'pod-cover', style: { background: grad(show.name) } }, show.art ? h('img', { src: podArt(show.art, 600), alt: '' }) : null),
+        h('div', { class: 'pod-info' }, h('h1', { text: show.name }), h('div', { class: 'pod-by', text: [show.by, show.genre].filter(Boolean).join(' · ') }),
+          h('div', { class: 'btns' },
+            resume ? h('button', { class: 'btn red', type: 'button', text: '▶ Resume', onclick: () => playPodcast(resume) })
+              : eps[0] ? h('button', { class: 'btn red', type: 'button', text: '▶ Play latest', onclick: () => playPodcast(eps[0]) }) : null,
+            follow))));
+      if (!eps.length) { root.appendChild(h('div', { class: 'empty', text: 'No playable episodes listed for this show.' })); return; }
+      root.appendChild(h('div', { class: 'pad podeps' }, eps.map(podEpRow)));
+      markPlayingCards();
+    }).catch((e) => wait.replaceWith(msg('Couldn’t load this podcast (' + e.message + ').', true)));
   }
 
   /* =====================================================================
@@ -681,7 +924,7 @@
   }
 
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
@@ -776,6 +1019,7 @@
     return { name: parts[0] || 'home', args: parts.slice(1).map((x) => { try { return decodeURIComponent(x); } catch (e) { return x; } }), key: raw || 'home' };
   }
   const VIEWS = {};
+  VIEWS.podcasts = podcastsView;
   function route() {
     const r = parse();
     if (r.name === 'watch') {
@@ -830,7 +1074,9 @@
     const hero = h('div'); root.appendChild(hero);
     const rows = h('div'); root.appendChild(rows);
     const slot = () => { const s = h('div'); rows.appendChild(s); return s; };
-    const sCW = slot(), sPlex = slot(), sFav = slot(), sLive = slot(), sYT = slot(), sRadio = slot();
+    const sCW = slot(), sPlex = slot(), sFav = slot(), sLive = slot(), sYT = slot(), sRadio = slot(), sPod = slot();
+    const podCont = podInProgress();
+    if (podCont.length) { const r = row('Continue listening', '#/podcasts'); podCont.forEach((ep) => r.scroller.appendChild(podEpCard(ep))); sPod.appendChild(r.sec); }
 
     if (!plex.auth) {
       hero.appendChild(h('section', { class: 'hero' }, h('div', { class: 'bg', style: { background: 'radial-gradient(circle at 75% 30%, #3a1f2a, #0c0d10 60%)' } }),
@@ -934,26 +1180,27 @@
       const sec = secs.find((s) => String(s.key) === String(key));
       if (!sec) throw new Error('that library is not on this server.');
       const same = secs.filter((s) => s.type === sec.type);
-      root.replaceChildren(
+      root.replaceChildren(...[
         h('div', { class: 'page-h' }, h('h1', { text: sec.title })),
         same.length > 1 ? chips(same.map((s) => ({ id: String(s.key), label: s.title })), String(key), (c) => `#/library/${c.id}/${type}`) : null,
-        chips(SORTS, sort, (c) => `#/library/${key}/${type}/${c.id}`));
+        chips(SORTS, sort, (c) => `#/library/${key}/${type}/${c.id}`)].filter(Boolean));
       const grid = h('div', { class: 'grid posters' }); root.appendChild(grid);
       const status = msg(''); root.appendChild(status);
       const moreWrap = h('div', { class: 'more' }); root.appendChild(moreWrap);
       let start = 0, total = Infinity, busy = false;
       const PAGE = 60;
       const qsort = sort === 'unwatched' ? 'unwatched=1&sort=addedAt:desc' : 'sort=' + enc(sort);
-      function more() {
-        if (busy || start >= total) return;
+      function more(upTo) {
+        if (busy || start >= total) return Promise.resolve();
         busy = true; status.textContent = start ? 'Loading…' : '';
         const sk = start ? [] : skeletons(18, false); sk.forEach((x) => grid.appendChild(x));
-        pget(`/library/sections/${key}/all?${qsort}&X-Plex-Container-Start=${start}&X-Plex-Container-Size=${PAGE}`).then((d) => {
+        const size = upTo && upTo + PAGE > start + PAGE ? upTo + PAGE - start : PAGE;
+        return pget(`/library/sections/${key}/all?${qsort}&X-Plex-Container-Start=${start}&X-Plex-Container-Size=${size}`).then((d) => {
           sk.forEach((x) => x.remove());
           const mc = MC(d);
           total = mc.totalSize != null ? mc.totalSize : (mc.size < PAGE ? start + (mc.size || 0) : Infinity);
           (mc.Metadata || []).forEach((m) => grid.appendChild(plexCard(m)));
-          start += (mc.Metadata || []).length || PAGE;
+          start += (mc.Metadata || []).length || size;
           status.textContent = start >= total ? '' : '';
           if (!(mc.Metadata || []).length) total = start;
           moreWrap.replaceChildren(start < total ? h('button', { class: 'btn ghost', type: 'button', text: 'Load more', onclick: more }) : null);
@@ -963,6 +1210,37 @@
       more();
       if ('IntersectionObserver' in window) {
         new IntersectionObserver((ents) => { if (ents.some((x) => x.isIntersecting)) more(); }, { rootMargin: '900px' }).observe(moreWrap);
+      }
+      // A–Z: a letter bar on the right, like the Plex app. Tap a letter to
+      // jump to where it starts (loading the titles up to there first).
+      if (sort === 'titleSort') {
+        pget(`/library/sections/${key}/firstCharacter?sort=titleSort`).then((d) => {
+          const dirs = MC(d).Directory || [];
+          if (!dirs.length) return;
+          let at = 0;
+          const pos = {};
+          dirs.forEach((x) => { pos[x.title] = { at, n: +x.size || 0 }; at += +x.size || 0; });
+          const letters = ['#'].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+          const jump = (L) => {
+            const p = pos[L]; if (!p || !p.n) return;
+            const go2 = () => {
+              const cards = grid.querySelectorAll('.pc');
+              const el = cards[p.at];
+              if (!el) return false;
+              const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight;
+              const top = el.getBoundingClientRect().top + window.scrollY - navH - 14;
+              window.scrollTo({ top, behavior: Math.abs(top - window.scrollY) < window.innerHeight * 2 ? 'smooth' : 'auto' });
+              // posters above may still be settling: check once more
+              setTimeout(() => { const t2 = el.getBoundingClientRect().top + window.scrollY - navH - 14; if (Math.abs(t2 - window.scrollY) > 40) window.scrollTo(0, t2); }, 450);
+              return true;
+            };
+            if (go2()) return;
+            const wait = () => busy ? setTimeout(wait, 150) : more(p.at).then(go2);
+            wait();
+          };
+          root.appendChild(h('div', { class: 'azbar', role: 'navigation', 'aria-label': 'Jump to letter' },
+            letters.map((L) => h('button', { type: 'button', text: L, class: pos[L] && pos[L].n ? '' : 'off', onclick: () => jump(L) }))));
+        }).catch(() => {});
       }
     }).catch((e) => root.replaceChildren(signinOrError(e)));
   };
@@ -1072,8 +1350,7 @@
       const note = h('div'); body.appendChild(note);
       p = E.fetchRead('channels/checked-' + cc + '.json', 'json', 10000).then((d) => {
         const when = d.checked ? new Date(d.checked).toLocaleDateString() : '';
-        note.appendChild(h('div', { class: 'msg' }, `Showing the ${d.ok} of ${d.total} channels that passed a playback check on ${when}. `,
-          h('a', { href: '#/live/all-' + cc, style: { textDecoration: 'underline' }, text: 'Show all ' + d.total }), '.'));
+        note.appendChild(h('div', { class: 'msg' }, `${d.ok} English-language channels that passed a playback check on ${when}.`));
         return (d.channels || []).map((c) => ({ name: c.name, cat: c.cat, url: c.url, logo: c.logo || '' }));
       }).catch(() => {
         note.appendChild(msg('Community-maintained channel list (iptv-org), not checked yet — some channels won’t play here; those show an error, just try another.'));
@@ -1460,6 +1737,17 @@
   }
   player.addEventListener('pointerdown', showUi);
   player.addEventListener('mousemove', showUi);
+  // Tap the picture to play or pause (buttons, the bars and the seek
+  // slider keep their own jobs). A phone playing along follows the car.
+  const tapFlash = h('div', { class: 'tapflash' });
+  player.appendChild(tapFlash);
+  player.addEventListener('click', (e) => {
+    if (MIR || !S.started || S.ended || !playerOpen) return;
+    if (e.target.closest('button, a, input, select, .pl-top, .pl-row, .upnext, .po-cover')) return;
+    $('btnPlay').click();
+    tapFlash.textContent = S.playing ? '▶' : '❚❚';
+    tapFlash.classList.remove('go'); void tapFlash.offsetWidth; tapFlash.classList.add('go');
+  });
 
   function refreshOverlay() {
     if (!playerOpen) return;
@@ -1525,7 +1813,21 @@
     $('upNext').hidden = true;
     showUi();
   }
+  /* Phones only: the movie keeps running on the car (so it still controls
+     and syncs the phones), but the car screen goes dark and its sound
+     is off - for when the driver doesn't want it on. */
+  let phonesOnly = false;
+  function setPhonesOnly(on) {
+    on = !!on && playerOpen && !MIR;
+    if (on === phonesOnly) return;
+    phonesOnly = on;
+    document.body.classList.toggle('phones-only', on);
+    E.setMuted(on);
+    const b = $('plPhones'); if (b) b.textContent = on ? '📺 Show here' : '📱 Phones only';
+    if (typeof publishNow === 'function') publishNow(true);
+  }
   function closeWatch() {
+    setPhonesOnly(false);
     endPlex();
     playerOpen = false; watchKey = null; watchChannel = null;
     clearUpNext();
@@ -1570,6 +1872,12 @@
       openPlayerShell(b || 'YouTube', 'YouTube');
       $('plNote').textContent = 'Converting at home — the first play of a video can take a little while to start.';
       E.load(ytBase() + '/stream?v=' + enc(a), b); S.autoplay = auto;
+      // A shared link has no title yet: ask YouTube for it.
+      if (!b || b === 'YouTube video') {
+        fetch('https://www.youtube.com/oembed?format=json&url=' + enc('https://www.youtube.com/watch?v=' + a)).then((r) => r.ok ? r.json() : null).then((d) => {
+          if (d && d.title && watchKey === key) { $('plTitle').textContent = d.title; $('plSub').textContent = d.author_name || 'YouTube'; }
+        }).catch(() => {});
+      }
     } else if (kind === 'url') {
       openPlayerShell('Stream', a);
       E.load(a, 'stream'); S.autoplay = auto;
@@ -1698,6 +2006,8 @@
   });
   $('plBack').addEventListener('click', () => { if (MIR) { mirrorStop(); return; } if (sawAppView) history.back(); else go('#/home', true); });
   $('plHome').addEventListener('click', () => { if (MIR) { mirrorStop(); return; } go('#/home'); });
+  $('plPhones').addEventListener('click', () => setPhonesOnly(!phonesOnly));
+  $('poShow').addEventListener('click', () => setPhonesOnly(false));
   /* Full screen: one toggle for the whole app (menu button and the
      player's button do the same thing), so browsing and watching stay
      full screen together and the two can't fight each other. */
@@ -1859,8 +2169,10 @@
       return { kind: P ? 'plex' : (watchKey || '').split('/')[0], art: nowArt(), title: $('plTitle').textContent, sub: $('plSub').textContent,
         pos: +E.dispPos(E.mediaNow()).toFixed(2), at: serverNow(), dur: Math.round(E.dispDur() || 0), seek: E.canSeek(), live: !!(S.isLive && !S.view),
         playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended, mirrorable: true,
-        liveRef: E.livePos(), key: contentKey() };
+        liveRef: E.livePos(), key: contentKey(), phonesOnly };
     }
+    if (radioNow && radioNow.pod) return { kind: 'podcast', art: radioNow.favicon ? podArt(radioNow.favicon, 300) : null, title: radioNow.name, sub: radioNow.show,
+      pos: +(radio.currentTime || 0).toFixed(2), at: serverNow(), dur: Math.round(podDur()), seek: true, playing: !radio.paused, mirrorable: true, key: 'pod/' + radioNow.guid };
     if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false, mirrorable: true };
     return { kind: 'idle' };
   }
@@ -1872,7 +2184,7 @@
     REM.lastNow = cmp;
     postSlot('now', st);
   }
-  const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|traffic$|search\/)/;
+  const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|podcasts|traffic$|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
     const saved = store.get('dm_remote_car', null);
@@ -1881,9 +2193,13 @@
     const t = c && c.type;
     if (t === 'hello') { publishNow(true); return; }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
+    else if (t === 'skip' && radioNow && radioNow.pod) podSkip(Math.max(-600, Math.min(600, +c.s || 0)));
+    else if (t === 'seek' && radioNow && radioNow.pod) podSeek(Math.max(0, +c.pos || 0));
+    else if (t === 'pod' && c.ep && typeof c.ep === 'object') playPodcast(c.ep);
     else if (t === 'skip' && playerOpen) skip(Math.max(-600, Math.min(600, +c.s || 0)));
     else if (t === 'seek' && playerOpen && E.canSeek()) E.hooks.onSeekRequest(Math.max(0, +c.pos || 0));
-    else if (t === 'back') { if (playerOpen) $('plBack').click(); }
+    else if (t === 'back') { if (playerOpen) $('plBack').click(); else if (radioNow) stopRadio(); }
+    else if (t === 'phones') setPhonesOnly(!!c.on);
     else if (t === 'stopradio') stopRadio();
     else if (t === 'go' && typeof c.hash === 'string' && SAFE_HASH.test(c.hash)) { REM.autoUntil = Date.now() + 8000; go(c.hash); }
     else if (t === 'radio' && c.st && okUrl(c.st.url_resolved || '')) playRadio(c.st);
@@ -1911,7 +2227,8 @@
       st: { stationuuid: st.stationuuid, name: st.name, url_resolved: st.url_resolved, favicon: st.favicon || '', tags: st.tags || '', bitrate: st.bitrate || 0 } };
   }
   function buildRemoteLists() {
-    const out = { cont: [], recent: [], live: [], radio: [] };
+    const podItem = (ep) => ({ t: ep.name, s: ep.show, img: ep.favicon ? podArt(ep.favicon, 300) : null, pod: Object.assign(podEp(ep), { desc: '' }) });
+    const out = { cont: [], recent: [], live: [], radio: [], pods: podInProgress().slice(0, 20).map(podItem) };
     const jobs = [];
     if (plex.auth) {
       jobs.push(pget('/library/onDeck?X-Plex-Container-Start=0&X-Plex-Container-Size=20')
@@ -1924,6 +2241,9 @@
     }
     out.live = favs().concat(VERIFIED).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i).slice(0, 40).map(chanEntry);
     out.radio = radioFavs().map(radioEntry);
+    podSubs().slice(0, 8).forEach((s) => jobs.push(podEpisodes(s.id).then(({ eps }) => {
+      if (eps[0] && !out.pods.some((x) => x.pod.guid === eps[0].guid)) out.pods.push(podItem(eps[0]));
+    }).catch(() => {})));
     jobs.push(radioSearch({ countrycode: 'US', limit: '25' }).then((l) => {
       l.forEach((st) => { if (!out.radio.some((x) => x.st.stationuuid === st.stationuuid)) out.radio.push(radioEntry(st)); });
     }).catch(() => {}));
@@ -1941,6 +2261,8 @@
       .forEach((c) => res.items.push(Object.assign(chanEntry(c), { k: 'Live TV' })));
     jobs.push(ytSearch(q, 12).then((l) => l.forEach((r) => res.items.push({ t: r.title, s: r.channel || '', k: 'YouTube', img: okUrl(r.thumb || '') ? r.thumb : null,
       go: '#/watch/yt/' + enc(r.id) + '/' + enc(r.title || 'YouTube video') }))).catch(() => {}));
+    jobs.push(podSearch(q).then((l) => l.slice(0, 12).forEach((s) => res.items.push({ t: s.name, s: s.by, k: 'Podcasts', img: s.art ? podArt(s.art, 300) : null,
+      go: '#/podcasts/show/' + enc(s.id) }))).catch(() => {}));
     jobs.push(radioSearch({ name: q, countrycode: 'US', limit: '10' }).then((l) => l.forEach((st) => res.items.push(Object.assign(radioEntry(st), { k: 'Radio' })))).catch(() => {}));
     return Promise.all(jobs).then(() => res);
   }
@@ -1948,6 +2270,7 @@
      asks the server for a temporary access pass (not the account key). */
   function contentKey() { return P ? 'plex/' + P.rk : watchKey; }   // same title = same key, even after a seek
   function buildMirror() {
+    if (!playerOpen && radioNow && radioNow.pod) return Promise.resolve({ kind: 'podcast', ep: Object.assign(podEp(radioNow), { desc: '' }), pos: radio.currentTime || 0, at: serverNow(), playing: !radio.paused, title: radioNow.name });
     if (!playerOpen && radioNow) return Promise.resolve({ kind: 'radio', st: radioEntry(radioNow).st, title: radioNow.name });
     if (!playerOpen) return Promise.resolve({ kind: 'none' });
     const title = $('plTitle').textContent, sub = $('plSub').textContent;
@@ -1962,6 +2285,7 @@
       live: !!(S.isLive && !S.isEvent && !S.view), liveRef: E.livePos(), at: serverNow(), title, sub, key: contentKey() });
   }
   function updateRemoteBtn() {
+    const pb = $('plPhones'); if (pb) pb.hidden = !REM.room || !!MIR;
     const b = $('remoteBtn');
     if (!b) return;
     b.classList.toggle('on', !!REM.room);
@@ -2040,6 +2364,10 @@
   }
   function mirrorStart(info, carNow) {
     if (info.kind === 'radio') { playRadio(info.st); toast('Playing the car’s station on this device.'); return; }
+    if (info.kind === 'podcast') {
+      const lag = info.playing ? Math.max(0, serverNow() - (info.at || serverNow())) / 1000 : 0;
+      playPodcast(info.ep, (info.pos || 0) + lag); toast('Playing the car’s podcast on this device.'); return;
+    }
     if (info.kind === 'none' || info.kind === 'error') { toast(info.kind === 'error' ? 'Couldn’t start it here: ' + info.error : 'Nothing is playing on the car.'); return; }
     if (!E.hasWC) { toast('This browser can’t play video this way — try Chrome.'); return; }
     mirrorStop();
@@ -2060,6 +2388,13 @@
     if (!MIR || !S.loaded) return;
     const n = MIR.carNow;
     if (!n || n.kind === 'idle') return;
+    // Car went phones-only (its sound is off): play sound here. Back to
+    // this phone's own choice when the car screen comes back.
+    if (!!n.phonesOnly !== !!MIR.po) {
+      MIR.po = !!n.phonesOnly;
+      E.setMuted(MIR.po ? false : store.get('dm_mirror_muted', true)); paintMirrorSound();
+      if (MIR.po) toast('Car screen is off — sound is on this phone now.');
+    }
     const carGoing = !!n.playing;   // false while the car is paused OR buffering
     // Wait with the car: pause while it's paused or buffering, go when it goes.
     if (S.started && !S.ended) {
@@ -2184,6 +2519,11 @@
     const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send({ type: 'skip', s: -10 }) }, h('span', { text: '↺' }), h('small', { text: '10' }));
     const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send({ type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
+    const phonesBtn = h('button', { class: 'rm-phones', type: 'button', hidden: true, onclick: () => {
+      const on = !(now && now.phonesOnly);
+      send({ type: 'phones', on });
+      if (on && !MIR && !mirrorReq) watchHere.click();   // start it on this phone too
+    } });
     let mirrorReq = 0;
     const watchHere = h('button', { class: 'rm-watch', type: 'button', hidden: true, onclick: () => {
       mirrorReq = Date.now(); watchHere.textContent = 'Starting…'; send({ type: 'mirror', req: mirrorReq });
@@ -2191,19 +2531,35 @@
     } }, '📲 Watch here too');
     let dur = 0, lastHeard = 0, now = null, lists = null, results = null;
     bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
-    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', url: '🎞', idle: '🚗' };
+    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', idle: '🚗' };
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
+    const sendLink = (text, title) => {
+      const t = linkTarget(text, title);
+      if (!t) return false;
+      if (t.unsupported) { toast('That link can’t play in the car yet — YouTube and direct video links work.'); return true; }
+      send({ type: 'go', hash: t.hash }); toast('Sent to the car: ' + t.label);
+      search.value = ''; resultsEl.replaceChildren(); window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    };
+    const pasteBtn = h('button', { class: 'rm-paste', type: 'button', text: '🔗 Paste link', onclick: () => {
+      if (!(navigator.clipboard && navigator.clipboard.readText)) { search.focus(); toast('Paste the link into the search box.'); return; }
+      navigator.clipboard.readText().then((txt) => { if (!sendLink(txt)) toast('No link found — copy a video link first, then tap Paste link.'); })
+        .catch(() => { search.focus(); toast('Paste the link into the search box.'); });
+    } });
+    const pend = store.get('dm_share', null);
+    if (pend) { store.set('dm_share', null); if (Date.now() - (pend.at || 0) < 10 * 60 * 1000) setTimeout(() => { if (alive() && !sendLink(pend.text, pend.title)) toast('That share didn’t include a video link.'); }, 800); }
     const doFind = () => {
       const q = search.value.trim(); if (!q) { resultsEl.replaceChildren(); return; }
+      if (/^https?:\/\//i.test(q) || /youtu\.?be/i.test(q)) { if (sendLink(q)) return; }
       search.blur(); results = null;
       resultsEl.replaceChildren(h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: 'Searching…' }), h('div', { class: 'rm-scroll' }, ...skelCards(6, 'poster'))));
       send({ type: 'find', q });
     };
     search.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFind(); });
     search.addEventListener('search', () => { if (!search.value.trim()) resultsEl.replaceChildren(); });
-    const pick = (it) => { if (it.st) send({ type: 'radio', st: it.st }); else if (it.go) send({ type: 'go', hash: it.go }); toast('Playing on the car: ' + it.t); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    const pick = (it) => { if (it.st) send({ type: 'radio', st: it.st }); else if (it.pod) send({ type: 'pod', ep: it.pod }); else if (it.go) send({ type: 'go', hash: it.go }); toast('Playing on the car: ' + it.t); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     function skelCards(n, shape) { return Array.from({ length: n }, () => h('div', { class: 'rm-card ' + shape + ' skel' }, h('div', { class: 'rm-art' }))); }
     function card(it, shape) {
       const art = h('div', { class: 'rm-art', style: it.img ? null : { background: grad(it.t || '?') } });
@@ -2220,19 +2576,19 @@
     function row(label, items, shape) {
       if (!items || !items.length) return null;
       return h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: label }),
-        enableFlow(h('div', { class: 'rm-scroll' }, ...items.filter((it) => it.go || it.st).map((it) => card(it, shape)))));
+        enableFlow(h('div', { class: 'rm-scroll' }, ...items.filter((it) => it.go || it.st || it.pod).map((it) => card(it, shape)))));
     }
     function drawRows() {
       if (!lists) { rowsEl.replaceChildren(...['Continue Watching', 'Recently added'].map((l) => h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: l }), h('div', { class: 'rm-scroll' }, ...skelCards(5, 'poster'))))); return; }
       rowsEl.replaceChildren(...[row('Continue Watching', lists.cont, 'poster'), row('Recently added', lists.recent, 'poster'),
-        row('Live TV', lists.live, 'wide'), row('Radio', lists.radio, 'square')].filter(Boolean));
+        row('Live TV', lists.live, 'wide'), row('Podcasts', lists.pods, 'square'), row('Radio', lists.radio, 'square')].filter(Boolean));
     }
     function drawResults() {
       if (!results) return;
       if (!results.items.length) { resultsEl.replaceChildren(h('div', { class: 'rm-empty', text: 'Nothing found for “' + results.q + '”.' })); return; }
       const by = (k) => results.items.filter((it) => (it.k || '') === k);
       resultsEl.replaceChildren(...[row('Plex', by('Plex'), 'poster'), row('YouTube', by('YouTube'), 'wide'),
-        row('Live TV', by('Live TV'), 'wide'), row('Radio', by('Radio'), 'square')].filter(Boolean));
+        row('Live TV', by('Live TV'), 'wide'), row('Podcasts', by('Podcasts'), 'square'), row('Radio', by('Radio'), 'square')].filter(Boolean));
     }
     function drawNow(n) {
       const idle = !n || n.kind === 'idle';
@@ -2247,6 +2603,10 @@
       const seek = !!(n && n.seek && dur);
       bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek; pp.disabled = idle; close.hidden = idle;
       watchHere.hidden = idle || !(n && n.mirrorable) || !!MIR;
+      const video = !idle && n && n.kind !== 'radio' && n.kind !== 'podcast';
+      phonesBtn.hidden = !video;
+      phonesBtn.textContent = n && n.phonesOnly ? '📺 Turn the car screen back on' : '📱 Phones only — car screen off';
+      phonesBtn.classList.toggle('on', !!(n && n.phonesOnly));
       if (dur && document.activeElement !== bar) bar.value = Math.round(1000 * (n.pos || 0) / dur);
       if (!dur) bar.value = 0;
       tl.textContent = idle ? '' : n.buffering ? 'Loading…' : dur ? E.fmt(n.pos || 0) : (n.kind === 'radio' ? 'Live radio' : 'Live');
@@ -2271,8 +2631,20 @@
       h('div', { class: 'rm-now' },
         h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
         bar, h('div', { class: 'rm-times' }, tl, tr),
-        h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere),
-      h('div', { class: 'rm-searchrow' }, search), resultsEl, rowsEl));
+        h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere, phonesBtn),
+      h('div', { class: 'rm-searchrow' }, search, pasteBtn),
+      h('details', { class: 'rm-help' }, h('summary', { text: 'Send videos from other apps' }),
+        h('p', { text: 'Copy a YouTube or video link anywhere, then tap 🔗 Paste link. Or type it into the search box.' }),
+        h('b', { text: 'Android' }),
+        h('p', { text: 'Add this remote to your home screen (Chrome menu ⋮ → Add to Home screen). Then in YouTube or any app, tap Share and pick “Theater”.' }),
+        h('b', { text: 'iPhone — one-time setup' }),
+        h('ol', {},
+          h('li', { text: 'Open the Shortcuts app and tap + to make a new shortcut.' }),
+          h('li', { text: 'Tap ⓘ at the bottom and turn on “Show in Share Sheet”. Set it to receive URLs and Text.' }),
+          h('li', { text: 'Add the action “URL Encode” (it uses the Shortcut Input).' }),
+          h('li', {}, 'Add the action “Open URLs” and type: ', h('code', { text: location.origin + location.pathname + '?send=' }), ' then insert the “URL Encoded Text” right after it.'),
+          h('li', { text: 'Name it “Send to car”. Now tap Share in YouTube, Safari or Messages and pick Send to car.' })),
+        h('p', { class: 'rm-note', text: 'The shortcut opens Safari, so connect Safari to the car once with the 6-digit code too.' })), resultsEl, rowsEl));
     drawNow(null); drawRows(); paintConn();
     let ver = 0;
     const poll = () => {
@@ -2312,6 +2684,17 @@
   };
 
   /* ---------- start ---------- */
+  // A link shared to the app (Android share menu, or the iPhone Shortcut,
+  // which opens ?send=<link>): keep it, clean the address, and open the
+  // remote - it sends the link to the car once connected.
+  (() => {
+    const qs = new URLSearchParams(location.search);
+    const text = [qs.get('send'), qs.get('url'), qs.get('text')].filter(Boolean).join(' ');
+    if (!text) return;
+    store.set('dm_share', { text: text.slice(0, 2000), title: (qs.get('title') || '').slice(0, 200), at: Date.now() });
+    const room = store.get('dm_remote_phone', null);
+    history.replaceState(null, '', location.pathname + (room ? '#/remote/' + room : '#/remote'));
+  })();
   updateMe();
   if (parse().name === 'remote') { document.body.classList.add('remote-mode'); dismissGate(); }
   else if (plex.auth && !plex.user && parse().name !== 'profiles') go('#/profiles', true);
