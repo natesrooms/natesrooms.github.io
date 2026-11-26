@@ -1742,7 +1742,7 @@
   const tapFlash = h('div', { class: 'tapflash' });
   player.appendChild(tapFlash);
   player.addEventListener('click', (e) => {
-    if (MIR || !S.started || S.ended || !playerOpen) return;
+    if (MIR || ytEmbed || !S.started || S.ended || !playerOpen) return;
     if (e.target.closest('button, a, input, select, .pl-top, .pl-row, .upnext, .po-cover')) return;
     $('btnPlay').click();
     tapFlash.textContent = S.playing ? '▶' : '❚❚';
@@ -1802,6 +1802,44 @@
     if (MIR) MIR.retries = 0;
     if (watchChannel && !watchChannel.done) { watchChannel.done = true; markHealth(watchChannel.url, true); } $('plNote').textContent = ''; refreshOverlay(); showUi(); };
 
+  /* YouTube's own player, for phones and tablets. Falls back to the home
+     helper for videos YouTube won't let other sites show. */
+  const onPhone = !/Tesla\//.test(navigator.userAgent) &&
+    (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
+  let ytEmbed = null, ytApi = null;
+  function loadYtApi() {
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    if (ytApi) return ytApi;
+    ytApi = new Promise((ok, no) => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (prev) try { prev(); } catch (e) {} ok(); };
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.onerror = () => { ytApi = null; no(new Error('YouTube player didn’t load')); };
+      document.head.appendChild(s);
+      setTimeout(() => no(new Error('YouTube player took too long')), 12000);
+    });
+    return ytApi;
+  }
+  function ytEmbedStart(id, fallback) {
+    ytEmbedStop();
+    const box = h('div', { class: 'ytbox' }, h('div', { id: 'ytFrame' }));
+    $('stage').appendChild(box);
+    document.body.classList.add('yt-embed');
+    const mine = ytEmbed = { box, player: null };
+    const bail = () => { if (ytEmbed === mine) { ytEmbedStop(); fallback(); } };
+    loadYtApi().then(() => {
+      if (ytEmbed !== mine) return;
+      mine.player = new YT.Player('ytFrame', { videoId: id, width: '100%', height: '100%',
+        playerVars: { autoplay: 1, playsinline: 1, rel: 0 }, events: { onError: bail } });
+    }).catch(bail);
+  }
+  function ytEmbedStop() {
+    if (!ytEmbed) return;
+    try { if (ytEmbed.player) ytEmbed.player.destroy(); } catch (e) {}
+    ytEmbed.box.remove(); ytEmbed = null;
+    document.body.classList.remove('yt-embed');
+  }
   function openPlayerShell(title, sub) {
     stopRadio();
     playerOpen = true;
@@ -1828,6 +1866,7 @@
   }
   function closeWatch() {
     setPhonesOnly(false);
+    ytEmbedStop();
     endPlex();
     playerOpen = false; watchKey = null; watchChannel = null;
     clearUpNext();
@@ -1870,8 +1909,13 @@
       }
     } else if (kind === 'yt') {
       openPlayerShell(b || 'YouTube', 'YouTube');
-      $('plNote').textContent = 'Converting at home — the first play of a video can take a little while to start.';
-      E.load(ytBase() + '/stream?v=' + enc(a), b); S.autoplay = auto;
+      const viaHelper = () => {
+        $('plNote').textContent = 'Converting at home — the first play of a video can take a little while to start.';
+        E.load(ytBase() + '/stream?v=' + enc(a), b); S.autoplay = auto;
+      };
+      // A phone or tablet can use YouTube's own player (no helper needed);
+      // the Tesla can't, because its browser stops normal video while driving.
+      if (onPhone && !MIR) ytEmbedStart(a, viaHelper); else viaHelper();
       // A shared link has no title yet: ask YouTube for it.
       if (!b || b === 'YouTube video') {
         fetch('https://www.youtube.com/oembed?format=json&url=' + enc('https://www.youtube.com/watch?v=' + a)).then((r) => r.ok ? r.json() : null).then((d) => {
