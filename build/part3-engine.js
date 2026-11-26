@@ -257,17 +257,30 @@ var Engine = (function () {
   function scheduleAudio(buf, pts) {
     if (!S.ctx) return;
     var when = S.ctxEpoch + (pts - S.mediaTarget);
+    // Headphones / Bluetooth add delay between "play" and "heard": start the
+    // sound that much earlier so it lines up with the picture.
+    var lat = (S.ctx.outputLatency || 0) + (S.ctx.baseLatency || 0);
+    if (lat > 0 && lat < 0.5) when -= lat;
     var now = S.ctx.currentTime;
     if (when < now - 0.25) return;            // far too late: drop rather than smear audio
     if (when < now + 0.02) when = now + 0.02;
-    if (S.nextAudioWhen && when < S.nextAudioWhen) when = S.nextAudioWhen;
-    S.nextAudioWhen = when + buf.duration;
+    // Sound queued earlier can run late after the picture jumps ahead (a
+    // play-along screen catching up). Skip the late slice instead of
+    // queueing behind it, so the sound never drifts behind the picture.
+    var offset = 0, late = S.nextAudioWhen ? S.nextAudioWhen - when : 0;
+    if (late > 0.04) {
+      if (late >= buf.duration) return;       // this whole piece is already behind
+      offset = late; when = S.nextAudioWhen;
+    } else if (late > 0) when = S.nextAudioWhen;
+    S.nextAudioWhen = when + buf.duration - offset;
+    // How far behind the picture this sound starts (seconds); ~0 when in step.
+    S.avLag = +((when - offset) - (S.ctxEpoch + (pts - S.mediaTarget) - (lat > 0 && lat < 0.5 ? lat : 0))).toFixed(3);
     var src = S.ctx.createBufferSource();
     src.buffer = buf;
     src.connect(S.gain || S.ctx.destination);
     src.onended = function () { S.audioSources.delete(src); };
     S.audioSources.add(src);
-    try { src.start(when); } catch (e) {}
+    try { src.start(when, offset); } catch (e) {}
   }
   function stopAudioSources() {
     S.audioSources.forEach(function (src) { try { src.stop(); } catch (e) {} try { src.disconnect(); } catch (e) {} });
