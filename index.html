@@ -230,6 +230,7 @@
   .pod-hero { display: flex; gap: 26px; align-items: flex-end; margin: 22px 0 10px; }
   .pod-cover { width: 220px; height: 220px; flex: none; border-radius: 14px; overflow: hidden; }
   .pod-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pod-cover.round, .pc.artist .art { border-radius: 50%; }
   .pod-info h1 { font-size: 34px; margin: 0 0 6px; } .pod-by { color: var(--dim); margin-bottom: 16px; }
   .podeps { display: flex; flex-direction: column; gap: 4px; padding-bottom: 30px; }
   .podep { display: flex; gap: 16px; align-items: flex-start; text-align: left; background: none; border: 0; border-bottom: 1px solid rgba(255,255,255,.07);
@@ -3024,79 +3025,21 @@ var MiniQR = (function () {
   /* =====================================================================
      Live TV sources
      ===================================================================== */
-  const VERIFIED = [
-    ["MovieSphere", "Movies", "https://amg00353-lionsgatestudio-moviesphere-xumo-zh5u0.amagi.tv/playlist.m3u8", "https://i.imgur.com/h1ejU90.png"],
-    ["Gravitas Movies", "Movies", "https://d6dg3ebeih71x.cloudfront.net/Gravitas_Movies.m3u8", "https://i.imgur.com/H2hD4vT.png"],
-    ["24 Hour Free Movies", "Movies", "https://d1j2u714xk898n.cloudfront.net/scheduler/scheduleMaster/145.m3u8", "https://i.imgur.com/iSVnzR1.png"],
-    ["Charge!", "Movies", "https://fast-channels.sinclairstoryline.com/CHARGE/index.m3u8", "https://static.wikia.nocookie.net/logopedia/images/0/09/Charge!_network_logo.png/revision/latest/scale-to-width-down/512/"],
-    ["ION", "Series", "https://wurlewscripps.global.transmit.live/hls/68b9b0338cacd6fc468c222c/v1/scripps_ion_1/vizio_us/latest/main/hls/playlist.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Ion_logo.svg/960px-Ion_logo.svg.png"],
-    ["ION Mystery", "Series", "https://bdd9b4ef.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/Vml6aW9fSU9OTXlzdGVyeV9ITFM/playlist.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/ION_Mystery_logo.svg/960px-ION_Mystery_logo.svg.png"],
-    ["The Carol Burnett Show", "Classic TV", "https://vizioaaaa-carol-burnett-vizio-xam92.amagi.tv/playlist/vizioAAAA-carol-burnett-vizio/playlist.m3u8", "https://i.imgur.com/1a03FlX.png"],
-    ["Story Television", "Classic TV", "https://2-fss-1.streamhoster.com/pl_122/206858-4412976-1/playlist.m3u8", "https://upload.wikimedia.org/wikipedia/en/e/e1/Story_television_logo.png"],
-    ["FailArmy", "Comedy", "https://failarmy-international-au.samsung.wurl.tv/playlist.m3u8", "https://i.imgur.com/VIpQJxL.png"],
-    ["Comet", "Sci-Fi", "https://fast-channels.sinclairstoryline.com/COMET/index.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Comet_logo.svg/960px-Comet_logo.svg.png"],
-    ["DUST", "Sci-Fi", "https://dqi7ayt2o24fn.cloudfront.net/playlist.m3u8", "https://i.imgur.com/FxYhME9.png"],
-    ["Midnight Pulp", "Horror", "https://linear-897.frequency.stream/dist/cineverse/897/hls/master/playlist.m3u8", "https://provider-static.plex.tv/a/epg/channels/logos/gracenote/a1a2cdc3d6f0714c586e9959732580c7.png"],
-    ["RetroCrush", "Anime", "https://linear-899.frequency.stream/dist/cineverse/899/hls/master/playlist.m3u8", "https://i.imgur.com/M40b4YI.png"],
-    ["Hell's Kitchen", "Reality", "https://amg00654-itv-amg00654c1-samsung-au-1072.playouts.now.amagi.tv/itv-hellskitchen-samsung/playlist.m3u8", "https://i.imgur.com/P9eT0O9.png"],
-    ["Fear Factor", "Reality", "https://amg00627-banijaygroup-fearfactor-samsungau-9vdod.amagi.tv/playlist/amg00627-banijaygroup-fearfactor-samsungau/playlist.m3u8", "https://i.imgur.com/CIYnLWz.png"],
-    ["American Ninja Warrior", "Reality", "https://d4whmvwm0rdvi.cloudfront.net/10007/99951318/hls/master.m3u8?ads.xumo_channelId=99951318", "https://raw.githubusercontent.com/RoqueDJ/iptv-svg/main/1792421696158.png"],
-    ["Court TV", "Crime", "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg01438-ewscrippscompan-courttv-tablo/playlist.m3u8", "https://i.imgur.com/jOKA735.png"],
-    ["Unsolved Mysteries", "Crime", "https://d31z96rdrmwfsp.cloudfront.net/master.m3u8", "https://i.imgur.com/De3khrX.png"],
-    ["Top Gear", "Entertainment", "https://amg00793-amg00793c5-vizio-us-2666.playouts.now.amagi.tv/playlist/amg00793-bbcstudios-bbctopgear8minother-vizious/playlist.m3u8", "https://i.imgur.com/S6Su6QH.png"],
-    ["Tastemade", "Entertainment", "https://rakutenaa-tm-intl-aus-rakuten-eu-n1gtg.amagi.tv/playlist/rakutenAA-tm-intl-aus-rakuten-eu/playlist.m3u8", "https://i.imgur.com/xP7Ehn8.png"],
-    ["NBC News NOW", "News", "https://d1si3n1st4nkgb.cloudfront.net/10502/88896001/hls/master.m3u8?ads.xumo_channelId=88896001", "https://i.imgur.com/JZt2qh5.png"],
-    ["DW English", "News", "https://amg01644-amg01644c1-amgplt0343.playout.now3.amagi.tv/ts-eu-w1-n2/playlist/amg01644-amg01644c1-amgplt0343/playlist.m3u8", "https://i.imgur.com/MNKkgfa.png"],
-    ["Bloomberg TV+", "News", "https://bloomberg.com/media-manifest/streams/us.m3u8", "https://i.imgur.com/OuogLHx.png"],
-    ["Sky News", "News", "https://dash4.antik.sk/live/test_skynews/playlist.m3u8", "https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1404.png"],
-    ["PBS Kids", "Kids", "https://livestream.pbskids.org/out/v1/14507d931bbe48a69287e4850e53443c/est.m3u8", "https://i.imgur.com/fg8c9WK.png"],
-    ["MeTV Toons", "Kids", "https://sr-live-weigel1.akamaized.net/out/v1/0d1dbf29e64e47bc991796cc24fbeb97/index_2.m3u8", "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/MeTV_Toons.png/250px-MeTV_Toons.png"],
-    ["The Weather Channel", "Weather", "https://twcprod-live.twc-tv.com/v1/manifest/b4d4d63a49309cc5140171fb2e92485c31be1e9e/DSP_6228e4760505741a116f1ba2_twcprod-live/6bf09ce5-366b-463c-b67e-c4b799f73c3f/4.m3u8", "https://i.imgur.com/PIaNjfa.png"],
-    ["AccuWeather NOW", "Weather", "https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8", "https://i.imgur.com/M8wbVYK.png"]
-  ].map(([name, cat, url, logo]) => ({ name, cat, url, logo: logo || '' }));
-
-  const REGIONS = [
-    // English-speaking channels only
-    ['us', 'USA'], ['ca', 'Canada'], ['uk', 'UK'], ['ie', 'Ireland'], ['au', 'Australia'], ['nz', 'New Zealand']
-  ];
-  function parseM3U(text, allowHttp) {
-    const out = []; let cur = null;
-    const urlOk = (u) => okUrl(u) || (allowHttp && /^http:\/\//i.test(u));
-    text.split(/\r?\n/).forEach((raw) => {
-      const line = raw.trim();
-      if (!line) return;
-      if (line.startsWith('#EXTINF')) {
-        const attr = (k) => { const m = line.match(new RegExp(k + '="([^"]*)"')); return m ? m[1] : ''; };
-        const comma = line.lastIndexOf(',');
-        cur = { name: comma >= 0 ? line.slice(comma + 1).trim() : 'Channel', logo: attr('tvg-logo'), cat: (attr('group-title') || 'Other').split(';')[0] };
-      } else if (!line.startsWith('#')) {
-        if (cur && urlOk(line) && !/\.mpd(\?|$)/i.test(line)) { cur.url = line; if (!okUrl(cur.logo)) cur.logo = ''; out.push(cur); }
-        cur = null;
-      }
-    });
-    return out;
-  }
-  const listCache = {};
-  function loadM3U(url) {
-    if (listCache[url]) return Promise.resolve(listCache[url]);
-    return E.fetchRead(url, 'text', 20000).then((t) => (listCache[url] = parseM3U(t)));
-  }
-  function favs() { return store.get('dm_favs', []); }
+  function favs() { return store.get('dm_favs', []).filter((f) => !f.iptv); }
   function isFav(url) { return favs().some((f) => f.url === url); }
   function toggleFav(ch) {
     let f = favs();
     if (f.some((x) => x.url === ch.url)) { f = f.filter((x) => x.url !== ch.url); toast(`Removed ${ch.name} from favorites`); }
-    else { f.unshift({ name: ch.name, cat: ch.cat, url: ch.url, logo: ch.logo || '', iptv: !!ch.iptv, sid: ch.sid || '' }); toast(`Added ${ch.name} to favorites`); }
+    else { f.unshift({ name: ch.name, cat: ch.cat, url: ch.url, logo: ch.logo || '' }); toast(`Added ${ch.name} to favorites`); }
     store.set('dm_favs', f.slice(0, 200));
   }
   function channelHref(ch) {
     if (String(ch.url).startsWith('plexlive:')) return '#/watch/plexlive/' + enc(ch.url.slice(9)) + '/' + enc(ch.name) + '/' + enc(ch.cat || '');
-    if (ch.iptv) return '#/watch/iptv/' + enc(ch.url) + '/' + enc(ch.name) + '/' + enc(ch.cat || '') + '/' + enc(ch.sid || '');
     return '#/watch/live/' + enc(ch.url) + '/' + enc(ch.name) + '/' + enc(ch.cat || '');
   }
 
   /* ---------- Channel memory: which channels actually played here ----------
-     Each live/IPTV channel opened in the player is marked as working once
+     Each live channel opened in the player is marked as working once
      a picture appears, or as failed if the player gives up before that.
      Lists then show working channels first and dim the ones that failed. */
   const HEALTH_KEY = 'dm_chhealth';
@@ -3238,7 +3181,7 @@ var MiniQR = (function () {
   function paintStar(b, on) { b.textContent = on ? '★' : '☆'; b.style.color = on ? '#f5c518' : '#fff'; }
   const radio = h('audio', { preload: 'none' });
   let radioBar = null, radioNow = null;
-  radio.addEventListener('error', () => { if (radioNow) toast(radioNow.pod ? 'That episode couldn’t be loaded — try another one.' : `${radioNow.name} isn’t broadcasting right now — try another station.`); });
+  radio.addEventListener('error', () => { if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow) toast(radioNow.pod ? 'That episode couldn’t be loaded — try another one.' : `${radioNow.name} isn’t broadcasting right now — try another station.`); });
   function markPlayingCards() {
     document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
   }
@@ -3268,7 +3211,7 @@ var MiniQR = (function () {
     );
     markPlayingCards();
   }
-  function stopRadio() { if (radioNow && radioNow.pod) savePodNow(); radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
+  function stopRadio() { if (radioNow && radioNow.pod) savePodNow(); if (radioNow && radioNow.music && 'mediaSession' in navigator) { try { navigator.mediaSession.metadata = null; } catch (e) {} } radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
   function stationCard(st) {
     const tag = (st.tags || '').split(',').filter(Boolean)[0] || st.countrycode || 'Radio';
     const star = h('button', { class: 'badge rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station',
@@ -3367,8 +3310,8 @@ var MiniQR = (function () {
     return t.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: t.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
   }
   function podDur() { return isFinite(radio.duration) && radio.duration > 0 ? radio.duration : (radioNow && radioNow.dur) || 0; }
-  function podSkip(s) { if (!(radioNow && radioNow.pod)) return; try { radio.currentTime = Math.max(0, Math.min(podDur() - 1, radio.currentTime + s)); } catch (e) {} }
-  function podSeek(t) { if (!(radioNow && radioNow.pod)) return; try { radio.currentTime = Math.max(0, Math.min(podDur() - 1, t)); } catch (e) {} }
+  function podSkip(s) { if (!(radioNow && (radioNow.pod || radioNow.music))) return; try { radio.currentTime = Math.max(0, Math.min(podDur() - 1, radio.currentTime + s)); } catch (e) {} }
+  function podSeek(t) { if (!(radioNow && (radioNow.pod || radioNow.music))) return; try { radio.currentTime = Math.max(0, Math.min(podDur() - 1, t)); } catch (e) {} }
 
   function playPodcast(ep, at) {
     ep = podEp(ep);
@@ -3461,10 +3404,218 @@ var MiniQR = (function () {
   }
   function podGrid(list) { const g = h('div', { class: 'grid sq' }); list.forEach((s) => g.appendChild(podShowCard(s))); return g; }
 
+
+  /* =====================================================================
+     Music — the Plex music library (the same one Plexamp uses).
+     Plays through the shared audio element, so it keeps going while you
+     browse and while driving. MP3 plays as-is; FLAC and anything else is
+     turned into 320k MP3 by Plex (a quarter of the data on LTE).
+     ===================================================================== */
+  let musicSecs = null;
+  function musicSections() {
+    const uid = plex.user ? plex.user.id : 'owner';
+    if (musicSecs && musicSecs.uid === uid) return Promise.resolve(musicSecs.list);
+    return pget('/library/sections').then((d) => {
+      const list = (MC(d).Directory || []).filter((x) => x.type === 'artist');
+      musicSecs = { uid, list }; return list;
+    });
+  }
+  function mArt(path, w) { return path ? pimg(path, w || 300, w || 300) : ''; }
+  function trackItem(t) {
+    const m = (t.Media || [])[0] || {}, p = (m.Part || [])[0] || {};
+    return { rk: String(t.ratingKey), title: t.title || 'Track', artist: t.originalTitle || t.grandparentTitle || '', album: t.parentTitle || '',
+      albumRk: t.parentRatingKey ? String(t.parentRatingKey) : '', thumb: t.parentThumb || t.thumb || t.grandparentThumb || '',
+      dur: (t.duration || 0) / 1000, codec: String(m.audioCodec || '').toLowerCase(), part: p.key || '' };
+  }
+  function trackUrl(t) {
+    const c = plex.conn;
+    if (t.part && t.codec === 'mp3') return c.base + t.part + '?' + plexQS(c.token);
+    return c.base + '/music/:/transcode/universal/start.mp3?path=' + enc('/library/metadata/' + t.rk) +
+      '&mediaIndex=0&partIndex=0&protocol=http&directPlay=0&directStream=0&maxAudioBitrate=320&session=' + enc(plexClientId + '-m' + Date.now()) +
+      '&X-Plex-Client-Profile-Extra=' + enc('add-transcode-target(type=musicProfile&context=streaming&protocol=http&container=mp3&audioCodec=mp3)') +
+      '&' + plexQS(c.token);
+  }
+  const MQ = { list: [], i: 0 };
+  function shuffled(l) { l = l.slice(); for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; } return l; }
+  function playMusic(tracks, start, shuffle) {
+    const l = tracks.map((t) => (t.rk ? t : trackItem(t))).filter((t) => t.part);
+    if (!l.length) { toast('Nothing playable there.'); return; }
+    MQ.list = shuffle ? shuffled(l) : l;
+    playTrackAt(shuffle ? 0 : Math.max(0, Math.min(l.length - 1, start || 0)));
+  }
+  function playTrackAt(i) {
+    const t = MQ.list[i]; if (!t) return;
+    ensurePlex().then(() => {
+      if (playerOpen) closeWatch();
+      savePodNow();
+      MQ.i = i;
+      radioNow = { music: true, name: t.title, show: t.artist, stationuuid: 'm' + t.rk, favicon: '', dur: t.dur, t };
+      radio.preload = 'auto';
+      radio.src = trackUrl(t);
+      radio.defaultPlaybackRate = radio.playbackRate = 1;
+      radio.play().catch((e) => toast('That song would not start: ' + e.message));
+      drawMusicBar(); markPlayingCards(); musicSession(t);
+      if (REM.room) publishNow(true);
+    }).catch((e) => toast('Plex isn’t answering: ' + e.message));
+  }
+  function musicNext() { if (MQ.i + 1 < MQ.list.length) playTrackAt(MQ.i + 1); else { toast('End of the list'); stopRadio(); } }
+  function musicPrev() { if (radio.currentTime > 5 || MQ.i === 0) { try { radio.currentTime = 0; } catch (e) {} } else playTrackAt(MQ.i - 1); }
+  function scrobble(t) { pget('/:/scrobble?key=' + enc(t.rk) + '&identifier=com.plexapp.plugins.library').catch(() => {}); }
+  function musicSession(t) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist, album: t.album,
+        artwork: t.thumb ? [{ src: mArt(t.thumb, 512), sizes: '512x512', type: 'image/jpeg' }] : [] });
+      navigator.mediaSession.setActionHandler('nexttrack', () => { if (radioNow && radioNow.music) musicNext(); });
+      navigator.mediaSession.setActionHandler('previoustrack', () => { if (radioNow && radioNow.music) musicPrev(); });
+    } catch (e) {}
+  }
+  let mTimeEl = null, mPP = null;
+  function drawMusicBar() {
+    const t = radioNow.t;
+    if (!radioBar) { radioBar = h('div', { class: 'radiobar' }); document.body.appendChild(radioBar); }
+    radioBar.hidden = false;
+    mTimeEl = h('span', { class: 'rb-time' });
+    mPP = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } });
+    radioBar.replaceChildren(
+      h('a', { class: 'rb-logo', href: t.albumRk ? '#/music/album/' + enc(t.albumRk) : '#/music', style: { background: grad(t.album || t.title) } },
+        t.thumb ? h('img', { src: mArt(t.thumb, 160), alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
+      h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: t.title }), h('div', { class: 'rb-s' }, h('span', { text: t.artist + ' · ' }), mTimeEl)),
+      h('button', { class: 'pb', type: 'button', text: '⏮', 'aria-label': 'Previous', onclick: musicPrev }),
+      mPP,
+      h('button', { class: 'pb', type: 'button', text: '⏭', 'aria-label': 'Next', onclick: musicNext }),
+      h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio }));
+    paintMusicTime();
+  }
+  function paintMusicTime() {
+    if (!(radioNow && radioNow.music) || !mTimeEl) return;
+    const d = podDur();
+    mTimeEl.textContent = E.fmt(radio.currentTime || 0) + (d ? ' / ' + E.fmt(d) : '') + (MQ.list.length > 1 ? '  ·  ' + (MQ.i + 1) + ' of ' + MQ.list.length : '');
+    if (mPP) mPP.textContent = radio.paused ? '▶' : '❚❚';
+  }
+  radio.addEventListener('timeupdate', paintMusicTime);
+  radio.addEventListener('play', paintMusicTime);
+  radio.addEventListener('pause', paintMusicTime);
+  radio.addEventListener('ended', () => { if (radioNow && radioNow.music) { scrobble(radioNow.t); musicNext(); } });
+
+  function albumCard(m) {
+    return h('a', { class: 'pc sq', href: '#/music/album/' + enc(m.ratingKey) },
+      artBox(mArt(m.thumb), m.title, []), h('div', { class: 't', text: m.title }),
+      h('div', { class: 's', text: [m.parentTitle, m.year].filter(Boolean).join(' · ') }));
+  }
+  function artistCard(m) {
+    const c = h('a', { class: 'pc sq artist', href: '#/music/artist/' + enc(m.ratingKey) },
+      artBox(mArt(m.thumb), m.title, []), h('div', { class: 't', text: m.title }));
+    return c;
+  }
+  function playlistCard(m) {
+    return h('a', { class: 'pc sq', href: '#/music/playlist/' + enc(m.ratingKey) },
+      artBox(mArt(m.composite || m.thumb), m.title, []), h('div', { class: 't', text: m.title }),
+      h('div', { class: 's', text: (m.leafCount || 0) + ' songs' }));
+  }
+  function trackRow(t, i, all, showArtist) {
+    return h('button', { class: 'podep', type: 'button', 'data-station': 'm' + t.rk, onclick: () => playMusic(all, i) },
+      h('div', { class: 'podep-play', text: '▶' }),
+      h('div', { class: 'podep-txt' }, h('div', { class: 't', text: t.title }),
+        h('div', { class: 's', text: [showArtist ? t.artist : '', t.dur ? E.fmt(t.dur) : ''].filter(Boolean).join(' · ') })));
+  }
+  function musicHero(img, title, by, tracks) {
+    return h('div', { class: 'pod-hero pad' },
+      h('div', { class: 'pod-cover', style: { background: grad(title) } }, img ? h('img', { src: img, alt: '' }) : null),
+      h('div', { class: 'pod-info' }, h('h1', { text: title }), h('div', { class: 'pod-by', text: by }),
+        h('div', { class: 'btns' },
+          h('button', { class: 'btn red', type: 'button', text: '▶ Play', onclick: () => playMusic(tracks(), 0) }),
+          h('button', { class: 'btn ghost', type: 'button', text: '🔀 Shuffle', onclick: () => playMusic(tracks(), 0, true) }))));
+  }
+  function musicView(root, [sec, a, b]) {
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Music' }), audioSwitch('music')));
+    if (!plex.auth) {
+      root.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Your music, from Plex' }),
+        h('p', { text: 'Sign in with Plex to play the music library on your server.' }), h('a', { class: 'btn red', href: '#/signin', text: 'Sign in with Plex' })));
+      return;
+    }
+    const body = h('div'); root.appendChild(body);
+    const wait = msg('Loading your music…'); body.appendChild(wait);
+    musicSections().then((secs) => {
+      wait.remove();
+      if (!secs.length) { body.appendChild(h('div', { class: 'empty', text: 'No music library on your Plex server that this profile (' + (plex.user ? plex.user.name : 'you') + ') can see.' })); return; }
+      const sk = secs[0].key;
+      const fail = (e) => body.appendChild(msg('Couldn’t load that: ' + e.message, true));
+      if (sec === 'album' || sec === 'playlist') {
+        const meta = sec === 'album' ? pget('/library/metadata/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {}) : pget('/playlists/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {});
+        const items = pget(sec === 'album' ? '/library/metadata/' + enc(a) + '/children' : '/playlists/' + enc(a) + '/items').then((d) => (MC(d).Metadata || []).map(trackItem));
+        return Promise.all([meta, items]).then(([m, tracks]) => {
+          body.appendChild(musicHero(mArt(m.composite || m.thumb, 600), m.title || '', sec === 'album' ? [m.parentTitle, m.year].filter(Boolean).join(' · ') : tracks.length + ' songs', () => tracks));
+          body.appendChild(h('div', { class: 'pad podeps' }, tracks.map((t, i) => trackRow(t, i, tracks, sec === 'playlist' || t.artist !== m.parentTitle))));
+          markPlayingCards();
+          if (b === 'play' && !(radioNow && radioNow.music && MQ.list === tracks)) playMusic(tracks, 0);
+        }).catch(fail);
+      }
+      if (sec === 'artist') {
+        return Promise.all([pget('/library/metadata/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {}),
+          pget('/library/metadata/' + enc(a) + '/children').then((d) => MC(d).Metadata || [])
+            // Songs that sit on albums filed under another artist: build the album list from the songs.
+            .then((l) => l.length ? l : pget('/library/metadata/' + enc(a) + '/allLeaves').then((d) => {
+              const seen = {};
+              return (MC(d).Metadata || []).filter((t) => t.parentRatingKey && !seen[t.parentRatingKey] && (seen[t.parentRatingKey] = 1))
+                .map((t) => ({ ratingKey: t.parentRatingKey, title: t.parentTitle, thumb: t.parentThumb, parentTitle: t.grandparentTitle, year: t.parentYear }));
+            }))]).then(([m, albums]) => {
+          const all = () => pget('/library/metadata/' + enc(a) + '/allLeaves').then((d) => (MC(d).Metadata || []).map(trackItem));
+          body.appendChild(h('div', { class: 'pod-hero pad' },
+            h('div', { class: 'pod-cover round', style: { background: grad(m.title || '') } }, m.thumb ? h('img', { src: mArt(m.thumb, 600), alt: '' }) : null),
+            h('div', { class: 'pod-info' }, h('h1', { text: m.title || '' }), h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album' : ' albums') }),
+              h('div', { class: 'btns' },
+                h('button', { class: 'btn red', type: 'button', text: '🔀 Shuffle ' + (m.title || ''), onclick: () => all().then((l) => playMusic(l, 0, true)) })))));
+          const g = h('div', { class: 'grid sq pad' }); albums.forEach((x) => g.appendChild(albumCard(x))); body.appendChild(g);
+        }).catch(fail);
+      }
+      // Main page: search, shuffle, playlists, recently added, artists
+      const input = h('input', { type: 'text', placeholder: 'Search artists, albums, songs', value: sec === 'search' ? (a || '') : '', autocomplete: 'off', spellcheck: 'false' });
+      const submit = () => { const v = input.value.trim(); go(v ? '#/music/search/' + enc(v) : '#/music'); };
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+      body.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }),
+        h('button', { class: 'btn ghost', type: 'button', text: '🔀 Shuffle all', onclick: () =>
+          pget('/library/sections/' + sk + '/all?type=10&sort=random&X-Plex-Container-Start=0&X-Plex-Container-Size=150')
+            .then((d) => playMusic(MC(d).Metadata || [], 0)).catch((e) => toast('Couldn’t shuffle: ' + e.message)) }))));
+      if (sec === 'search' && a) {
+        return pget('/hubs/search?query=' + enc(a) + '&sectionId=' + sk + '&limit=30').then((d) => {
+          let any = false;
+          (MC(d).Hub || []).forEach((hub) => {
+            const l = hub.Metadata || []; if (!l.length) return;
+            if (hub.type === 'artist') { any = true; const r = row('Artists'); l.forEach((m) => r.scroller.appendChild(artistCard(m))); body.appendChild(r.sec); }
+            else if (hub.type === 'album') { any = true; const r = row('Albums'); l.forEach((m) => r.scroller.appendChild(albumCard(m))); body.appendChild(r.sec); }
+            else if (hub.type === 'track') { any = true; const tr = l.map(trackItem);
+              body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Songs' }), h('div', { class: 'podeps' }, tr.map((t, i) => trackRow(t, i, tr, true))))); }
+          });
+          if (!any) body.appendChild(h('div', { class: 'empty', text: 'Nothing found for “' + a + '”.' }));
+          markPlayingCards();
+        }).catch(fail);
+      }
+      const sPl = h('div'), sNew = h('div'), sArt = h('div'); body.append(sPl, sNew, sArt);
+      pget('/playlists?playlistType=audio').then((d) => {
+        const l = MC(d).Metadata || []; if (!l.length) return;
+        const r = row('Playlists'); l.forEach((m) => r.scroller.appendChild(playlistCard(m))); sPl.appendChild(r.sec);
+      }).catch(() => {});
+      pget('/library/sections/' + sk + '/all?type=9&sort=addedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=30').then((d) => {
+        const l = MC(d).Metadata || []; if (!l.length) return;
+        const r = row('Recently added'); l.forEach((m) => r.scroller.appendChild(albumCard(m))); sNew.appendChild(r.sec);
+      }).catch(() => {});
+      let start = 0; const g = h('div', { class: 'grid sq pad' });
+      const more = h('button', { class: 'btn ghost', type: 'button', text: 'Show more', hidden: true, onclick: () => page() });
+      sArt.append(h('div', { class: 'pad' }, h('h2', { text: 'Artists' })), g, h('div', { class: 'more' }, more));
+      const page = () => pget('/library/sections/' + sk + '/all?type=8&sort=titleSort&X-Plex-Container-Start=' + start + '&X-Plex-Container-Size=60').then((d) => {
+        const c = MC(d), l = c.Metadata || []; l.forEach((m) => g.appendChild(artistCard(m))); start += l.length;
+        more.hidden = !l.length || start >= (c.totalSize || 0);
+      }).catch(fail);
+      page();
+    }).catch((e) => { wait.remove(); body.appendChild(msg('Couldn’t reach Plex: ' + e.message, true)); });
+  }
+
   function audioSwitch(cur) {
     return h('div', { class: 'seg' },
       h('a', { href: '#/radio', class: cur === 'radio' ? 'on' : '', text: '📻 Radio' }),
-      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '', text: '🎙 Podcasts' }));
+      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '', text: '🎙 Podcasts' }),
+      h('a', { href: '#/music', class: cur === 'music' ? 'on' : '', text: '🎵 Music' }));
   }
   function podcastsView(root, [sec, a]) {
     if (sec === 'show') { podShowPage(root, a); return; }
@@ -3523,117 +3674,13 @@ var MiniQR = (function () {
     }).catch((e) => wait.replaceWith(msg('Couldn’t load this podcast (' + e.message + ').', true)));
   }
 
-  /* =====================================================================
-     IPTV subscription — an M3U playlist link or an Xtream Codes login.
-     Providers that only offer http:// links, or that block web players,
-     can be routed through the home helper's /iptv relay (locked to the
-     provider and a secret key set on the helper).
-     ===================================================================== */
-  function iptvCfg() { return store.get('dm_iptv', null); }
-  function xbase(c) { let b = (c.server || '').trim().replace(/\/+$/, ''); if (b && !/^https?:\/\//i.test(b)) b = 'http://' + b; return b; }
-  function iptvWrap(url) {
-    const c = iptvCfg();
-    if (!c || !c.proxy || !c.key) return url;
-    return ytBase() + '/iptv?k=' + enc(c.key) + '&u=' + enc(url);
-  }
-  function blockedHttp(url) { return isHttps && /^http:\/\//i.test(url); }
-  function isRawTs(url) {
-    const path = url.split('?')[0];
-    if (/\.ts$/i.test(path)) return true;
-    if (/\.(m3u8?|mp4|mkv|avi)$/i.test(path)) return false;
-    return /\/\d+$/.test(path); // Xtream style: /user/pass/12345
-  }
-  function xapi(c, action, extra) {
-    const url = xbase(c) + '/player_api.php?username=' + enc(c.user) + '&password=' + enc(c.pass) + (action ? '&action=' + action : '') + (extra || '');
-    const u = iptvWrap(url);
-    if (blockedHttp(u)) return Promise.reject(new Error('your provider uses http://, which needs “Route through the home helper” turned on in Settings'));
-    return E.fetchRead(u, 'json', 45000);
-  }
-  let iptvData = null, iptvLoading = null;
-  function loadIptv(force) {
-    const c = iptvCfg();
-    if (!c) return Promise.reject(new Error('not set up'));
-    if (iptvData && !force) return Promise.resolve(iptvData);
-    if (iptvLoading && !force) return iptvLoading;
-    let p;
-    if (c.type === 'xtream') {
-      p = Promise.all([xapi(c, 'get_live_categories'), xapi(c, 'get_live_streams')]).then(([cats, streams]) => {
-        const names = {};
-        (cats || []).forEach((x) => { names[x.category_id] = x.category_name; });
-        return (Array.isArray(streams) ? streams : []).map((st) => ({
-          name: st.name || 'Channel', cat: names[st.category_id] || 'Other',
-          logo: okUrl(st.stream_icon || '') ? st.stream_icon : '',
-          url: `${xbase(c)}/live/${enc(c.user)}/${enc(c.pass)}/${st.stream_id}.ts`, sid: String(st.stream_id), iptv: true
-        }));
-      });
-    } else {
-      const u = iptvWrap(c.m3u);
-      p = blockedHttp(u) ? Promise.reject(new Error('your playlist link is http://, which needs “Route through the home helper” turned on in Settings'))
-        : E.fetchRead(u, 'text', 90000).then((t) => {
-          if (t.indexOf('#EXTM3U') < 0 && t.indexOf('#EXTINF') < 0) throw new Error('that link did not return an M3U playlist');
-          return parseM3U(t, true).filter((ch) => !/\/(movie|series)\//i.test(ch.url)).map((ch) => Object.assign(ch, { iptv: true }));
-        });
-    }
-    iptvLoading = p.then((list) => {
-      const cats = [...new Set(list.map((x) => x.cat || 'Other'))];
-      iptvData = { channels: list, cats, at: Date.now() };
-      return iptvData;
-    }).finally(() => { iptvLoading = null; });
-    return iptvLoading;
-  }
-  function b64(t) { try { return decodeURIComponent(escape(atob(t || ''))); } catch (e) { return t || ''; } }
-  function xtreamNowNext(sid) {
-    const c = iptvCfg();
-    if (!c || c.type !== 'xtream' || !sid) return Promise.resolve('');
-    return xapi(c, 'get_short_epg', '&stream_id=' + enc(sid) + '&limit=2').then((d) => {
-      const l = (d && d.epg_listings) || [];
-      return [l[0] ? 'Now: ' + b64(l[0].title) : '', l[1] ? 'Next: ' + b64(l[1].title) : ''].filter(Boolean).join('   ·   ');
-    }).catch(() => '');
-  }
-  function iptvSetupCard(onSaved) {
-    const c = iptvCfg() || { type: 'm3u', m3u: '', server: '', user: '', pass: '', proxy: false, key: '' };
-    const type = h('select', {}, h('option', { value: 'm3u', text: 'M3U playlist link' }), h('option', { value: 'xtream', text: 'Xtream Codes login (server, username, password)' }));
-    type.value = c.type || 'm3u';
-    const m3u = h('input', { type: 'text', value: c.m3u || '', placeholder: 'http://provider.example/get.php?username=…&password=…&type=m3u_plus', autocapitalize: 'off', spellcheck: 'false' });
-    const server = h('input', { type: 'text', value: c.server || '', placeholder: 'Server, e.g. http://provider.example:8080', autocapitalize: 'off', spellcheck: 'false' });
-    const user = h('input', { type: 'text', value: c.user || '', placeholder: 'Username', autocapitalize: 'off', spellcheck: 'false', autocomplete: 'off' });
-    const pass = h('input', { type: 'password', value: c.pass || '', placeholder: 'Password', autocomplete: 'off' });
-    const proxy = h('input', { type: 'checkbox', style: { width: '26px', height: '26px' } }); proxy.checked = !!c.proxy;
-    const key = h('input', { type: 'text', value: c.key || '', placeholder: 'Helper IPTV key (IPTV_KEY on the helper)', autocapitalize: 'off', spellcheck: 'false', autocomplete: 'off' });
-    const m3uRow = h('div', { class: 'field', style: { marginBottom: '10px' } }, m3u);
-    const xRow = h('div', {}, h('div', { class: 'field', style: { marginBottom: '10px' } }, server), h('div', { class: 'field', style: { marginBottom: '10px' } }, user, pass));
-    const keyRow = h('div', { class: 'field', style: { marginBottom: '10px' } }, key);
-    const sync = () => { m3uRow.hidden = type.value !== 'm3u'; xRow.hidden = type.value !== 'xtream'; keyRow.hidden = !proxy.checked; };
-    type.addEventListener('change', sync); proxy.addEventListener('change', sync); sync();
-    const st = msg('');
-    const save = () => {
-      const cfg = { type: type.value, m3u: m3u.value.trim(), server: server.value.trim(), user: user.value.trim(), pass: pass.value, proxy: proxy.checked, key: key.value.trim() };
-      if (cfg.type === 'm3u' && !/^https?:\/\//i.test(cfg.m3u)) { st.textContent = 'Paste the full playlist link (starting with http:// or https://).'; st.className = 'msg err'; return; }
-      if (cfg.type === 'xtream' && (!cfg.server || !cfg.user || !cfg.pass)) { st.textContent = 'Fill in server, username and password.'; st.className = 'msg err'; return; }
-      if (cfg.proxy && !cfg.key) { st.textContent = 'Routing through the helper needs the helper’s IPTV key.'; st.className = 'msg err'; return; }
-      store.set('dm_iptv', cfg); iptvData = null; invalidate('live/iptv');
-      st.textContent = 'Saved on this screen — loading your channels…'; st.className = 'msg';
-      loadIptv(true).then((d) => { st.textContent = `Saved and connected — ${d.channels.length} channels in ${d.cats.length} groups. It stays set up next time you open the app.`; if (onSaved) onSaved(); })
-        .catch((e) => { st.textContent = 'Saved, but loading failed: ' + e.message; st.className = 'msg err'; });
-    };
-    return h('div', { class: 'card' }, h('h2', { text: 'IPTV subscription' }),
-      h('p', { text: 'Use the M3U link or Xtream login your IPTV provider gave you. It’s saved in this browser and stays set up between visits.' }),
-      h('div', { class: 'field', style: { marginBottom: '10px' } }, type), m3uRow, xRow,
-      h('label', { style: { display: 'flex', gap: '12px', alignItems: 'center', fontSize: '16px', margin: '6px 0 10px', cursor: 'pointer' } }, proxy,
-        'Route through the home helper (needed for http:// providers, or ones that block web players)'),
-      keyRow,
-      h('div', { class: 'btns' }, h('button', { class: 'btn red', type: 'button', text: 'Save & load channels', onclick: save }),
-        iptvCfg() ? h('button', { class: 'btn ghost', type: 'button', text: 'Remove', onclick: () => { store.set('dm_iptv', null); iptvData = null; invalidate('live/iptv'); st.textContent = 'Removed.'; st.className = 'msg'; } }) : null),
-      st);
-  }
-
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
     return h('div', { class: 'card' }, h('h2', { text: 'Backup & restore' }),
-      h('p', { text: 'Everything you set up here (Plex sign-in, IPTV, channel lists, favorites) is saved in this browser and is still there next time. If the car’s browser data ever gets cleared, paste a backup code here to put it all back. The code contains your logins — keep it private.' }),
+      h('p', { text: 'Everything you set up here (Plex sign-in, favorites, settings) is saved in this browser and is still there next time. If the car’s browser data ever gets cleared, paste a backup code here to put it all back. The code contains your logins — keep it private.' }),
       box,
       h('div', { class: 'btns', style: { marginTop: '10px' } },
         h('button', { class: 'btn ghost', type: 'button', text: 'Make backup code', onclick: () => {
@@ -3724,6 +3771,7 @@ var MiniQR = (function () {
   }
   const VIEWS = {};
   VIEWS.podcasts = podcastsView;
+  VIEWS.music = musicView;
   function route() {
     const r = parse();
     if (r.name === 'watch') {
@@ -3741,7 +3789,7 @@ var MiniQR = (function () {
     if (currentKey !== null) { const c = cache.get(currentKey); if (c) c.y = window.scrollY; }
     currentKey = r.key;
     document.querySelectorAll('#tabs a').forEach((a) => a.classList.toggle('on',
-      a.dataset.tab === r.name || (a.dataset.tab === 'audio' && (r.name === 'radio' || r.name === 'podcasts')) || (r.name === 'library' && a.dataset.tab === (r.args[1] === 'show' ? 'tv' : 'movies'))));
+      a.dataset.tab === r.name || (a.dataset.tab === 'audio' && (r.name === 'radio' || r.name === 'podcasts' || r.name === 'music')) || (r.name === 'library' && a.dataset.tab === (r.args[1] === 'show' ? 'tv' : 'movies'))));
     const hit = cache.get(r.key);
     if (hit && Date.now() - hit.at < 10 * 60 * 1000) {
       view.replaceChildren(hit.node);
@@ -3752,7 +3800,7 @@ var MiniQR = (function () {
     view.replaceChildren(node);
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
-    const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', iptv: 'IPTV', youtube: 'YouTube',
+    const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', youtube: 'YouTube',
       radio: 'Radio', traffic: 'Traffic', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
     document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
     if (!['settings', 'signin', 'profiles', 'remote'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
@@ -3823,11 +3871,13 @@ var MiniQR = (function () {
       });
     }
 
-    // One Live TV row: your favorites first, then tested channels.
-    { const r = row('Live TV', '#/live');
-      favs().concat(VERIFIED).filter((c, i, l) => l.findIndex((x) => x.url === c.url) === i).slice(0, 20)
-        .forEach((ch) => r.scroller.appendChild(channelCard(ch)));
-      sLive.appendChild(r.sec); }
+    // One Live TV row: your favorites first, then Plex channels.
+    { const r = row('Live TV', '#/live'); sLive.appendChild(r.sec);
+      const mine = favs().slice(0, 20); mine.forEach((ch) => r.scroller.appendChild(channelCard(ch)));
+      (plex.auth ? plexLive() : Promise.resolve([])).then((l) => {
+        l.filter((c) => !mine.some((m) => m.url === c.url)).slice(0, 20 - Math.min(mine.length, 10)).forEach((ch) => r.scroller.appendChild(channelCard(ch)));
+        if (!r.scroller.children.length) r.sec.remove();
+      }).catch(() => { if (!mine.length) r.sec.remove(); }); }
     {
       const q = store.get('dm_yt_lastq', '') || YT_CHIPS[0][1];
       ytSearch(q, 16).then((res) => {
@@ -4025,8 +4075,6 @@ var MiniQR = (function () {
   }
 
   /* ---------- Live TV ---------- */
-  function myLists() { return store.get('dm_lists', []); }
-  function myChannels() { return store.get('dm_mychans', []); }
   /* Plex's free live channels (no DRM, H.264 HLS). Plex's genre ids have
      no names in the lineup, so they're named here; new ones go under "More". */
   const PLEX_EPG = 'https://epg.provider.plex.tv';
@@ -4053,48 +4101,18 @@ var MiniQR = (function () {
         return list;
       });
   }
-  function liveSources() {
-    const sources = [{ id: 'fav', label: '★ Favorites' }, { id: 'verified', label: 'Channels' }];
-    if (plex.auth) sources.push({ id: 'plex', label: 'Plex channels' });
-    if (iptvCfg()) sources.push({ id: 'iptv', label: '📡 My IPTV' });
-    if (myChannels().length) sources.push({ id: 'mine', label: 'My channels' });
-    myLists().forEach((l, i) => sources.push({ id: 'list' + i, label: l.name }));
-    return sources;
-  }
-  // Source buttons, plus one "More channels" menu for the country lists.
-  function liveSourceBar(src) {
-    const bar = chips(liveSources(), src, (c) => '#/live/' + c.id);
-    const sel = h('select', { class: 'chipsel', onchange: (e) => { if (e.target.value) go('#/live/' + e.target.value); } },
-      h('option', { value: '', text: 'More channels…' }), REGIONS.map(([cc, name]) => h('option', { value: 'cc-' + cc, text: name })));
-    sel.value = src && src.startsWith('cc-') ? src : '';
-    bar.appendChild(sel);
-    return bar;
-  }
-  VIEWS.live = (root, [src, cat, q]) => {
-    src = src || (favs().length ? 'fav' : 'verified');
-    if (src === 'iptv') { root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' })));
-      root.appendChild(liveSourceBar('iptv')); iptvBody(root, cat, q); return; }
+  VIEWS.live = (root, [src, cat]) => {
+    src = src === 'fav' ? 'fav' : 'plex';
     root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' })));
-    root.appendChild(liveSourceBar(src));
+    root.appendChild(chips([{ id: 'plex', label: 'Channels' }, { id: 'fav', label: '★ Favorites' }], src, (c) => '#/live/' + c.id));
     const body = h('div'); root.appendChild(body);
-    let p;
-    if (src === 'fav') p = Promise.resolve(favs());
-    else if (src === 'verified') p = Promise.resolve(VERIFIED);
-    else if (src === 'plex') p = plex.auth ? plexLive() : Promise.reject(new Error('sign in to Plex first (Settings).'));
-    else if (src === 'mine') p = Promise.resolve(myChannels());
-    else if (src.startsWith('list')) { const l = myLists()[+src.slice(4)]; p = l ? loadM3U(l.url) : Promise.reject(new Error('that list was removed.')); }
-    else if (src.startsWith('cc-')) {
-      const cc = src.slice(3);
-      const note = h('div'); body.appendChild(note);
-      p = E.fetchRead('channels/checked-' + cc + '.json', 'json', 10000).then((d) => {
-        const when = d.checked ? new Date(d.checked).toLocaleDateString() : '';
-        note.appendChild(h('div', { class: 'msg' }, `${d.ok} English-language channels that passed a playback check on ${when}.`));
-        return (d.channels || []).map((c) => ({ name: c.name, cat: c.cat, url: c.url, logo: c.logo || '' }));
-      }).catch(() => {
-        note.appendChild(msg('Community-maintained channel list (iptv-org), not checked yet — some channels won’t play here; those show an error, just try another.'));
-        return loadM3U('https://iptv-org.github.io/iptv/countries/' + cc + '.m3u');
-      });
-    } else p = Promise.resolve([]);
+    if (src === 'plex' && !plex.auth) {
+      body.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Free live TV with Plex' }),
+        h('p', { text: 'About 600 free channels — news, sports, movies, comedy, kids and more. Sign in with any Plex account to watch.' }),
+        h('a', { class: 'btn red', href: '#/signin', text: 'Sign in with Plex' })));
+      return;
+    }
+    const p = src === 'fav' ? Promise.resolve(favs()) : plexLive();
     const loading = msg('Loading channels…'); body.appendChild(loading);
     p.then((list) => {
       loading.remove();
@@ -4136,47 +4154,6 @@ var MiniQR = (function () {
       const grid = h('div', { class: 'grid wide' }); res.forEach((r) => grid.appendChild(ytCard(r))); body.appendChild(grid);
     }).catch((e) => body.replaceChildren(msg('The YouTube helper at home isn’t answering (' + e.message + '). Its address is in Settings.', true)));
   };
-
-  /* ---------- IPTV ---------- */
-  VIEWS.iptv = (root, [cat, q]) => { go('#/live/iptv' + (cat ? '/' + enc(cat) : '') + (q ? '/' + enc(q) : ''), true); };
-  function iptvBody(root, cat, q) {
-    if (!iptvCfg()) {
-      root.appendChild(iptvSetupCard(() => { currentKey = null; render(parse()); }));
-      return;
-    }
-    const search = h('input', { type: 'text', value: q || '', placeholder: 'Find a channel', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
-    const catSel = h('select', {});
-    const doFilter = () => go('#/live/iptv/' + enc(catSel.value) + (search.value.trim() ? '/' + enc(search.value.trim()) : ''), true);
-    search.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFilter(); });
-    catSel.addEventListener('change', doFilter);
-    root.appendChild(h('div', { class: 'pad', style: { display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' } },
-      h('button', { class: 'btn ghost', type: 'button', text: 'Refresh list', onclick: () => { iptvData = null; invalidate('live/iptv'); currentKey = null; render(parse()); } }),
-      h('a', { class: 'btn ghost', href: '#/settings', text: 'Provider settings' })));
-    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, catSel, search, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doFilter }))));
-    const body = h('div'); root.appendChild(body);
-    const loading = msg('Loading your channels — big lists can take a moment…'); body.appendChild(loading);
-    loadIptv().then((d) => {
-      loading.remove();
-      catSel.replaceChildren(h('option', { value: '', text: `All channels (${d.channels.length})` }), h('option', { value: '★', text: '★ Favorites' }),
-        d.cats.map((c) => h('option', { value: c, text: c })));
-      catSel.value = cat || '';
-      let list = sortByHealth(d.channels);
-      if (cat === '★') { const fav = new Set(favs().map((f) => f.url)); list = list.filter((c) => fav.has(c.url)); }
-      else if (cat) list = list.filter((c) => (c.cat || 'Other') === cat);
-      if (q) { const ql = q.toLowerCase(); list = list.filter((c) => c.name.toLowerCase().includes(ql)); }
-      if (!list.length) { body.appendChild(h('div', { class: 'empty', text: cat === '★' ? 'No favorites yet — tap ☆ on a channel.' : 'No channels match.' })); return; }
-      body.appendChild(msg(`${list.length} channels`));
-      const grid = h('div', { class: 'grid wide' }); body.appendChild(grid);
-      let i = 0;
-      const btn = h('button', { class: 'btn ghost', type: 'button', text: 'Show more' });
-      const step = () => { list.slice(i, i + 60).forEach((ch) => grid.appendChild(channelCard(ch))); i += 60; btn.hidden = i >= list.length; };
-      btn.addEventListener('click', step);
-      const more = h('div', { class: 'more' }, btn); body.appendChild(more);
-      step();
-      if ('IntersectionObserver' in window) new IntersectionObserver((ents) => { if (ents.some((x) => x.isIntersecting) && !btn.hidden) step(); }, { rootMargin: '900px' }).observe(more);
-    }).catch((e) => { loading.remove(); body.appendChild(msg('Could not load your channels: ' + e.message, true)); });
-  }
-
 
   /* ---------- Traffic (Waze live map) ---------- */
   function wazeEmbed(lat, lon, zoom) {
@@ -4277,16 +4254,12 @@ var MiniQR = (function () {
         });
       }).catch(() => {}));
     }
-    const chans = favs().concat(myChannels(), VERIFIED).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i)
-      .filter((c) => (c.name + ' ' + (c.cat || '')).toLowerCase().includes(ql));
-    if (chans.length) { any = true; const r = row('Live TV'); chans.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[1].appendChild(r.sec); }
-    if (iptvCfg()) {
-      done.push(loadIptv().then((d) => {
-        const hits = d.channels.filter((c) => c.name.toLowerCase().includes(ql)).slice(0, 40);
-        if (!hits.length) return; any = true;
-        const r = row('IPTV', '#/live/iptv//' + enc(q)); hits.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[1].appendChild(r.sec);
-      }).catch(() => {}));
-    }
+    done.push((plex.auth ? plexLive() : Promise.resolve([])).then((l) => {
+      const chans = favs().concat(l).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i)
+        .filter((c) => (c.name + ' ' + (c.cat || '')).toLowerCase().includes(ql)).slice(0, 40);
+      if (!chans.length) return; any = true;
+      const r = row('Live TV'); chans.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[1].appendChild(r.sec);
+    }).catch(() => {}));
     done.push(ytSearch(q, 16).then((res) => {
       if (!res.length) return; any = true;
       const r = row('YouTube', '#/youtube/' + enc(q)); res.forEach((x) => r.scroller.appendChild(ytCard(x))); slots[2].appendChild(r.sec);
@@ -4373,16 +4346,19 @@ var MiniQR = (function () {
         h('b', { text: 'Profile' }), h('span', { text: plex.user ? plex.user.name : '—' }),
         h('b', { text: 'Server' }), h('span', { text: plex.conn ? plex.conn.name : 'not connected yet' }),
         h('b', { text: 'Connection' }), h('span', { text: plex.conn ? (plex.conn.relay ? 'Plex relay (slow — about 2 Mbps max)' : plex.conn.local ? 'Home network' : 'Remote, direct') : '—' }));
-      const sp = store.get('dm_start_profile', null);
+      const spRaw = store.get('dm_start_profile', null), sp = spRaw && spRaw.id ? spRaw : null;
       const spSel = h('select', { onchange: (e) => {
-        if (e.target.value === 'last') { store.set('dm_start_profile', null); toast('Opens as whoever watched last.'); return; }
-        const u = e.target.value === 'cur' ? plex.user : sp;
+        const v = e.target.value;
+        if (v === 'auto') { store.set('dm_start_profile', null); toast(onCar ? 'Opens as the TESLA profile.' : 'Opens as whoever watched last.'); return; }
+        if (v === 'last') { store.set('dm_start_profile', 'last'); toast('Opens as whoever watched last.'); return; }
+        const u = v === 'cur' ? plex.user : sp;
         store.set('dm_start_profile', u ? { id: u.id, name: u.name, token: u.token, thumb: u.thumb || '' } : null);
         if (u) toast('This screen will always open as ' + u.name + '.');
-      } }, h('option', { value: 'last', text: 'Whoever watched last' }),
+      } }, h('option', { value: 'auto', text: onCar ? 'Car profile (TESLA) — automatic' : 'Whoever watched last' }),
+        onCar ? h('option', { value: 'last', text: 'Whoever watched last' }) : null,
         sp && (!plex.user || sp.id !== plex.user.id) ? h('option', { value: 'saved', text: 'Always ' + sp.name }) : null,
         plex.user ? h('option', { value: 'cur', text: 'Always ' + plex.user.name }) : null);
-      spSel.value = !sp ? 'last' : plex.user && sp.id === plex.user.id ? 'cur' : 'saved';
+      spSel.value = spRaw === 'last' && onCar ? 'last' : !sp ? 'auto' : plex.user && sp.id === plex.user.id ? 'cur' : 'saved';
       pc.append(kv, h('label', { class: 'lbl', text: 'When the app opens on this screen' }), h('div', { class: 'field' }, spSel), h('div', { class: 'btns' },
         h('a', { class: 'btn ghost', href: '#/profiles', text: 'Switch profile' }),
         h('button', { class: 'btn ghost', type: 'button', text: 'Reconnect', onclick: (e) => {
@@ -4410,31 +4386,6 @@ var MiniQR = (function () {
           h('option', { value: 'natural', text: 'Natural' }), h('option', { value: 'soft', text: 'Softer — tames faces that look too red' }));
         cs.value = store.get('dm_color', 'natural'); return cs; })()),
       h('p', { class: 'msg', style: { padding: '8px 0 0' }, text: 'In the player: 🗣 Voice makes talking easier to hear, ☀ brightens the picture.' })));
-    // Own lists
-    const listBox = h('div');
-    const drawLists = () => {
-      listBox.replaceChildren();
-      myLists().forEach((l, i) => listBox.appendChild(h('div', { class: 'field', style: { marginBottom: '8px' } },
-        h('span', { style: { flex: '1' }, text: `${l.name} — ${l.url}` }),
-        h('button', { class: 'btn ghost', type: 'button', text: 'Remove', onclick: () => { const a = myLists(); a.splice(i, 1); store.set('dm_lists', a); invalidate('live'); drawLists(); } }))));
-      myChannels().forEach((c, i) => listBox.appendChild(h('div', { class: 'field', style: { marginBottom: '8px' } },
-        h('span', { style: { flex: '1' }, text: `${c.name} (channel)` }),
-        h('button', { class: 'btn ghost', type: 'button', text: 'Remove', onclick: () => { const a = myChannels(); a.splice(i, 1); store.set('dm_mychans', a); invalidate('live'); drawLists(); } }))));
-    };
-    drawLists();
-    const ln = h('input', { type: 'text', placeholder: 'Name (e.g. My IPTV)' });
-    const lu = h('input', { type: 'text', placeholder: 'Playlist (.m3u) or stream (.m3u8) address', autocapitalize: 'off', spellcheck: 'false' });
-    const ownBox = h('details', { class: 'sub' }, h('summary', { text: 'Add your own channel list or stream' }),
-      h('p', { text: 'An M3U playlist shows up as its own button in Live TV; a single .m3u8 stream goes under My channels.' }),
-      listBox,
-      h('div', { class: 'field' }, ln, lu, h('button', { class: 'btn red', type: 'button', text: 'Add', onclick: () => {
-        const url = lu.value.trim(), name = ln.value.trim() || 'My list';
-        if (!okUrl(url)) { toast('That needs to be an https:// address.'); return; }
-        if (/\.m3u8(\?|$)/i.test(url)) { const a = myChannels(); a.push({ name, url, cat: 'My channels', logo: '' }); store.set('dm_mychans', a); }
-        else { const a = myLists(); a.push({ name, url }); store.set('dm_lists', a); }
-        ln.value = lu.value = ''; invalidate('live'); drawLists(); toast('Added — find it under Live TV.');
-      } })));
-    const tvCard = iptvSetupCard(); tvCard.appendChild(ownBox); root.appendChild(tvCard);
     root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Phone remote' }),
       h('p', { text: 'Control the car screen from a phone. Tap 📱 on the car for the code.' }),
       h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '📱 Show pairing code (car)', onclick: showRemotePairing }),
@@ -4554,7 +4505,8 @@ var MiniQR = (function () {
 
   /* YouTube's own player, for phones and tablets. Falls back to the home
      helper for videos YouTube won't let other sites show. */
-  const onPhone = !/Tesla\//.test(navigator.userAgent) &&
+  const onCar = /Tesla\//.test(navigator.userAgent);
+  const onPhone = !onCar &&
     (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)));
   let ytEmbed = null, ytApi = null;
   function loadYtApi() {
@@ -4639,7 +4591,7 @@ var MiniQR = (function () {
   function openWatch(args) {
     const key = args.join('/');
     if (playerOpen && key === watchKey) return;
-    watchChannel = (args[0] === 'live' || args[0] === 'iptv') ? { url: args[1], done: false } : args[0] === 'plexlive' ? { url: 'plexlive:' + args[1], done: false } : null;
+    watchChannel = args[0] === 'live' ? { url: args[1], done: false } : args[0] === 'plexlive' ? { url: 'plexlive:' + args[1], done: false } : null;
     watchKey = key;
     const [kind, a, b, c, d] = args;
     const auto = wantAutoplay();
@@ -4652,15 +4604,6 @@ var MiniQR = (function () {
     } else if (kind === 'live') {
       openPlayerShell(b || 'Live TV', c ? 'Live TV · ' + c : 'Live TV');
       E.load(a, b); S.autoplay = auto;
-    } else if (kind === 'iptv') {
-      openPlayerShell(b || 'Channel', c || 'IPTV');
-      const playUrl = iptvWrap(a);
-      if (blockedHttp(playUrl)) {
-        E.setStatus('Your provider sends http:// links, which this secure page can’t open directly. Turn on “Route through the home helper” in Settings → IPTV subscription.', true);
-      } else {
-        E.load(playUrl, b, { ts: isRawTs(a) }); S.autoplay = auto;
-        if (d) xtreamNowNext(d).then((t) => { if (t && watchKey === key) $('plSub').textContent = (c ? c + '   ·   ' : '') + t; });
-      }
     } else if (kind === 'yt') {
       openPlayerShell(b || 'YouTube', 'YouTube');
       const viaHelper = () => {
@@ -4997,6 +4940,8 @@ var MiniQR = (function () {
     }
     if (radioNow && radioNow.pod) return { kind: 'podcast', art: radioNow.favicon ? podArt(radioNow.favicon, 300) : null, title: radioNow.name, sub: radioNow.show,
       pos: +(radio.currentTime || 0).toFixed(2), at: serverNow(), dur: Math.round(podDur()), seek: true, playing: !radio.paused, mirrorable: true, key: 'pod/' + radioNow.guid };
+    if (radioNow && radioNow.music) return { kind: 'music', art: radioNow.t.thumb ? mArt(radioNow.t.thumb, 300) : null, title: radioNow.name, sub: radioNow.show,
+      pos: +(radio.currentTime || 0).toFixed(2), at: serverNow(), dur: Math.round(podDur()), seek: true, playing: !radio.paused, mirrorable: false, key: 'music/' + radioNow.t.rk };
     if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false, mirrorable: true };
     return { kind: 'idle' };
   }
@@ -5009,7 +4954,7 @@ var MiniQR = (function () {
     postSlot('now', Object.assign({}, st, { seen: serverNow() }));
   }
   setInterval(() => { if (REM.room) publishNow(true); }, 20000);
-  const SAFE_HASH = /^#\/(watch\/(plex|live|iptv|yt|url)\/|item\/|home$|movies$|tv$|live|iptv|youtube|radio|podcasts|traffic$|search\/)/;
+  const SAFE_HASH = /^#\/(watch\/(plex|plexlive|live|yt|url|site)\/|item\/|home$|movies$|tv$|live|youtube|radio|podcasts|music|traffic$|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
     const saved = store.get('dm_remote_car', null);
@@ -5018,8 +4963,10 @@ var MiniQR = (function () {
     const t = c && c.type;
     if (t === 'hello') { publishNow(true); return; }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
+    else if (t === 'mnext' && radioNow && radioNow.music) musicNext();
+    else if (t === 'mprev' && radioNow && radioNow.music) musicPrev();
     else if (t === 'skip' && radioNow && radioNow.pod) podSkip(Math.max(-600, Math.min(600, +c.s || 0)));
-    else if (t === 'seek' && radioNow && radioNow.pod) podSeek(Math.max(0, +c.pos || 0));
+    else if (t === 'seek' && radioNow && (radioNow.pod || radioNow.music)) podSeek(Math.max(0, +c.pos || 0));
     else if (t === 'pod' && c.ep && typeof c.ep === 'object') playPodcast(c.ep);
     else if (t === 'skip' && playerOpen) skip(Math.max(-600, Math.min(600, +c.s || 0)));
     else if (t === 'seek' && playerOpen && E.canSeek()) E.hooks.onSeekRequest(Math.max(0, +c.pos || 0));
@@ -5053,7 +5000,8 @@ var MiniQR = (function () {
   }
   function buildRemoteLists() {
     const podItem = (ep) => ({ t: ep.name, s: ep.show, img: ep.favicon ? podArt(ep.favicon, 300) : null, pod: Object.assign(podEp(ep), { desc: '' }) });
-    const out = { cont: [], recent: [], live: [], radio: [], pods: podInProgress().slice(0, 20).map(podItem) };
+    const out = { cont: [], recent: [], live: [], radio: [], music: [], pods: podInProgress().slice(0, 20).map(podItem) };
+    const albumEntry = (m) => ({ t: m.title, s: m.parentTitle || '', img: mArt(m.thumb), go: '#/music/album/' + enc(m.ratingKey) + '/play' });
     const jobs = [];
     if (plex.auth) {
       jobs.push(pget('/library/onDeck?X-Plex-Container-Start=0&X-Plex-Container-Size=20')
@@ -5064,8 +5012,11 @@ var MiniQR = (function () {
           .then((d) => (MC(d).Metadata || []).filter((m) => m.type === 'movie' || m.type === 'episode').map(plexEntry)).catch(() => []))))
         .then((lists) => withPosters([].concat(...lists))).then((l) => { out.recent = l; }).catch(() => {}));
     }
-    out.live = favs().concat(VERIFIED).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i).slice(0, 40).map(chanEntry);
+    out.live = favs().slice(0, 40).map(chanEntry);
+    if (plex.auth) jobs.push(plexLive().then((l) => { l.filter((c) => !favs().some((f) => f.url === c.url)).slice(0, 40 - out.live.length).forEach((c) => out.live.push(chanEntry(c))); }).catch(() => {}));
     out.radio = radioFavs().map(radioEntry);
+    if (plex.auth) jobs.push(musicSections().then((s) => s.length ? pget('/library/sections/' + s[0].key + '/all?type=9&sort=addedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=20') : null)
+      .then((d) => { if (d) out.music = (MC(d).Metadata || []).map(albumEntry); }).catch(() => {}));
     podSubs().slice(0, 8).forEach((s) => jobs.push(podEpisodes(s.id).then(({ eps }) => {
       if (eps[0] && !out.pods.some((x) => x.pod.guid === eps[0].guid)) out.pods.push(podItem(eps[0]));
     }).catch(() => {})));
@@ -5082,8 +5033,12 @@ var MiniQR = (function () {
       (MC(d).Hub || []).forEach((hub) => (hub.Metadata || []).forEach((m) => { if (m.type === 'movie' || m.type === 'episode') l.push(Object.assign(plexEntry(m), { k: 'Plex' })); }));
       return withPosters(l.slice(0, 20));
     }).then((l) => { res.items.unshift(...l); }).catch(() => {}));
-    favs().concat(myChannels(), VERIFIED).filter((c) => c.name.toLowerCase().includes(ql)).slice(0, 15)
-      .forEach((c) => res.items.push(Object.assign(chanEntry(c), { k: 'Live TV' })));
+    jobs.push((plex.auth ? plexLive() : Promise.resolve([])).then((l) => favs().concat(l).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i)
+      .filter((c) => c.name.toLowerCase().includes(ql)).slice(0, 15)
+      .forEach((c) => res.items.push(Object.assign(chanEntry(c), { k: 'Live TV' })))).catch(() => {}));
+    if (plex.auth) jobs.push(musicSections().then((s) => s.length ? pget('/hubs/search?query=' + enc(q) + '&sectionId=' + s[0].key + '&limit=12') : null).then((d) => {
+      if (d) (MC(d).Hub || []).forEach((hub) => { if (hub.type === 'album') (hub.Metadata || []).forEach((m) => res.items.push({ t: m.title, s: m.parentTitle || '', k: 'Music', img: mArt(m.thumb), go: '#/music/album/' + enc(m.ratingKey) + '/play' })); });
+    }).catch(() => {}));
     jobs.push(ytSearch(q, 12).then((l) => l.forEach((r) => res.items.push({ t: r.title, s: r.channel || '', k: 'YouTube', img: okUrl(r.thumb || '') ? r.thumb : null,
       go: '#/watch/yt/' + enc(r.id) + '/' + enc(r.title || 'YouTube video') }))).catch(() => {}));
     jobs.push(podSearch(q).then((l) => l.slice(0, 12).forEach((s) => res.items.push({ t: s.name, s: s.by, k: 'Podcasts', img: s.art ? podArt(s.art, 300) : null,
@@ -5349,8 +5304,9 @@ var MiniQR = (function () {
     const bar = h('input', { type: 'range', min: '0', max: '1000', value: '0', class: 'rm-seek', disabled: true, 'aria-label': 'Position' });
     const tl = h('span'), tr = h('span');
     const pp = h('button', { class: 'rm-round big', type: 'button', text: '▶', 'aria-label': 'Play or pause', onclick: () => send({ type: 'toggle' }) });
-    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send({ type: 'skip', s: -10 }) }, h('span', { text: '↺' }), h('small', { text: '10' }));
-    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send({ type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
+    let nowKind = 'idle';
+    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mprev' } : { type: 'skip', s: -10 }) }, h('span', { text: '↺' }), h('small', { text: '10' }));
+    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mnext' } : { type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
     const phonesBtn = h('button', { class: 'rm-phones', type: 'button', hidden: true, onclick: () => {
       unlockSound();
@@ -5366,7 +5322,7 @@ var MiniQR = (function () {
     } }, '📲 Watch here too');
     let dur = 0, lastHeard = 0, now = null, lists = null, results = null;
     bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
-    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', site: '🌐', plexlive: '📺', idle: '🚗' };
+    const ICON = { plex: '🎬', live: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', site: '🌐', plexlive: '📺', music: '🎵', idle: '🚗' };
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
@@ -5481,17 +5437,23 @@ var MiniQR = (function () {
     function drawRows() {
       if (!lists) { rowsEl.replaceChildren(...['Continue Watching', 'Recently added'].map((l) => h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: l }), h('div', { class: 'rm-scroll' }, ...skelCards(5, 'poster'))))); return; }
       rowsEl.replaceChildren(...[row('Continue Watching', lists.cont, 'poster'), row('Recently added', lists.recent, 'poster'),
-        row('Live TV', lists.live, 'wide'), row('Podcasts', lists.pods, 'square'), row('Radio', lists.radio, 'square')].filter(Boolean));
+        row('Live TV', lists.live, 'wide'), row('Music', lists.music, 'square'), row('Podcasts', lists.pods, 'square'), row('Radio', lists.radio, 'square')].filter(Boolean));
     }
     function drawResults() {
       if (!results) return;
       if (!results.items.length) { resultsEl.replaceChildren(h('div', { class: 'rm-empty', text: 'Nothing found for “' + results.q + '”.' })); return; }
       const by = (k) => results.items.filter((it) => (it.k || '') === k);
       resultsEl.replaceChildren(...[row('Plex', by('Plex'), 'poster'), row('YouTube', by('YouTube'), 'wide'),
-        row('Live TV', by('Live TV'), 'wide'), row('Podcasts', by('Podcasts'), 'square'), row('Radio', by('Radio'), 'square')].filter(Boolean));
+        row('Live TV', by('Live TV'), 'wide'), row('Music', by('Music'), 'square'), row('Podcasts', by('Podcasts'), 'square'), row('Radio', by('Radio'), 'square')].filter(Boolean));
     }
     function drawNow(n) {
       const idle = !n || n.kind === 'idle';
+      const mus = !!(n && n.kind === 'music');
+      if (mus !== (nowKind === 'music')) {
+        back10.replaceChildren(h('span', { text: mus ? '⏮' : '↺' }), mus ? null : h('small', { text: '10' }));
+        fwd30.replaceChildren(h('span', { text: mus ? '⏭' : '↻' }), mus ? null : h('small', { text: '30' }));
+      }
+      nowKind = n ? n.kind : 'idle';
       const art = n && n.art && /^(data:image\/|https:\/\/)/.test(n.art) ? n.art : null;
       icon.classList.toggle('poster', !!art && n.kind === 'plex');
       if (art) { if (!icon.firstChild || icon.firstChild.src !== art) icon.replaceChildren(h('img', { src: art, alt: '' })); }
@@ -5501,9 +5463,9 @@ var MiniQR = (function () {
       pp.textContent = n && n.playing ? '❚❚' : '▶';
       dur = (n && n.dur) || 0;
       const seek = !!(n && n.seek && dur);
-      bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek; pp.disabled = idle; close.hidden = idle;
+      bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek && !mus; pp.disabled = idle; close.hidden = idle;
       watchHere.hidden = idle || !(n && n.mirrorable) || !!MIR;
-      const video = !idle && n && n.kind !== 'radio' && n.kind !== 'podcast';
+      const video = !idle && n && n.kind !== 'radio' && n.kind !== 'podcast' && n.kind !== 'music';
       phonesBtn.hidden = !video;
       phonesBtn.textContent = n && n.phonesOnly ? '📺 Turn the car screen back on' : '📱 Phones only — car screen off';
       phonesBtn.classList.toggle('on', !!(n && n.phonesOnly));
@@ -5604,7 +5566,7 @@ var MiniQR = (function () {
 
   /* Auto-update: when a newer version is published, reload by itself -
      but never during a movie, a podcast, or while typing; it waits. */
-  const APP_BUILD = '6b1e108e0a7b';
+  const APP_BUILD = '89cfdec1301b';
   let updateReady = false;
   function checkUpdate() {
     if (APP_BUILD.charAt(0) === '_' || updateReady) return;
@@ -5625,20 +5587,36 @@ var MiniQR = (function () {
   // Start-up profile: a screen set to "Always Family Room" goes back to that
   // profile each time the app opens (or wakes after half an hour away),
   // so a profile someone switched to doesn't stay on.
+  // On the car, a Plex Home profile named TESLA (or Car) is used automatically
+  // unless Settings says otherwise.
+  function carProfile() {
+    return plexTv('/api/v2/home/users', 'GET', plex.auth.token).then((d) => {
+      const users = Array.isArray(d) ? d : (d && d.users) || [];
+      const u = users.find((x) => /^(tesla|car)$/i.test(String(x.friendlyName || x.title || '').trim()) && !x.protected);
+      return u ? { id: u.uuid || u.id, name: u.friendlyName || u.title, token: '', thumb: u.thumb || '' } : null;
+    }).catch(() => null);
+  }
   function startProfileReset() {
-    const sp = store.get('dm_start_profile', null);
-    if (!sp || !plex.auth || !plex.user || plex.user.id === sp.id || playerOpen || MIR) return;
-    const use = (tok) => {
-      plex.user = { id: sp.id, name: sp.name, token: tok, thumb: sp.thumb || '' };
-      store.set('dm_plex_user', plex.user);
-      plex.conn = null; plex.sections = null; store.set('dm_plex_conn', null);
-      invalidate(); updateMe(); currentKey = null; route();
-      toast('Watching as ' + sp.name);
-    };
-    // Ask Plex for a fresh token (works for profiles without a PIN); else use the saved one.
-    plexTv('/api/v2/home/users/' + enc(sp.id) + '/switch', 'POST', plex.auth.token)
-      .then((d) => { const tok = d && (d.authToken || d.authenticationToken); use(tok || sp.token); })
-      .catch(() => use(sp.token));
+    if (!plex.auth || playerOpen || MIR) return;
+    const saved = store.get('dm_start_profile', null);
+    if (saved === 'last') return;
+    const pick = saved && saved.id ? Promise.resolve(saved) : onCar ? carProfile() : Promise.resolve(null);
+    pick.then((sp) => {
+      if (!sp || (plex.user && plex.user.id === sp.id) || playerOpen || MIR) return;
+      const use = (tok) => {
+        if (!tok) return;
+        plex.user = { id: sp.id, name: sp.name, token: tok, thumb: sp.thumb || '' };
+        store.set('dm_plex_user', plex.user);
+        plex.conn = null; plex.sections = null; store.set('dm_plex_conn', null);
+        invalidate(); updateMe(); currentKey = null;
+        if (parse().name === 'profiles') go('#/home', true); else route();
+        toast('Watching as ' + sp.name);
+      };
+      // Ask Plex for a fresh token (works for profiles without a PIN); else use the saved one.
+      plexTv('/api/v2/home/users/' + enc(sp.id) + '/switch', 'POST', plex.auth.token)
+        .then((d) => { const tok = d && (d.authToken || d.authenticationToken); use(tok || sp.token); })
+        .catch(() => use(sp.token));
+    });
   }
   let hiddenAt = 0;
   document.addEventListener('visibilitychange', () => {
