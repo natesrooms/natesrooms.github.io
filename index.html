@@ -3716,11 +3716,11 @@ var MiniQR = (function () {
       artBox(mArt(m.composite || m.thumb), m.title, []), h('div', { class: 't', text: m.title }),
       h('div', { class: 's', text: (m.leafCount || 0) + ' songs' }));
   }
-  function trackRow(t, i, all, showArtist) {
+  function trackRow(t, i, all, showArtist, showAlbum) {
     return h('button', { class: 'podep', type: 'button', 'data-station': 'm' + t.rk, onclick: () => playMusic(all, i) },
       h('div', { class: 'podep-play', text: '▶' }),
       h('div', { class: 'podep-txt' }, h('div', { class: 't', text: t.title }),
-        h('div', { class: 's', text: [showArtist ? t.artist : '', t.dur ? E.fmt(t.dur) : ''].filter(Boolean).join(' · ') })));
+        h('div', { class: 's', text: [showArtist ? t.artist : '', showAlbum ? t.album : '', t.dur ? E.fmt(t.dur) : ''].filter(Boolean).join(' · ') })));
   }
   function musicHero(img, title, by, tracks) {
     return h('div', { class: 'pod-hero pad' },
@@ -3755,22 +3755,29 @@ var MiniQR = (function () {
         }).catch(fail);
       }
       if (sec === 'artist') {
+        // Plex's album list for an artist can miss albums; the artist's songs never do,
+        // so the page is built from all of the artist's songs.
         return Promise.all([pget('/library/metadata/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {}),
-          pget('/library/metadata/' + enc(a) + '/children').then((d) => MC(d).Metadata || [])
-            // Songs that sit on albums filed under another artist: build the album list from the songs.
-            .then((l) => l.length ? l : pget('/library/metadata/' + enc(a) + '/allLeaves').then((d) => {
-              const seen = {};
-              return (MC(d).Metadata || []).filter((t) => t.parentRatingKey && !seen[t.parentRatingKey] && (seen[t.parentRatingKey] = 1))
-                .map((t) => ({ ratingKey: t.parentRatingKey, title: t.parentTitle, thumb: t.parentThumb, parentTitle: t.grandparentTitle, year: t.parentYear }));
-            }))]).then(([m, albums]) => {
-          const all = () => pget('/library/metadata/' + enc(a) + '/allLeaves').then((d) => (MC(d).Metadata || []).map(trackItem));
+          pget('/library/metadata/' + enc(a) + '/children').then((d) => MC(d).Metadata || []).catch(() => []),
+          pget('/library/metadata/' + enc(a) + '/allLeaves').then((d) => MC(d).Metadata || [])]).then(([m, kids, leaves]) => {
+          const byKey = {};
+          kids.forEach((x) => { byKey[x.ratingKey] = x; });
+          leaves.forEach((t) => { if (t.parentRatingKey && !byKey[t.parentRatingKey]) byKey[t.parentRatingKey] = { ratingKey: t.parentRatingKey, title: t.parentTitle, thumb: t.parentThumb, parentTitle: t.grandparentTitle, year: t.parentYear }; });
+          const seenA = {};
+          const albums = Object.values(byKey).sort((x, y) => (y.year || 0) - (x.year || 0))
+            .filter((x) => { const k = String(x.title || '').toLowerCase().trim(); return seenA[k] ? false : (seenA[k] = 1); });
+          const songs = dedupeTracks(leaves.map(trackItem)).sort((x, y) => x.title.localeCompare(y.title));
           body.appendChild(h('div', { class: 'pod-hero pad' },
             h('div', { class: 'pod-cover round', style: { background: grad(m.title || '') } }, m.thumb ? h('img', { src: mArt(m.thumb, 600), alt: '' }) : null),
-            h('div', { class: 'pod-info' }, h('h1', { text: m.title || '' }), h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album' : ' albums') }),
+            h('div', { class: 'pod-info' }, h('h1', { text: m.title || '' }),
+              h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album · ' : ' albums · ') + songs.length + ' songs' }),
               h('div', { class: 'btns' },
-                h('button', { class: 'btn red', type: 'button', text: '🔀 Shuffle ' + (m.title || ''), onclick: () => all().then((l) => playMusic(l, 0, true)) })))));
-          const g = h('div', { class: 'grid sq pad' }); const seenA = {};
-          albums.filter((x) => { const k = String(x.title || '').toLowerCase().trim(); return seenA[k] ? false : (seenA[k] = 1); }).forEach((x) => g.appendChild(albumCard(x))); body.appendChild(g);
+                h('button', { class: 'btn red', type: 'button', text: '🔀 Shuffle ' + (m.title || ''), onclick: () => playMusic(songs, 0, true) })))));
+          const g = h('div', { class: 'grid sq pad' }); albums.forEach((x) => g.appendChild(albumCard(x)));
+          body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Albums' })));
+          body.appendChild(g);
+          body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Songs' }), h('div', { class: 'podeps' }, songs.map((t, i) => trackRow(t, i, songs, false, true)))));
+          markPlayingCards();
         }).catch(fail);
       }
       // Main page: search, shuffle, playlists, recently added, artists
@@ -3792,6 +3799,19 @@ var MiniQR = (function () {
               body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Songs' }), h('div', { class: 'podeps' }, tr.map((t, i) => trackRow(t, i, tr, true))))); }
           });
           if (!any) body.appendChild(h('div', { class: 'empty', text: 'Nothing found for “' + a + '”.' }));
+          // Searched for an artist by name? List their songs too (Plex only matches song titles).
+          const norm = (v) => String(v || '').toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9]/g, '');
+          const artistHit = ((MC(d).Hub || []).find((hb) => hb.type === 'artist') || {}).Metadata || [];
+          const exact = artistHit.find((m) => norm(m.title) === norm(a));
+          if (exact) {
+            const box = h('div', { class: 'pad' }); body.appendChild(box);
+            pget('/library/metadata/' + exact.ratingKey + '/allLeaves').then((d2) => {
+              const songs = dedupeTracks((MC(d2).Metadata || []).map(trackItem)).sort((x, y) => x.title.localeCompare(y.title));
+              if (!songs.length) return;
+              box.append(h('h2', { text: 'Songs by ' + exact.title }), h('div', { class: 'podeps' }, songs.map((t, i) => trackRow(t, i, songs, false, true))));
+              markPlayingCards();
+            }).catch(() => {});
+          }
           markPlayingCards();
         }).catch(fail);
       }
@@ -5872,7 +5892,7 @@ var MiniQR = (function () {
 
   /* Auto-update: when a newer version is published, reload by itself -
      but never during a movie, a podcast, or while typing; it waits. */
-  const APP_BUILD = 'c6ecad5d069f';
+  const APP_BUILD = 'e8253fcc66b7';
   let updateReady = false;
   function checkUpdate() {
     if (APP_BUILD.charAt(0) === '_' || updateReady) return;
