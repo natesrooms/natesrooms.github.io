@@ -104,6 +104,13 @@ var Engine = (function () {
      limiter keep a big bass boost from distorting. */
   function wireDialogue() {
     var c = S.ctx; if (!c || !S.gain) return;
+    try { wireSound(c); } catch (err) {
+      // Never leave the player silent: if the sound path can't be built, go straight to the speakers.
+      try { S.gain.disconnect(); } catch (e2) {}
+      S.gain.connect(c.destination); S.eq = null;
+    }
+  }
+  function wireSound(c) {
     if (!S.eq) {
       var pre = c.createGain();
       var bass = c.createBiquadFilter(); bass.type = 'lowshelf'; bass.frequency.value = 95;
@@ -117,7 +124,7 @@ var Engine = (function () {
     }
     var b = S.bassDb || 0, t = S.trebleDb || 0;
     S.eq.bass.gain.value = b; S.eq.treb.gain.value = t;
-    S.eq.pre.gain.value = Math.pow(10, -(Math.max(b, t, 0) * 0.55) / 20);
+    S.eq.pre.gain.value = Math.pow(10, -(Math.max(b, t, 0) * 0.3) / 20);
     try { S.eq.treb.disconnect(); } catch (e) {}
     if (!S.dialogue) { S.eq.treb.connect(S.eq.lim); return; }
     if (!S.dlg) {

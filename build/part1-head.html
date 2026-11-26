@@ -280,6 +280,10 @@
   .row-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 28px; }
   .row-h h2 { font-size: 22px; margin: 0; font-weight: 800; letter-spacing: -.01em; }
   .row-h a { color: var(--dim); font-size: 15px; font-weight: 700; padding: 10px 0; }
+  .row-tools { display: flex; align-items: center; gap: 14px; }
+  .row-arrows { display: inline-flex; gap: 8px; }
+  .row-arrow { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--bg3); color: var(--text); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 0 3px; }
+  .row-arrow:disabled { opacity: .3; cursor: default; }
   .scroller {
     display: flex; gap: 14px; overflow-x: auto; padding: 12px 28px 8px; scroll-snap-type: x proximity;
     scrollbar-width: none;
@@ -337,7 +341,7 @@
   .azbar button:first-child { border-radius: 12px 12px 0 0; } .azbar button:last-child { border-radius: 0 0 12px 12px; }
   .azbar button:active { color: var(--accent); transform: scale(1.3); }
   .azbar button.off { color: rgba(255,255,255,.22); pointer-events: none; }
-  #view:has(.azbar) .grid.posters { padding-right: 44px; }
+  #view:has(.azbar) .grid.posters, #view:has(.azbar) .grid.az { padding-right: 44px; }
   .grid.wide { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 
   .page-h { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 26px 28px 6px; }
@@ -534,7 +538,7 @@
     .grid.posters { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .grid.wide { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     .grid.sq { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
-    #view:has(.azbar) .grid.posters { padding-right: 34px; }
+    #view:has(.azbar) .grid.posters, #view:has(.azbar) .grid.az { padding-right: 34px; }
     .azbar button { padding: 0 7px; }
     .hero { min-height: 300px; } .hero .in { padding: 30px 14px 22px; }
     .hero h1 { font-size: 27px; } .hero p { font-size: 15px; }

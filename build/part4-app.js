@@ -141,8 +141,21 @@
   }
   function row(title, moreHref) {
     const scroller = enableFlow(h('div', { class: 'scroller' }));
+    // ‹ › buttons for screens without swipe (a mouse); greyed out at either end.
+    const nudge = (dir) => scroller.scrollBy({ left: dir * Math.max(200, scroller.clientWidth * 0.8), behavior: 'smooth' });
+    const prev = h('button', { class: 'row-arrow', type: 'button', 'aria-label': 'Scroll left', text: '‹', onclick: () => nudge(-1) });
+    const next = h('button', { class: 'row-arrow', type: 'button', 'aria-label': 'Scroll right', text: '›', onclick: () => nudge(1) });
+    const paint = () => {
+      const max = scroller.scrollWidth - scroller.clientWidth;
+      prev.disabled = scroller.scrollLeft <= 40; next.disabled = scroller.scrollLeft >= max - 40;
+      arrows.hidden = max <= 4;
+    };
+    const arrows = h('span', { class: 'row-arrows', hidden: true }, prev, next);
+    scroller.addEventListener('scroll', paint, { passive: true });
+    window.addEventListener('resize', paint, { passive: true });
+    new MutationObserver(() => requestAnimationFrame(paint)).observe(scroller, { childList: true });
     const sec = h('section', { class: 'row' },
-      h('div', { class: 'row-h' }, h('h2', { text: title }), moreHref ? h('a', { href: moreHref, text: 'See all ›' }) : null),
+      h('div', { class: 'row-h' }, h('h2', { text: title }), h('span', { class: 'row-tools' }, moreHref ? h('a', { href: moreHref, text: 'See all ›' }) : null, arrows)),
       scroller);
     return { sec, scroller };
   }
@@ -453,6 +466,17 @@
     ['Comedy', 'stand up comedy'], ['Cars', 'car reviews'], ['Podcasts', 'podcast full episode'], ['Kids', 'kids cartoons']];
 
   const RB = ['https://de1.api.radio-browser.info', 'https://nl1.api.radio-browser.info', 'https://at1.api.radio-browser.info'];
+  // Stations that wouldn't play here are remembered for 30 days and left out of the lists.
+  function badStations() {
+    const all = store.get('dm_radio_bad', {}), now = Date.now(), out = {};
+    Object.keys(all).forEach((k) => { if (now - all[k] < 30 * 864e5) out[k] = all[k]; });
+    return out;
+  }
+  function markBadStation(st) {
+    if (!st || !st.stationuuid || st.pod || st.music) return;
+    const all = badStations(); all[st.stationuuid] = Date.now(); store.set('dm_radio_bad', all);
+    document.querySelectorAll('[data-station="' + st.stationuuid + '"]').forEach((c) => { if (!isRadioFav(st)) c.remove(); });
+  }
   function radioSearch(params) {
     const qs = new URLSearchParams(Object.assign({ hidebroken: 'true', order: 'clickcount', reverse: 'true', limit: '60' }, params)).toString();
     let i = 0;
@@ -461,8 +485,17 @@
       // The directory lists many duplicates (same station, several streams):
       // keep the first (most-played) of each name.
       const seen = new Set();
+      const bad = badStations();
       return list.filter((s) => {
         if (!okUrl(s.url_resolved || '')) return false;
+        // Skip what can't play here: failed the directory's last check, HLS-only
+        // streams, odd codecs, and stations that already failed on this screen.
+        if (s.lastcheckok === 0 || s.hls === 1 || bad[s.stationuuid]) return false;
+        // English only: no other tagged language, and no names in other alphabets (Chinese, Arabic, Cyrillic...).
+        const lang = String(s.language || '').toLowerCase();
+        if (lang && !/english/.test(lang)) return false;
+        if (/[\u0370-\u1fff\u3000-\uffef]/.test(s.name || '')) return false;
+        if (s.codec && !/^(mp3|aac|aac\+|ogg|opus|unknown)$/i.test(String(s.codec).trim())) return false;
         const k = (s.name || '').trim().toLowerCase();
         if (!k || seen.has(k)) return false;
         seen.add(k); return true;
@@ -501,7 +534,7 @@
   // Same handlers on both elements; each only acts for the one in use.
   function onAudio(ev, fn) { [plainAudio, musicAudio].forEach((el) => el.addEventListener(ev, (x) => { if (el === radio) fn(x); })); }
   let radioBar = null, radioNow = null;
-  onAudio('error', () => { if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow) toast(radioNow.pod ? 'That episode couldn’t be loaded — try another one.' : `${radioNow.name} isn’t broadcasting right now — try another station.`); });
+  onAudio('error', () => { if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow && radioNow.pod) { toast('That episode couldn’t be loaded — try another one.'); return; } if (radioNow) { const st = radioNow; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); } });
   function markPlayingCards() {
     document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
   }
@@ -513,7 +546,8 @@
     radio.preload = 'none';
     radio.src = st.url_resolved;
     radio.defaultPlaybackRate = radio.playbackRate = 1;
-    radio.play().catch((e) => toast('That station would not start: ' + e.message));
+    const el = radio;
+    radio.play().catch((e) => { if (radio !== el || radioNow !== st || e.name === 'AbortError') return; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); });
     if (!radioBar) {
       radioBar = h('div', { class: 'radiobar' });
       document.body.appendChild(radioBar);
@@ -819,7 +853,8 @@
       radio.preload = 'auto';
       radio.src = trackUrl(t);
       radio.defaultPlaybackRate = radio.playbackRate = 1;
-      radio.play().catch((e) => toast('That song would not start: ' + e.message));
+      const el = radio;
+      radio.play().catch((e) => { if (radio === el && radioNow && radioNow.t === t && e.name !== 'AbortError') toast('That song would not start: ' + e.message); });
       drawMusicBar(); markPlayingCards(); musicSession(t);
       if (REM.room) publishNow(true);
     }).catch((e) => toast('Plex isn’t answering: ' + e.message));
@@ -894,7 +929,7 @@
           h('button', { class: 'btn ghost', type: 'button', text: '🔀 Shuffle', onclick: () => playMusic(tracks(), 0, true) }))));
   }
   function musicView(root, [sec, a, b]) {
-    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, sec ? subNav('#/music') : null, h('h1', { text: 'Music' })), audioSwitch('music')));
+    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, /^(album|artist|playlist|search)$/.test(sec || '') ? subNav('#/music') : null, h('h1', { text: 'Music' })), audioSwitch('music')));
     if (!plex.auth) {
       root.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Your music, from Plex' }),
         h('p', { text: 'Sign in with Plex to play the music library on your server.' }), h('a', { class: 'btn red', href: '#/signin', text: 'Sign in with Plex' })));
@@ -958,23 +993,64 @@
           markPlayingCards();
         }).catch(fail);
       }
-      const sPl = h('div'), sNew = h('div'), sArt = h('div'); body.append(sPl, sNew, sArt);
-      pget('/playlists?playlistType=audio').then((d) => {
-        const l = MC(d).Metadata || []; if (!l.length) return;
-        const r = row('Playlists'); l.forEach((m) => r.scroller.appendChild(playlistCard(m))); sPl.appendChild(r.sec);
-      }).catch(() => {});
-      pget('/library/sections/' + sk + '/all?type=9&sort=addedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=30').then((d) => {
-        const l = MC(d).Metadata || []; if (!l.length) return;
-        const r = row('Recently added'); l.forEach((m) => r.scroller.appendChild(albumCard(m))); sNew.appendChild(r.sec);
-      }).catch(() => {});
-      let start = 0; const g = h('div', { class: 'grid sq pad' });
-      const more = h('button', { class: 'btn ghost', type: 'button', text: 'Show more', hidden: true, onclick: () => page() });
-      sArt.append(h('div', { class: 'pad' }, h('h2', { text: 'Artists' })), g, h('div', { class: 'more' }, more));
-      const page = () => pget('/library/sections/' + sk + '/all?type=8&sort=titleSort&X-Plex-Container-Start=' + start + '&X-Plex-Container-Size=60').then((d) => {
-        const c = MC(d), l = c.Metadata || []; l.forEach((m) => g.appendChild(artistCard(m))); start += l.length;
-        more.hidden = !l.length || start >= (c.totalSize || 0);
+      // Three tabs: For you (recent + suggestions), every artist, every album (both with A–Z).
+      const tab = sec === 'artists' || sec === 'albums' ? sec : 'foryou';
+      body.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: '✨ For you' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' }],
+        tab, (c) => c.id === 'foryou' ? '#/music' : '#/music/' + c.id)));
+      const hubCard = (m) => m.type === 'artist' ? artistCard(m) : m.type === 'playlist' ? playlistCard(m) : albumCard(m);
+      if (tab === 'foryou') {
+        const sRecent = h('div'), sHubs = h('div'), sRandom = h('div'), sPl = h('div'), sNew = h('div');
+        body.append(sRecent, sHubs, sRandom, sPl, sNew);
+        // Recently played: albums of the songs played last, newest first (fills as you listen).
+        pget('/library/sections/' + sk + '/all?type=10&sort=lastViewedAt:desc&viewCount>>=1&X-Plex-Container-Start=0&X-Plex-Container-Size=150').then((d) => {
+          const seen = {}, l = (MC(d).Metadata || []).filter((t) => t.parentRatingKey && !seen[t.parentRatingKey] && (seen[t.parentRatingKey] = 1))
+            .map((t) => ({ ratingKey: t.parentRatingKey, title: t.parentTitle, thumb: t.parentThumb, parentTitle: t.grandparentTitle, type: 'album' }));
+          if (!l.length) return;
+          const r = row('Recently played'); l.slice(0, 24).forEach((m) => r.scroller.appendChild(albumCard(m))); sRecent.appendChild(r.sec);
+        }).catch(() => {});
+        // Suggestions: Plex's own picks for this library ("More by…", "More in Rock", "Most played…", ...).
+        pget('/hubs/sections/' + sk + '?count=16').then((d) => {
+          (MC(d).Hub || []).filter((hb) => /^(artist|album|playlist)$/.test(hb.type) && (hb.Metadata || []).length && !/recent\.added/.test(hb.hubIdentifier || ''))
+            .forEach((hb) => {
+              const title = /recent\.played/.test(hb.hubIdentifier || '') ? 'Artists you played lately' : hb.title;
+              const r = row(title); hb.Metadata.forEach((m) => r.scroller.appendChild(hubCard(m))); sHubs.appendChild(r.sec);
+            });
+        }).catch(() => {});
+        pget('/library/sections/' + sk + '/all?type=9&sort=random&X-Plex-Container-Start=0&X-Plex-Container-Size=20').then((d) => {
+          const l = MC(d).Metadata || []; if (!l.length) return;
+          const r = row('Random picks'); l.forEach((m) => r.scroller.appendChild(albumCard(m))); sRandom.appendChild(r.sec);
+        }).catch(() => {});
+        pget('/playlists?playlistType=audio').then((d) => {
+          const l = MC(d).Metadata || []; if (!l.length) return;
+          const r = row('Playlists'); l.forEach((m) => r.scroller.appendChild(playlistCard(m))); sPl.appendChild(r.sec);
+        }).catch(() => {});
+        pget('/library/sections/' + sk + '/all?type=9&sort=addedAt:desc&X-Plex-Container-Start=0&X-Plex-Container-Size=30').then((d) => {
+          const l = MC(d).Metadata || []; if (!l.length) return;
+          const r = row('Recently added'); l.forEach((m) => r.scroller.appendChild(albumCard(m))); sNew.appendChild(r.sec);
+        }).catch(() => {});
+        return;
+      }
+      // All artists / all albums, A to Z, with the letter bar down the side.
+      const g = h('div', { class: 'grid sq pad az' }); const st = msg('Loading…'); body.append(g, st);
+      return pget('/library/sections/' + sk + '/all?type=' + (tab === 'artists' ? 8 : 9) + '&sort=titleSort&X-Plex-Container-Start=0&X-Plex-Container-Size=3000').then((d) => {
+        st.remove();
+        let list = MC(d).Metadata || [];
+        if (tab === 'albums') { const seen = {}; list = list.filter((m) => { const k = (m.parentTitle + '|' + m.title).toLowerCase(); return seen[k] ? false : (seen[k] = 1); }); }
+        const letterOf = (m) => { const c = String(m.titleSort || m.title || '').replace(/^(the|a|an)\s+/i, '').charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; };
+        const first = {};
+        list.forEach((m) => { const el = tab === 'artists' ? artistCard(m) : albumCard(m); const L = letterOf(m); if (!first[L]) { first[L] = el; } g.appendChild(el); });
+        const jump = (L) => {
+          const el = first[L]; if (!el) return;
+          const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight;
+          const top = el.getBoundingClientRect().top + window.scrollY - navH - 14;
+          window.scrollTo({ top, behavior: 'auto' });
+          // covers above may still be loading and shifting things: check again
+          setTimeout(() => { const t2 = el.getBoundingClientRect().top + window.scrollY - navH - 14; if (Math.abs(t2 - window.scrollY) > 30) window.scrollTo(0, t2); }, 500);
+        };
+        root.appendChild(h('div', { class: 'azbar', role: 'navigation', 'aria-label': 'Jump to letter' },
+          ['#'].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')).map((L) => h('button', { type: 'button', text: L, class: first[L] ? '' : 'off', onclick: () => jump(L) }))));
+        if (!list.length) g.replaceWith(h('div', { class: 'empty', text: 'Nothing here yet.' }));
       }).catch(fail);
-      page();
     }).catch((e) => { wait.remove(); body.appendChild(msg('Couldn’t reach Plex: ' + e.message, true)); });
   }
 
@@ -2023,7 +2099,9 @@
     'add-transcode-target(type=videoProfile&context=streaming&protocol=hls&container=mpegts&videoCodec=h264&audioCodec=aac)',
     'add-limitation(scope=videoCodec&scopeName=h264&type=upperBound&name=video.level&value=41)',
     'add-limitation(scope=videoCodec&scopeName=h264&type=upperBound&name=video.bitDepth&value=8)',
-    'add-limitation(scope=videoAudioCodec&scopeName=aac&type=upperBound&name=audio.channels&value=2)'
+    'add-limitation(scope=videoAudioCodec&scopeName=aac&type=upperBound&name=audio.channels&value=2)',
+    // Without this Plex turns 5.1 sound (EAC3, DTS...) into MP3, which the player can't decode: silent movie.
+    'add-limitation(scope=videoAudioCodec&scopeName=mp3&type=upperBound&name=audio.channels&value=0)'
   ].join('+');
   function startLevel() {
     const q = store.get('dm_quality', 'auto');
