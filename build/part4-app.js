@@ -402,6 +402,7 @@
     store.set('dm_favs', f.slice(0, 200));
   }
   function channelHref(ch) {
+    if (String(ch.url).startsWith('plexlive:')) return '#/watch/plexlive/' + enc(ch.url.slice(9)) + '/' + enc(ch.name) + '/' + enc(ch.cat || '');
     if (ch.iptv) return '#/watch/iptv/' + enc(ch.url) + '/' + enc(ch.name) + '/' + enc(ch.cat || '') + '/' + enc(ch.sid || '');
     return '#/watch/live/' + enc(ch.url) + '/' + enc(ch.name) + '/' + enc(ch.cat || '');
   }
@@ -1338,8 +1339,35 @@
   /* ---------- Live TV ---------- */
   function myLists() { return store.get('dm_lists', []); }
   function myChannels() { return store.get('dm_mychans', []); }
+  /* Plex's free live channels (no DRM, H.264 HLS). Plex's genre ids have
+     no names in the lineup, so they're named here; new ones go under "More". */
+  const PLEX_EPG = 'https://epg.provider.plex.tv';
+  const PLEX_GENRES = {
+    '6006cc1d610ee2002c74f37a': 'News', '620143f98578b9238e1cdb8a': 'Sports', '620143f98578b9238e1cdb89': 'Movies',
+    '6a0c2728768cf9b31f6fe02a': 'Drama', '6006cc18610ee2002c74f2f9': 'Comedy', '6a0c2728768cf9b31f6fe030': 'Sci-Fi & Horror',
+    '6006cc1a610ee2002c74f33f': 'Crime', '6006cc1d610ee2002c74f38c': 'Reality', '6a0c2728768cf9b31f6fe034': 'Game Shows & Talk',
+    '6529021f0f3f142ea6049ecb': 'Classic TV', '6074b802507c8d42cf7e22eb': 'History & Science', '6a0c2729768cf9b31f6fe040': 'Food & Home',
+    '6006cc1c610ee2002c74f378': 'Music', '6074b802507c8d42cf7e1678': 'Kids', '6a0c2729768cf9b31f6fe044': 'International'
+  };
+  const PLEX_CAT_ORDER = Object.values(PLEX_GENRES);
+  let plexLiveCache = null;
+  function plexLive() {
+    if (plexLiveCache && Date.now() - plexLiveCache.at < 6 * 3600 * 1000) return Promise.resolve(plexLiveCache.list);
+    return fetch(PLEX_EPG + '/lineups/plex/channels?X-Plex-Token=' + enc(plexActiveToken()), { headers: { Accept: 'application/json' } })
+      .then((r) => { if (!r.ok) throw new Error('Plex answered ' + r.status); return r.json(); })
+      .then((d) => {
+        const list = ((d.MediaContainer || {}).Channel || [])
+          .filter((c) => !c.hidden && c.language === 'en' && c.Media && c.Media[0] && !c.Media[0].drm && c.Media[0].Part && c.Media[0].Part[0])
+          .map((c) => ({ name: c.title, url: 'plexlive:' + c.Media[0].Part[0].key, logo: okUrl(c.thumb || '') ? c.thumb : '',
+            cat: PLEX_GENRES[String((c.genreRatingKeys || [''])[0]).replace('genre_', '')] || 'More' }))
+          .sort((x, y) => (PLEX_CAT_ORDER.indexOf(x.cat) + 1 || 99) - (PLEX_CAT_ORDER.indexOf(y.cat) + 1 || 99));
+        plexLiveCache = { at: Date.now(), list };
+        return list;
+      });
+  }
   function liveSources() {
     const sources = [{ id: 'fav', label: '★ Favorites' }, { id: 'verified', label: 'Channels' }];
+    if (plex.auth) sources.push({ id: 'plex', label: 'Plex channels' });
     if (iptvCfg()) sources.push({ id: 'iptv', label: '📡 My IPTV' });
     if (myChannels().length) sources.push({ id: 'mine', label: 'My channels' });
     myLists().forEach((l, i) => sources.push({ id: 'list' + i, label: l.name }));
@@ -1364,6 +1392,7 @@
     let p;
     if (src === 'fav') p = Promise.resolve(favs());
     else if (src === 'verified') p = Promise.resolve(VERIFIED);
+    else if (src === 'plex') p = plex.auth ? plexLive() : Promise.reject(new Error('sign in to Plex first (Settings).'));
     else if (src === 'mine') p = Promise.resolve(myChannels());
     else if (src.startsWith('list')) { const l = myLists()[+src.slice(4)]; p = l ? loadM3U(l.url) : Promise.reject(new Error('that list was removed.')); }
     else if (src.startsWith('cc-')) {
@@ -1386,7 +1415,7 @@
       if (cats.length > 1 && list.length > 12) {
         body.appendChild(chips([{ id: '', label: 'All' }].concat(cats.map((c) => ({ id: c, label: c }))), cat || '', (c) => '#/live/' + src + (c.id ? '/' + enc(c.id) : '')));
       }
-      const shown = sortByHealth(cat ? list.filter((c) => (c.cat || 'Other') === cat) : list);
+      const shown = src === 'plex' ? (cat ? list.filter((c) => c.cat === cat) : list) : sortByHealth(cat ? list.filter((c) => (c.cat || 'Other') === cat) : list);
       const grid = h('div', { class: 'grid wide' }); body.appendChild(grid);
       let i = 0;
       const step = () => { shown.slice(i, i + 60).forEach((ch) => grid.appendChild(channelCard(ch))); i += 60; btn.hidden = i >= shown.length; };
@@ -1922,13 +1951,17 @@
   function openWatch(args) {
     const key = args.join('/');
     if (playerOpen && key === watchKey) return;
-    watchChannel = (args[0] === 'live' || args[0] === 'iptv') ? { url: args[1], done: false } : null;
+    watchChannel = (args[0] === 'live' || args[0] === 'iptv') ? { url: args[1], done: false } : args[0] === 'plexlive' ? { url: 'plexlive:' + args[1], done: false } : null;
     watchKey = key;
     const [kind, a, b, c, d] = args;
     const auto = wantAutoplay();
     if (kind === 'plex') { playPlex(a, b != null && b !== '' ? +b : null, auto); return; }
     endPlex();
-    if (kind === 'live') {
+    if (kind === 'plexlive') {
+      openPlayerShell(b || 'Plex channel', c ? 'Plex · ' + c : 'Plex channel');
+      if (!plex.auth) E.setStatus('Sign in to Plex (Settings) to watch Plex channels.', true);
+      else { E.load(PLEX_EPG + a + '?X-Plex-Token=' + enc(plexActiveToken()), b); S.autoplay = auto; }
+    } else if (kind === 'live') {
       openPlayerShell(b || 'Live TV', c ? 'Live TV · ' + c : 'Live TV');
       E.load(a, b); S.autoplay = auto;
     } else if (kind === 'iptv') {
@@ -2645,7 +2678,7 @@
     } }, '📲 Watch here too');
     let dur = 0, lastHeard = 0, now = null, lists = null, results = null;
     bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
-    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', site: '🌐', idle: '🚗' };
+    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', site: '🌐', plexlive: '📺', idle: '🚗' };
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
