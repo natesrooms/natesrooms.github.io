@@ -1042,9 +1042,28 @@
               h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album · ' : ' albums · ') + songs.length + ' songs' }),
               h('div', { class: 'btns' },
                 h('button', { class: 'btn red', type: 'button', text: '🔀 Shuffle ' + (m.title || ''), onclick: () => playMusic(songs, 0, true) })))));
-          const g = h('div', { class: 'grid sq pad' }); albums.forEach((x) => g.appendChild(albumCard(x)));
-          body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Albums' })));
-          body.appendChild(g);
+          // Sections like Plexamp: Albums, Singles & EPs, Compilations, Live, Soundtracks & remixes.
+          // Plex keeps a release's type (Format / Subformat) on its full details, fetched in one go.
+          const shelf = h('div'); body.appendChild(shelf);
+          const SECTIONS = [['album', 'Albums'], ['single', 'Singles & EPs'], ['comp', 'Compilations'], ['live', 'Live'], ['other', 'Soundtracks, remixes & more']];
+          const drawShelf = (kind) => {
+            const groups = {}; albums.forEach((x) => { const k = kind[x.ratingKey] || 'album'; (groups[k] = groups[k] || []).push(x); });
+            shelf.replaceChildren(...SECTIONS.filter(([k]) => groups[k]).map(([k, label]) => {
+              const g = h('div', { class: 'grid sq pad' }); groups[k].forEach((x) => g.appendChild(albumCard(x)));
+              return h('div', null, h('div', { class: 'pad' }, h('h2', { text: label + ' (' + groups[k].length + ')' })), g);
+            }));
+          };
+          drawShelf({});
+          const keys = albums.map((x) => x.ratingKey);
+          Promise.all(Array.from({ length: Math.ceil(keys.length / 40) }, (_, n) => pget('/library/metadata/' + keys.slice(n * 40, n * 40 + 40).join(',')).then((d) => MC(d).Metadata || []).catch(() => [])))
+            .then((parts) => {
+              const kind = {};
+              [].concat(...parts).forEach((m) => {
+                const f = ((m.Format || [])[0] || {}).tag || '', s = (m.Subformat || []).map((x) => x.tag).join(' ');
+                kind[m.ratingKey] = /compilation/i.test(s) ? 'comp' : /live/i.test(s) ? 'live' : /soundtrack|remix|mix|demo/i.test(s) ? 'other' : /single|ep/i.test(f) ? 'single' : 'album';
+              });
+              drawShelf(kind);
+            });
           body.appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Songs' }), h('div', { class: 'podeps' }, songs.map((t, i) => trackRow(t, i, songs, false, true)))));
           markPlayingCards();
         }).catch(fail);
