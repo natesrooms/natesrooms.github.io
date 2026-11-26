@@ -534,7 +534,7 @@
   // Same handlers on both elements; each only acts for the one in use.
   function onAudio(ev, fn) { [plainAudio, musicAudio].forEach((el) => el.addEventListener(ev, (x) => { if (el === radio) fn(x); })); }
   let radioBar = null, radioNow = null;
-  onAudio('error', () => { if (radioNow && radioNow.music && radio === musicAudio) { playTrackPlain(radioNow.t, 0); return; } if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow && radioNow.pod) { toast('That episode couldn’t be loaded — try another one.'); return; } if (radioNow) { const st = radioNow; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); } });
+  onAudio('error', () => { if (radioNow && radioNow.music && radio === musicAudio) { playTrackPlain(radioNow.t, 0); return; } if (radioNow && radioNow.music) { musicFailed(radioNow.t); return; } if (radioNow && radioNow.pod) { toast('That episode couldn’t be loaded — try another one.'); return; } if (radioNow) { const st = radioNow; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); } });
   function markPlayingCards() {
     document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
   }
@@ -847,11 +847,12 @@
       dur: (t.duration || 0) / 1000, codec: String(m.audioCodec || '').toLowerCase(), part: p.key || '' };
   }
   const DIRECT_CODECS = /^(mp3|aac|flac|opus|vorbis)$/;
-  function musicLossless() { return store.get('dm_music_q', onPhone ? 'saver' : 'lossless') === 'lossless'; }
+  // Lossless (and the bass path) by default only in the car; elsewhere Plex's MP3, which plays everywhere.
+  function musicLossless() { return store.get('dm_music_q', onCar ? 'lossless' : 'saver') === 'lossless'; }
   function trackDirect(t) { return !!t.part && (t.codec === 'mp3' || (musicLossless() && DIRECT_CODECS.test(t.codec))); }
-  function trackUrl(t) {
+  function trackUrl(t, convert) {
     const c = plex.conn;
-    if (trackDirect(t)) return c.base + t.part + '?' + plexQS(c.token);
+    if (!convert && trackDirect(t)) return c.base + t.part + '?' + plexQS(c.token);
     return c.base + '/music/:/transcode/universal/start.mp3?path=' + enc('/library/metadata/' + t.rk) +
       '&mediaIndex=0&partIndex=0&protocol=http&directPlay=0&directStream=0&maxAudioBitrate=320&session=' + enc(plexClientId + '-m' + Date.now()) +
       '&X-Plex-Client-Profile-Extra=' + enc('add-transcode-target(type=musicProfile&context=streaming&protocol=http&container=mp3&audioCodec=mp3)') +
@@ -901,7 +902,7 @@
           playTrackPlain(t, musicAudio.currentTime || 0);
         }, 1500);
       }
-      radioNow = { music: true, name: t.title, show: t.artist, stationuuid: 'm' + t.rk, favicon: '', dur: t.dur, t };
+      radioNow = { music: true, name: t.title, show: t.artist, stationuuid: 'm' + t.rk, favicon: '', dur: t.dur, t, convert: !trackDirect(t) };
       radio.preload = 'auto';
       radio.src = trackUrl(t);
       radio.defaultPlaybackRate = radio.playbackRate = 1;
@@ -909,17 +910,25 @@
       radio.play().catch((e) => {
         if (radio !== el || !radioNow || radioNow.t !== t || e.name === 'AbortError') return;
         if (el === musicAudio) { playTrackPlain(t, 0); return; }   // this browser refused the bass/treble path: play it plain
-        toast('That song would not start: ' + e.message);
+        musicFailed(t);
       });
       drawMusicBar(); markPlayingCards(); musicSession(t);
       if (REM.room) publishNow(true);
     }).catch((e) => toast('Plex isn’t answering: ' + e.message));
   }
-  function playTrackPlain(t, at) {
+  // Fallbacks when a song won't start: the same file played plain, then Plex's
+  // MP3 conversion (works everywhere). Only then skip to the next song.
+  function playTrackPlain(t, at, convert) {
     useAudio(plainAudio);
-    radio.src = trackUrl(t);
-    if (at > 0) radio.addEventListener('loadedmetadata', function j() { radio.removeEventListener('loadedmetadata', j); try { radio.currentTime = at; } catch (e) {} });
-    radio.play().catch((e) => { if (radio === plainAudio && radioNow && radioNow.t === t && e.name !== 'AbortError') { toast('Couldn’t play ' + t.title + ' — skipping.'); setTimeout(musicNext, 800); } });
+    radioNow.convert = !!convert || !trackDirect(t);
+    radio.src = trackUrl(t, radioNow.convert);
+    if (at > 0 && !radioNow.convert) radio.addEventListener('loadedmetadata', function j() { radio.removeEventListener('loadedmetadata', j); try { radio.currentTime = at; } catch (e) {} });
+    radio.play().catch((e) => { if (radio === plainAudio && radioNow && radioNow.t === t && e.name !== 'AbortError') musicFailed(t); });
+  }
+  function musicFailed(t) {
+    if (!radioNow || radioNow.t !== t) return;
+    if (!radioNow.convert) { playTrackPlain(t, 0, true); return; }
+    toast('Couldn’t play ' + t.title + ' — skipping.'); setTimeout(musicNext, 800);
   }
   function musicNext() { if (MQ.i + 1 < MQ.list.length) playTrackAt(MQ.i + 1); else { toast('End of the list'); stopRadio(); } }
   function musicPrev() { if (radio.currentTime > 5 || MQ.i === 0) { try { radio.currentTime = 0; } catch (e) {} } else playTrackAt(MQ.i - 1); }
