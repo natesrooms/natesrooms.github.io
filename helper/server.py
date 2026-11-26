@@ -19,6 +19,9 @@ Endpoints:
                                  yt-dlp knows (Vimeo, news sites, ...):
                                  those get a key "x" + 10 hex chars.
   GET /hls/<videoid>/<file>   -> playlist / segment bytes
+  GET /nowplaying?u=<stream>  -> {"title": "Artist - Song"} read from a radio
+                                 stream's ICY metadata (public hosts only;
+                                 cached 15 s per stream)
   Phone remote relay (car <-> phone through the helper):
   POST /remote/new             -> {"room", "code"}  (car opens a room)
   GET  /remote/pair?code=NNNNNN -> {"room"}         (phone joins by code)
@@ -153,6 +156,36 @@ def site_key_from(raw):
             for k in list(_SITE_URLS)[:200]:
                 _SITE_URLS.pop(k, None)
     return key
+
+
+_NP = {}
+_NP_LOCK = threading.Lock()
+
+
+def now_playing(url):
+    """The song a radio stream is playing right now, from its ICY metadata."""
+    with _NP_LOCK:
+        hit = _NP.get(url)
+        if hit and time.time() - hit[0] < 15:
+            return hit[1]
+    title = ""
+    req = urllib.request.Request(url, headers={"Icy-MetaData": "1", "User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=8) as r:
+        metaint = int(r.headers.get("icy-metaint") or 0)
+        if metaint and metaint < 600000:
+            r.read(metaint)
+            n = r.read(1)
+            if n:
+                meta = r.read(n[0] * 16).rstrip(b"\0").decode("utf-8", "replace")
+                m = re.search(r"StreamTitle='(.*?)';", meta, re.S)
+                if m:
+                    title = m.group(1).strip()
+    with _NP_LOCK:
+        _NP[url] = (time.time(), title)
+        if len(_NP) > 300:
+            for k in sorted(_NP, key=lambda k: _NP[k][0])[:100]:
+                _NP.pop(k, None)
+    return title
 
 
 def cached_info(vid):
@@ -781,6 +814,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"service": "nate-theater-youtube-helper",
                                         "usage": "/stream?v=<youtube url or video id>",
                                         "search": "/search?q=<terms>&n=<count>"})
+            if u.path == "/nowplaying":
+                raw = urllib.parse.parse_qs(u.query).get("u", [""])[0]
+                p = urllib.parse.urlparse(raw)
+                if p.scheme not in ("http", "https") or not p.hostname or not public_host(p.hostname):
+                    return self._json(400, {"error": "bad stream address"})
+                try:
+                    return self._json(200, {"title": now_playing(raw)})
+                except Exception as e:
+                    return self._json(200, {"title": "", "detail": str(e)[:200]})
             if u.path == "/iptv":
                 return self._iptv(u)
             if u.path.startswith("/remote/"):

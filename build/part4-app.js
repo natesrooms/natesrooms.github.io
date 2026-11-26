@@ -534,7 +534,7 @@
   // Same handlers on both elements; each only acts for the one in use.
   function onAudio(ev, fn) { [plainAudio, musicAudio].forEach((el) => el.addEventListener(ev, (x) => { if (el === radio) fn(x); })); }
   let radioBar = null, radioNow = null;
-  onAudio('error', () => { if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow && radioNow.pod) { toast('That episode couldn’t be loaded — try another one.'); return; } if (radioNow) { const st = radioNow; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); } });
+  onAudio('error', () => { if (radioNow && radioNow.music && radio === musicAudio) { playTrackPlain(radioNow.t, 0); return; } if (radioNow && radioNow.music) { toast('Couldn’t play ' + radioNow.name + ' — skipping.'); setTimeout(musicNext, 800); return; } if (radioNow && radioNow.pod) { toast('That episode couldn’t be loaded — try another one.'); return; } if (radioNow) { const st = radioNow; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); } });
   function markPlayingCards() {
     document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
   }
@@ -556,17 +556,71 @@
     const star = h('button', { class: 'pb rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station', onclick: () => toggleRadioFav(st) });
     paintStar(star, isRadioFav(st));
     const pp = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) { radio.play(); pp.textContent = '❚❚'; } else { radio.pause(); pp.textContent = '▶'; } } });
+    radioSongEl = h('div', { class: 'rb-song', hidden: true });
+    const getBtn = h('button', { class: 'pb rb-get', type: 'button', text: '＋ Get', 'aria-label': 'Add this song to your Get list', onclick: () => addToGetList() });
     radioBar.replaceChildren(
       h('div', { class: 'rb-logo', style: { background: grad(st.name) } },
         okUrl(st.favicon || '') ? h('img', { src: st.favicon, alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
       h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: st.name }),
+        radioSongEl,
         h('div', { class: 'rb-s', text: ['Live radio', (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', '), st.bitrate ? st.bitrate + ' kbps' : ''].filter(Boolean).join(' · ') })),
-      star, pp,
+      getBtn, star, pp,
       h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio })
     );
     markPlayingCards();
+    radioSong = null; pollSong();
   }
-  function stopRadio() { if (radioNow && radioNow.pod) savePodNow(); if (radioNow && radioNow.music && 'mediaSession' in navigator) { try { navigator.mediaSession.metadata = null; } catch (e) {} } radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
+  /* ---------- What's playing on the radio, and the Get list ----------
+     Most stations send the current song inside the stream (ICY metadata);
+     the home helper reads it, since a web page can't. */
+  let radioSong = null, radioSongEl = null, songTimer = null;
+  function parseSong(raw, st) {
+    raw = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!raw || raw.length < 3) return null;
+    const station = String((st && st.name) || '').toLowerCase();
+    if (station && (raw.toLowerCase() === station || station.includes(raw.toLowerCase()))) return null;
+    let m = raw.match(/^(.+?) by (.+?)(?: - .*)?$/i);       // "Song by Artist - extra"
+    if (m && !/ - /.test(m[1])) return { song: m[1].trim(), artist: m[2].trim(), raw };
+    m = raw.match(/^(.+?) - (.+)$/);                          // "Artist - Song"
+    if (m) return { artist: m[1].trim(), song: m[2].replace(/\s*\[[^\]]*\]\s*$/, '').trim(), raw };
+    return { song: raw, artist: '', raw };
+  }
+  function pollSong() {
+    clearTimeout(songTimer);
+    const st = radioNow;
+    if (!st || st.pod || st.music || !st.url_resolved) { if (radioSongEl) radioSongEl.hidden = true; return; }
+    E.fetchRead(ytBase() + '/nowplaying?u=' + enc(st.url_resolved), 'json', 12000).then((d) => {
+      if (radioNow !== st) return;
+      radioSong = parseSong(d && d.title, st);
+      if (radioSongEl) { radioSongEl.hidden = !radioSong; radioSongEl.textContent = radioSong ? '♪ ' + [radioSong.artist, radioSong.song].filter(Boolean).join(' – ') : ''; }
+      if (REM.room) publishNow(true);
+    }).catch(() => {}).finally(() => { if (radioNow === st) songTimer = setTimeout(pollSong, document.hidden ? 60000 : 20000); });
+  }
+  const getList = () => store.get('dm_getlist', []);
+  // Songs from the Get list that turn up in your Plex music go into this Plex
+  // playlist (so they show in Plexamp too). Plex playlists can only hold songs you own.
+  const RADIO_PL = 'Heard on the radio';
+  function pwrite(method, path) {
+    return ensurePlex().then((c) => fetch(c.base + path + (path.includes('?') ? '&' : '?') + plexQS(c.token), { method, headers: { Accept: 'application/json' } })
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json().catch(() => ({})); }));
+  }
+  function addToRadioPlaylist(rk) {
+    return Promise.all([pget('/identity'), pget('/playlists?playlistType=audio')]).then(([idd, pls]) => {
+      const uri = enc('server://' + MC(idd).machineIdentifier + '/com.plexapp.plugins.library/library/metadata/' + rk);
+      const pl = (MC(pls).Metadata || []).find((x) => x.title === RADIO_PL && !x.smart);
+      return pl ? pwrite('PUT', '/playlists/' + pl.ratingKey + '/items?uri=' + uri) : pwrite('POST', '/playlists?type=audio&smart=0&title=' + enc(RADIO_PL) + '&uri=' + uri);
+    });
+  }
+  function addToGetList(song) {
+    const st = radioNow;
+    const s = song || radioSong;
+    const l = getList();
+    if (s && l.some((x) => x.song.toLowerCase() === s.song.toLowerCase() && (x.artist || '').toLowerCase() === (s.artist || '').toLowerCase())) { toast('Already on your Get list'); return; }
+    l.unshift({ id: Date.now().toString(36), song: s ? s.song : '', artist: s ? s.artist : '', station: st && !st.pod && !st.music ? st.name : '', at: Date.now() });
+    store.set('dm_getlist', l.slice(0, 300)); invalidate('music');
+    toast(s ? '＋ Added “' + s.song + '” to your Get list (Music → Get list)' : 'This station doesn’t say the song — saved the station and time to your Get list.');
+  }
+  function stopRadio() { clearTimeout(songTimer); radioSong = null; if (radioNow && radioNow.pod) savePodNow(); if (radioNow && radioNow.music && 'mediaSession' in navigator) { try { navigator.mediaSession.metadata = null; } catch (e) {} } radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
   function stationCard(st) {
     const tag = (st.tags || '').split(',').filter(Boolean)[0] || st.countrycode || 'Radio';
     const star = h('button', { class: 'badge rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station',
@@ -844,9 +898,7 @@
         // play this song the plain way instead of silently.
         setTimeout(() => {
           if (radio !== musicAudio || !radioNow || radioNow.t !== t || (S.ctx && S.ctx.state === 'running')) return;
-          const at = musicAudio.currentTime || 0; useAudio(plainAudio);
-          radio.src = trackUrl(t); radio.addEventListener('loadedmetadata', function j() { radio.removeEventListener('loadedmetadata', j); try { radio.currentTime = at; } catch (e) {} });
-          radio.play().catch(() => {});
+          playTrackPlain(t, musicAudio.currentTime || 0);
         }, 1500);
       }
       radioNow = { music: true, name: t.title, show: t.artist, stationuuid: 'm' + t.rk, favicon: '', dur: t.dur, t };
@@ -854,10 +906,20 @@
       radio.src = trackUrl(t);
       radio.defaultPlaybackRate = radio.playbackRate = 1;
       const el = radio;
-      radio.play().catch((e) => { if (radio === el && radioNow && radioNow.t === t && e.name !== 'AbortError') toast('That song would not start: ' + e.message); });
+      radio.play().catch((e) => {
+        if (radio !== el || !radioNow || radioNow.t !== t || e.name === 'AbortError') return;
+        if (el === musicAudio) { playTrackPlain(t, 0); return; }   // this browser refused the bass/treble path: play it plain
+        toast('That song would not start: ' + e.message);
+      });
       drawMusicBar(); markPlayingCards(); musicSession(t);
       if (REM.room) publishNow(true);
     }).catch((e) => toast('Plex isn’t answering: ' + e.message));
+  }
+  function playTrackPlain(t, at) {
+    useAudio(plainAudio);
+    radio.src = trackUrl(t);
+    if (at > 0) radio.addEventListener('loadedmetadata', function j() { radio.removeEventListener('loadedmetadata', j); try { radio.currentTime = at; } catch (e) {} });
+    radio.play().catch((e) => { if (radio === plainAudio && radioNow && radioNow.t === t && e.name !== 'AbortError') { toast('Couldn’t play ' + t.title + ' — skipping.'); setTimeout(musicNext, 800); } });
   }
   function musicNext() { if (MQ.i + 1 < MQ.list.length) playTrackAt(MQ.i + 1); else { toast('End of the list'); stopRadio(); } }
   function musicPrev() { if (radio.currentTime > 5 || MQ.i === 0) { try { radio.currentTime = 0; } catch (e) {} } else playTrackAt(MQ.i - 1); }
@@ -994,10 +1056,44 @@
         }).catch(fail);
       }
       // Three tabs: For you (recent + suggestions), every artist, every album (both with A–Z).
-      const tab = sec === 'artists' || sec === 'albums' ? sec : 'foryou';
-      body.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: '✨ For you' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' }],
+      const tab = sec === 'artists' || sec === 'albums' || sec === 'get' ? sec : 'foryou';
+      body.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: '✨ For you' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' },
+        { id: 'get', label: '🛒 Get list' + (getList().length ? ' (' + getList().length + ')' : '') }],
         tab, (c) => c.id === 'foryou' ? '#/music' : '#/music/' + c.id)));
       const hubCard = (m) => m.type === 'artist' ? artistCard(m) : m.type === 'playlist' ? playlistCard(m) : albumCard(m);
+      if (tab === 'get') {
+        const l = getList();
+        if (!l.length) { body.appendChild(h('div', { class: 'empty', text: 'Hear a song you like on the radio? Tap ＋ Get on the radio bar and it lands here.' })); return; }
+        const box = h('div', { class: 'pad podeps' }); body.appendChild(box);
+        const draw = () => {
+          box.replaceChildren(...getList().map((x) => {
+            const q = [x.artist, x.song].filter(Boolean).join(' ');
+            const when = new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            const lib = h('span');
+            const row = h('div', { class: 'getrow' },
+              h('div', { class: 'podep-txt' }, h('div', { class: 't', text: x.song || 'Song not named by the station' }),
+                h('div', { class: 's', text: [x.artist, (x.station ? 'heard on ' + x.station : ''), when].filter(Boolean).join(' · ') })),
+              lib,
+              q ? h('a', { class: 'btn ghost', href: '#/youtube/' + enc(q), text: '▶ YouTube' }) : null,
+              h('button', { class: 'btn ghost', type: 'button', text: '✕', 'aria-label': 'Remove', onclick: () => { store.set('dm_getlist', getList().filter((y) => y.id !== x.id)); draw(); } }));
+            // Already in your music? Then offer to play it from there.
+            if (x.song) pget('/hubs/search?query=' + enc(x.song) + '&sectionId=' + sk + '&limit=10').then((d) => {
+              const tr = []; (MC(d).Hub || []).forEach((hb) => { if (hb.type === 'track') (hb.Metadata || []).forEach((m) => tr.push(m)); });
+              const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const hit = tr.find((m) => norm(m.title) === norm(x.song) && (!x.artist || norm(m.originalTitle || m.grandparentTitle).includes(norm(x.artist).slice(0, 6))));
+              if (!hit) return;
+              lib.replaceWith(h('button', { class: 'btn red', type: 'button', text: '✓ In your music — play', onclick: () => playMusic([hit], 0) }));
+              if (!x.pl) addToRadioPlaylist(hit.ratingKey).then(() => {
+                store.set('dm_getlist', getList().map((y) => y.id === x.id ? Object.assign(y, { pl: true }) : y));
+                toast('Added “' + x.song + '” to your “' + RADIO_PL + '” playlist in Plex');
+              }).catch(() => {});
+            }).catch(() => {});
+            return row;
+          }));
+        };
+        draw();
+        return;
+      }
       if (tab === 'foryou') {
         const sRecent = h('div'), sHubs = h('div'), sRandom = h('div'), sPl = h('div'), sNew = h('div');
         body.append(sRecent, sHubs, sRandom, sPl, sNew);
@@ -1118,7 +1214,7 @@
   }
 
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_tone', 'dm_music_q', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_tone', 'dm_music_q', 'dm_getlist', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
@@ -2411,7 +2507,7 @@
       pos: +(radio.currentTime || 0).toFixed(2), at: serverNow(), dur: Math.round(podDur()), seek: true, playing: !radio.paused, mirrorable: true, key: 'pod/' + radioNow.guid };
     if (radioNow && radioNow.music) return { kind: 'music', art: radioNow.t.thumb ? mArt(radioNow.t.thumb, 300) : null, title: radioNow.name, sub: radioNow.show,
       pos: +(radio.currentTime || 0).toFixed(2), at: serverNow(), dur: Math.round(podDur()), seek: true, playing: !radio.paused, mirrorable: false, key: 'music/' + radioNow.t.rk };
-    if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false, mirrorable: true };
+    if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: radioSong ? '♪ ' + [radioSong.artist, radioSong.song].filter(Boolean).join(' – ') : 'Live radio', song: !!radioSong, playing: !radio.paused, seek: false, mirrorable: true };
     return { kind: 'idle' };
   }
   function publishNow(force) {
@@ -2432,6 +2528,7 @@
     const t = c && c.type;
     if (t === 'hello') { publishNow(true); return; }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
+    else if (t === 'getsong' && radioNow && !radioNow.pod && !radioNow.music) addToGetList();
     else if (t === 'mnext' && radioNow && radioNow.music) musicNext();
     else if (t === 'mprev' && radioNow && radioNow.music) musicPrev();
     else if (t === 'skip' && radioNow && radioNow.pod) podSkip(Math.max(-600, Math.min(600, +c.s || 0)));
