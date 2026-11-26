@@ -1090,6 +1090,9 @@
       openWatch(r.args);
       return;
     }
+    // Not signed in to Plex yet: everything starts at the welcome / sign-in screen.
+    if (!plex.auth && !['signin', 'profiles', 'remote'].includes(r.name)) { go('#/signin', true); return; }
+    document.body.classList.toggle('gate-on', !plex.auth && (r.name === 'signin' || r.name === 'profiles'));
     sawAppView = true;
     document.body.classList.toggle('remote-mode', r.name === 'remote');
     if (r.name === 'remote') dismissGate();
@@ -1586,10 +1589,18 @@
   VIEWS.signin = (root) => {
     const st = msg('');
     const say = (t, err) => { st.textContent = t; st.className = 'msg' + (err ? ' err' : ''); };
-    root.appendChild(h('div', { class: 'center-card' },
-      h('h1', { text: 'Sign in with Plex' }),
-      h('p', { text: 'Same as any Plex app: you’ll go to Plex’s own sign-in page and come right back. Your server is found automatically.' }),
-      h('button', { class: 'btn red', type: 'button', text: 'Continue to Plex', onclick: () => startSignin(say) }), st));
+    if (plex.auth) { go('#/home', true); return; }
+    // Welcome screen: the first thing a new screen sees. Signing in once is
+    // enough - it's remembered on this device from then on.
+    root.appendChild(h('div', { class: 'center-card welcome' },
+      h('div', { class: 'wl-logo' }, 'Nate’s ', h('span', { text: 'Theater' })),
+      h('h1', { text: 'Sign in with Plex to start' }),
+      h('div', { class: 'wl-list' },
+        h('div', { text: '🎬 Your movies and TV shows' }), h('div', { text: '🎵 Your music' }),
+        h('div', { text: '📺 About 600 free live TV channels' }), h('div', { text: '🎙 Podcasts and 📻 radio, built in' })),
+      h('div', null, h('button', { class: 'btn red big', type: 'button', text: 'Sign in with Plex', onclick: () => startSignin(say) })), st,
+      h('p', { class: 'wl-small', text: 'You’ll go to Plex’s own sign-in page and come right back. No Plex account? It’s free to make one there. You only do this once on each screen.' }),
+      h('a', { class: 'wl-remote', href: '#/remote', text: 'Just using a phone as the remote? Pair it here' })));
   };
   VIEWS.profiles = (root) => {
     if (!plex.auth) {
@@ -1677,7 +1688,7 @@
           ensurePlex().then(() => { invalidate(); render(parse()); toast('Connected to ' + plex.conn.name); })
             .catch((err) => toast('Could not connect: ' + err.message)).finally(() => { currentKey = null; render(parse()); });
         } }),
-        h('button', { class: 'btn ghost', type: 'button', text: 'Sign out', onclick: () => { signOut(); currentKey = null; render(parse()); toast('Signed out of Plex on this screen.'); } })));
+        h('button', { class: 'btn ghost', type: 'button', text: 'Sign out', onclick: () => { signOut(); currentKey = null; go('#/signin', true); toast('Signed out of Plex on this screen.'); } })));
     }
     root.appendChild(pc);
     // Quality
