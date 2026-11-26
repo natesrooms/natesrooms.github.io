@@ -15,6 +15,9 @@ Endpoints:
                                  starts the ffmpeg job on first hit and
                                  serves the growing EVENT playlist on
                                  every poll thereafter
+                                 Also takes a link from other video sites
+                                 yt-dlp knows (Vimeo, news sites, ...):
+                                 those get a key "x" + 10 hex chars.
   GET /hls/<videoid>/<file>   -> playlist / segment bytes
   Phone remote relay (car <-> phone through the helper):
   POST /remote/new             -> {"room", "code"}  (car opens a room)
@@ -50,7 +53,10 @@ Environment:
               client is the one that still answers from many datacenter
               IPs, where web gets a bot-check wall.)
 """
+import hashlib
 import hmac
+import ipaddress
+import socket
 import json
 import os
 import secrets
@@ -111,6 +117,44 @@ def video_id_from(raw):
     return None
 
 
+# Links from sites other than YouTube: key -> URL.
+_SITE_URLS = {}
+_SITE_LOCK = threading.Lock()
+
+
+def public_host(host):
+    """True if every address the host resolves to is a public one
+    (so a pasted link can't make the helper fetch things on the home network)."""
+    try:
+        addrs = {a[4][0] for a in socket.getaddrinfo(host, None)}
+    except OSError:
+        return False
+    if not addrs:
+        return False
+    for a in addrs:
+        ip = ipaddress.ip_address(a.split("%")[0])
+        if not ip.is_global:
+            return False
+    return True
+
+
+def site_key_from(raw):
+    """A key for a link from another video site, or None."""
+    raw = (raw or "").strip()
+    u = urllib.parse.urlparse(raw)
+    if u.scheme not in ("http", "https") or not u.hostname or len(raw) > 2000:
+        return None
+    if not public_host(u.hostname):
+        return None
+    key = "x" + hashlib.sha1(raw.encode()).hexdigest()[:10]
+    with _SITE_LOCK:
+        _SITE_URLS[key] = raw
+        if len(_SITE_URLS) > 500:
+            for k in list(_SITE_URLS)[:200]:
+                _SITE_URLS.pop(k, None)
+    return key
+
+
 def cached_info(vid):
     """yt-dlp lookup with a cache shared by /stream and search prefetch.
     If a lookup for the same video is already running (e.g. the prefetch
@@ -168,10 +212,13 @@ def run_ytdlp_info(vid):
     """Try each client set until one yields media formats.
     Returns (info_dict, clients_used) or raises RuntimeError with the
     last yt-dlp error tail."""
-    url = "https://www.youtube.com/watch?v=" + vid
+    with _SITE_LOCK:
+        site_url = _SITE_URLS.get(vid)
+    url = site_url or "https://www.youtube.com/watch?v=" + vid
     last_err = ""
-    for clients in CLIENT_SETS:
-        cmd = [YTDLP, "-j", "--no-warnings", "--no-playlist",
+    for clients in (["site"] if site_url else CLIENT_SETS):
+        cmd = [YTDLP, "-j", "--no-warnings", "--no-playlist", url] if site_url else \
+              [YTDLP, "-j", "--no-warnings", "--no-playlist",
                "--extractor-args", "youtube:player_client=" + clients, url]
         try:
             p = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -307,10 +354,30 @@ def pick_plan(info):
                                   v["format_id"], height(v), v.get("vcodec"),
                                   "copy" if aargs == ["copy"] else "aac")))
     if not plans:
-        raise RuntimeError("no usable video format found")
+        # Other sites often don't say which codecs a format uses. Take the
+        # best one that isn't audio-only (or the page's own media URL) and
+        # convert it.
+        unknown = [f for f in fmts if not is_audio_only(f) and (f.get("height") or 0) <= MAX_HEIGHT] or \
+                  [f for f in fmts if not is_audio_only(f)]
+        unknown.sort(key=lambda f: (height(f), rate(f)))
+        src = unknown[-1] if unknown else (info if info.get("url") else None)
+        if src is None:
+            raise RuntimeError("no usable video format found")
+        return [src["url"]], ["libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                              "-vf", r"scale=-2:min(720\,ih)"], ["aac", "-b:a", "160k"], \
+            "format %s (codecs unknown) TRANSCODE to h264 + aac" % src.get("format_id", "direct")
     plans.sort(key=lambda p: p[0], reverse=True)
     _, inputs, vargs, aargs, desc = plans[0]
     return inputs, vargs, aargs, desc
+
+
+def input_headers(info, url):
+    """Extra request headers (Referer, cookies) a site wants for a media URL."""
+    for f in info.get("formats", []) + [info]:
+        if f.get("url") == url and f.get("http_headers"):
+            h = {k: v for k, v in f["http_headers"].items() if k.lower() != "user-agent"}
+            return "".join("%s: %s\r\n" % (k, v) for k, v in h.items())
+    return ""
 
 
 def session_complete(s):
@@ -351,8 +418,9 @@ def start_session(vid):
         inputs, vargs, aargs, desc = pick_plan(info)
         cmd = [FFMPEG, "-nostdin", "-hide_banner", "-loglevel", "warning"]
         for u in inputs:
-            cmd += ["-user_agent", UA, "-i", u]
-        cmd += ["-map", "0:v:0", "-map", "1:a:0" if len(inputs) > 1 else "0:a:0",
+            hdrs = input_headers(info, u)
+            cmd += ["-user_agent", UA] + (["-headers", hdrs] if hdrs else []) + ["-i", u]
+        cmd += ["-map", "0:v:0", "-map", "1:a:0" if len(inputs) > 1 else "0:a:0?",
                 "-c:v"] + vargs + ["-c:a"] + aargs + [
                 "-max_muxing_queue_size", "1024",
                 "-f", "hls", "-hls_time", HLS_TIME,
@@ -706,7 +774,7 @@ class Handler(BaseHTTPRequestHandler):
                         return (p.stdout or p.stderr).strip().splitlines()[0]
                     except Exception as e:
                         return "unavailable: %s" % e
-                return self._json(200, {"ok": True,
+                return self._json(200, {"ok": True, "sites": True,
                                         "yt_dlp": ver([YTDLP, "--version"]),
                                         "ffmpeg": ver([FFMPEG, "-version"])})
             if u.path == "/":
@@ -734,7 +802,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"query": q, "results": results})
             if u.path == "/stream":
                 qs = urllib.parse.parse_qs(u.query)
-                vid = video_id_from(qs.get("v", [""])[0])
+                raw = qs.get("v", [""])[0]
+                vid = video_id_from(raw) or site_key_from(raw)
                 if not vid:
                     return self._json(400, {"error": "missing or unparseable v parameter"})
                 try:

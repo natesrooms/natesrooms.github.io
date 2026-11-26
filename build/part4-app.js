@@ -482,8 +482,16 @@
     if (id) return { hash: '#/watch/yt/' + enc(id) + '/' + enc((title || 'YouTube video').slice(0, 120)), label: title || 'YouTube video' };
     const url = (text.match(/https?:\/\/[^\s"'<>]+/) || [])[0];
     if (url && /\.(m3u8|mp4|m4v|mov|ts)(\?|#|$)/i.test(url)) return { hash: '#/watch/url/' + enc(url), label: 'Video link' };
-    return url ? { unsupported: url } : null;
+    if (!url) return null;
+    let host = '';
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return null; }
+    // Subscription services lock their video (DRM): nothing outside their own app can play it.
+    if (DRM_SITES.test(host)) return { unsupported: url, drm: true };
+    // Any other site: the home helper finds the video on the page and converts it.
+    const label = (title || host).slice(0, 120);
+    return { hash: '#/watch/site/' + enc(url) + '/' + enc(label), label };
   }
+  const DRM_SITES = /(^|\.)(netflix|hulu|disneyplus|max|hbomax|primevideo|amazon|peacocktv|paramountplus|tv\.apple|apple|sling|fubo|spotify|crunchyroll|starz|showtime|discoveryplus|espn)\.(com|tv)$/i;
   const ytCache = {};
   function ytSearch(q, n) {
     const key = q + '|' + (n || 24);
@@ -931,7 +939,7 @@
   }
 
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
@@ -1648,7 +1656,17 @@
         h('b', { text: 'Profile' }), h('span', { text: plex.user ? plex.user.name : '—' }),
         h('b', { text: 'Server' }), h('span', { text: plex.conn ? plex.conn.name : 'not connected yet' }),
         h('b', { text: 'Connection' }), h('span', { text: plex.conn ? (plex.conn.relay ? 'Plex relay (slow — about 2 Mbps max)' : plex.conn.local ? 'Home network' : 'Remote, direct') : '—' }));
-      pc.append(kv, h('div', { class: 'btns' },
+      const sp = store.get('dm_start_profile', null);
+      const spSel = h('select', { onchange: (e) => {
+        if (e.target.value === 'last') { store.set('dm_start_profile', null); toast('Opens as whoever watched last.'); return; }
+        const u = e.target.value === 'cur' ? plex.user : sp;
+        store.set('dm_start_profile', u ? { id: u.id, name: u.name, token: u.token, thumb: u.thumb || '' } : null);
+        if (u) toast('This screen will always open as ' + u.name + '.');
+      } }, h('option', { value: 'last', text: 'Whoever watched last' }),
+        sp && (!plex.user || sp.id !== plex.user.id) ? h('option', { value: 'saved', text: 'Always ' + sp.name }) : null,
+        plex.user ? h('option', { value: 'cur', text: 'Always ' + plex.user.name }) : null);
+      spSel.value = !sp ? 'last' : plex.user && sp.id === plex.user.id ? 'cur' : 'saved';
+      pc.append(kv, h('label', { class: 'lbl', text: 'When the app opens on this screen' }), h('div', { class: 'field' }, spSel), h('div', { class: 'btns' },
         h('a', { class: 'btn ghost', href: '#/profiles', text: 'Switch profile' }),
         h('button', { class: 'btn ghost', type: 'button', text: 'Reconnect', onclick: (e) => {
           plex.conn = null; store.set('dm_plex_conn', null); e.currentTarget.textContent = 'Connecting…';
@@ -1669,7 +1687,12 @@
     ah.value = String(store.get('dm_ahead', 5));
     root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Playback' }),
       h('label', { class: 'lbl', text: 'Plex quality — lower uses less mobile data' }), h('div', { class: 'field' }, sel),
-      h('label', { class: 'lbl', text: 'Dead-zone buffer — saves ahead so movies keep playing with no signal' }), h('div', { class: 'field' }, ah)));
+      h('label', { class: 'lbl', text: 'Dead-zone buffer — saves ahead so movies keep playing with no signal' }), h('div', { class: 'field' }, ah),
+      h('label', { class: 'lbl', text: 'Colour' }), h('div', { class: 'field' }, (() => {
+        const cs = h('select', { onchange: (e) => { store.set('dm_color', e.target.value); applyPicture(); toast(e.target.value === 'soft' ? 'Softer colour on' : 'Natural colour'); } },
+          h('option', { value: 'natural', text: 'Natural' }), h('option', { value: 'soft', text: 'Softer — tames faces that look too red' }));
+        cs.value = store.get('dm_color', 'natural'); return cs; })()),
+      h('p', { class: 'msg', style: { padding: '8px 0 0' }, text: 'In the player: 🗣 Voice makes talking easier to hear, ☀ brightens the picture.' })));
     // Own lists
     const listBox = h('div');
     const drawLists = () => {
@@ -1932,6 +1955,11 @@
           if (d && d.title && watchKey === key) { $('plTitle').textContent = d.title; $('plSub').textContent = d.author_name || 'YouTube'; }
         }).catch(() => {});
       }
+    } else if (kind === 'site') {
+      let host = ''; try { host = new URL(a).hostname.replace(/^www\./, ''); } catch (e) {}
+      openPlayerShell(b || host || 'Video', host || 'Web video');
+      $('plNote').textContent = 'Getting the video ready…';
+      E.load(ytBase() + '/stream?v=' + enc(a), b || host); S.autoplay = auto;
     } else if (kind === 'url') {
       openPlayerShell('Stream', a);
       E.load(a, 'stream'); S.autoplay = auto;
@@ -2082,6 +2110,27 @@
   }
   $('fsAll').addEventListener('click', toggleFullscreen);
   $('btnFs').addEventListener('click', toggleFullscreen);
+  // Dialogue boost (sound) and picture brightness / softer colour (screen only - the car's own brightness can't be changed from a web page).
+  const PIC = [{ n: 'Normal', f: '' }, { n: 'Bright', f: 'brightness(1.15) contrast(1.04)' }, { n: 'Brighter', f: 'brightness(1.3) contrast(1.08)' }];
+  function applyPicture() {
+    const i = Math.min(PIC.length - 1, Math.max(0, store.get('dm_pic', 0) | 0));
+    const f = [PIC[i].f, store.get('dm_color', 'natural') === 'soft' ? 'saturate(0.82)' : ''].filter(Boolean).join(' ');
+    $('screen').style.filter = f;
+    $('btnPic').classList.toggle('on', i > 0);
+    $('btnPic').title = 'Picture: ' + PIC[i].n;
+  }
+  function applyVoice() { const on = !!store.get('dm_voice', false); E.setDialogue(on); $('btnVoice').classList.toggle('on', on); }
+  $('btnPic').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const i = ((store.get('dm_pic', 0) | 0) + 1) % PIC.length;
+    store.set('dm_pic', i); applyPicture(); toast('Picture: ' + PIC[i].n);
+  });
+  $('btnVoice').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const on = !store.get('dm_voice', false);
+    store.set('dm_voice', on); applyVoice(); toast(on ? 'Dialogue boost on — voices louder, booms softer' : 'Dialogue boost off');
+  });
+  applyPicture(); applyVoice();
   document.addEventListener('fullscreenchange', paintFs);
   document.addEventListener('webkitfullscreenchange', paintFs);
   if (!(root.requestFullscreen || root.webkitRequestFullscreen)) $('fsAll').hidden = true;
@@ -2596,7 +2645,7 @@
     } }, '📲 Watch here too');
     let dur = 0, lastHeard = 0, now = null, lists = null, results = null;
     bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
-    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', idle: '🚗' };
+    const ICON = { plex: '🎬', live: '📺', iptv: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', site: '🌐', idle: '🚗' };
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
@@ -2647,7 +2696,7 @@
     function offerLink(text, title) {
       const t = linkTarget(text, title);
       if (!t) return false;
-      if (t.unsupported) { toast('That link can’t play in the car yet — YouTube and direct video links work.'); return true; }
+      if (t.unsupported) { toast('That’s a subscription service with copy protection — it only plays in its own app.'); return true; }
       search.value = ''; resultsEl.replaceChildren();
       const up = carUp();
       linkPanel.replaceChildren(
@@ -2852,7 +2901,30 @@
   setTimeout(checkUpdate, 15000);
   setInterval(checkUpdate, 5 * 60 * 1000);
   setInterval(maybeUpdate, 5000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+  // Start-up profile: a screen set to "Always Family Room" goes back to that
+  // profile each time the app opens (or wakes after half an hour away),
+  // so a profile someone switched to doesn't stay on.
+  function startProfileReset() {
+    const sp = store.get('dm_start_profile', null);
+    if (!sp || !plex.auth || !plex.user || plex.user.id === sp.id || playerOpen || MIR) return;
+    const use = (tok) => {
+      plex.user = { id: sp.id, name: sp.name, token: tok, thumb: sp.thumb || '' };
+      store.set('dm_plex_user', plex.user);
+      plex.conn = null; plex.sections = null; store.set('dm_plex_conn', null);
+      invalidate(); updateMe(); currentKey = null; route();
+      toast('Watching as ' + sp.name);
+    };
+    // Ask Plex for a fresh token (works for profiles without a PIN); else use the saved one.
+    plexTv('/api/v2/home/users/' + enc(sp.id) + '/switch', 'POST', plex.auth.token)
+      .then((d) => { const tok = d && (d.authToken || d.authenticationToken); use(tok || sp.token); })
+      .catch(() => use(sp.token));
+  }
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
+    checkUpdate();
+    if (hiddenAt && Date.now() - hiddenAt > 30 * 60 * 1000) startProfileReset();
+  });
 
   /* ---------- start ---------- */
   // A link shared to the app (Android share menu, or the iPhone Shortcut,
@@ -2875,4 +2947,5 @@
   });
   if (store.get('dm_remote_car', null)) carRemoteStart().catch(() => {});
   route();
+  startProfileReset();
 })();

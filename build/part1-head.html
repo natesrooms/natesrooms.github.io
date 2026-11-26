@@ -223,6 +223,7 @@
   .rm-phones { display: block; width: 100%; margin-top: 10px; background: #1f2228; color: var(--text); border: 0; border-radius: 12px; font-size: 15px; font-weight: 700; padding: 12px; cursor: pointer; }
   .rm-phones.on { background: #2b2f37; outline: 2px solid var(--accent); }
   .pl-ahead { font-size: 13px; color: var(--dim); white-space: nowrap; }
+  #btnVoice.on, #btnPic.on { background: var(--accent); color: #fff; }
   /* podcasts */
   .pc.sq { width: 168px; } .pc.sq .art { aspect-ratio: 1 / 1; }
   .grid.sq { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
@@ -639,6 +640,8 @@
           <span class="timelabel" id="timeLabel"></span>
           <span class="pl-ahead" id="plAhead" hidden></span>
           <span class="status" id="status"></span>
+          <button class="pb" id="btnVoice" type="button" aria-label="Dialogue boost" title="Dialogue boost">&#128483; Voice</button>
+          <button class="pb" id="btnPic" type="button" aria-label="Picture brightness" title="Picture brightness">&#9728;</button>
           <button class="pb" id="btnFs" type="button" aria-label="Fullscreen">&#9974;</button>
         </div>
       </div>

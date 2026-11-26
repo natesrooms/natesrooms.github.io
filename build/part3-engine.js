@@ -93,11 +93,30 @@ var Engine = (function () {
         // silence a mirrored screen whose sound comes from the car).
         S.gain = S.ctx.createGain();
         S.gain.gain.value = S.muted ? 0 : 1;
-        S.gain.connect(S.ctx.destination);
+        wireDialogue();
       }
     }
     return S.ctx;
   }
+  /* Dialogue boost: less rumble, more of the speech range, and a gentle
+     compressor so quiet talking comes up and loud bangs come down. */
+  function wireDialogue() {
+    var c = S.ctx; if (!c || !S.gain) return;
+    try { S.gain.disconnect(); } catch (e) {}
+    if (!S.dialogue) { S.gain.connect(c.destination); return; }
+    if (!S.dlg) {
+      var low = c.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 180; low.gain.value = -5;
+      var mid = c.createBiquadFilter(); mid.type = 'peaking'; mid.frequency.value = 2600; mid.Q.value = 0.9; mid.gain.value = 6;
+      var pres = c.createBiquadFilter(); pres.type = 'peaking'; pres.frequency.value = 1000; pres.Q.value = 1.2; pres.gain.value = 2.5;
+      var comp = c.createDynamicsCompressor();
+      comp.threshold.value = -26; comp.knee.value = 18; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.25;
+      var make = c.createGain(); make.gain.value = 1.2;
+      low.connect(mid); mid.connect(pres); pres.connect(comp); comp.connect(make); make.connect(c.destination);
+      S.dlg = low;
+    }
+    S.gain.connect(S.dlg);
+  }
+  function setDialogue(on) { S.dialogue = !!on; if (S.ctx) wireDialogue(); }
   function setMuted(m) { S.muted = !!m; ensureCtx(); if (S.gain) S.gain.gain.value = S.muted ? 0 : 1; }
   /* Shift playback by a small amount without reloading (positive =
      step back). Used to keep a mirrored screen in step with the car. */
@@ -169,6 +188,10 @@ var Engine = (function () {
     S.vdec = dec;
     var cfg = { codec: S.vConfig.codec, description: S.vConfig.description };
     if (S.vConfig.width) { cfg.codedWidth = S.vConfig.width; cfg.codedHeight = S.vConfig.height; }
+    // Used only when the video itself doesn't say: HD is BT.709, SD is BT.601.
+    var hd = (S.vConfig.height || 720) >= 600;
+    cfg.colorSpace = hd ? { primaries: 'bt709', transfer: 'bt709', matrix: 'bt709', fullRange: false }
+                        : { primaries: 'smpte170m', transfer: 'smpte170m', matrix: 'smpte170m', fullRange: false };
     if (VideoDecoder.isConfigSupported) {
       VideoDecoder.isConfigSupported(cfg).then(function (res) {
         if (!res.supported) latchedError('vdec-unsupported', 'This browser cannot decode ' + cfg.codec + ' video with WebCodecs.');
@@ -992,7 +1015,7 @@ var Engine = (function () {
   });
 
   return {
-    S: S, hooks: hooks, hasWC: hasWC, bufferedAhead: bufferedAhead, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge,
+    S: S, hooks: hooks, hasWC: hasWC, bufferedAhead: bufferedAhead, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge, setDialogue: setDialogue,
     load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo, livePos: livePos, liveTimeOf: liveTimeOf,
     ensureCtx: ensureCtx, mediaNow: mediaNow, dispPos: dispPos, dispDur: dispDur, canSeek: canSeek,
     setStatus: setStatus, updateTimeUi: updateTimeUi
