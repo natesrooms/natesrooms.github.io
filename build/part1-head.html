@@ -210,6 +210,8 @@
   .seg { display: inline-flex; background: var(--bg3); border-radius: 12px; padding: 4px; gap: 4px; }
   .seg a { padding: 9px 16px; border-radius: 9px; font-weight: 700; font-size: 15px; color: var(--dim); }
   .seg a.on { background: var(--text); color: #111; }
+  .tapsound { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); z-index: 40; background: var(--accent); color: #fff; border: 0;
+    border-radius: 999px; padding: 14px 24px; font-size: 18px; font-weight: 800; box-shadow: 0 8px 30px rgba(0,0,0,.5); cursor: pointer; }
   .tapflash { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; background: rgba(0,0,0,.55);
     color: #fff; font-size: 38px; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; z-index: 25; }
   .tapflash.go { animation: tapflash .6s ease-out; }

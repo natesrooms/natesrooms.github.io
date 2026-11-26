@@ -2413,6 +2413,12 @@
     }
     S.autoplay = true;
   }
+  function showTapForSound() {
+    if ($('tapSound')) return;
+    const b = h('button', { class: 'tapsound', id: 'tapSound', type: 'button', text: '🔊 Tap for sound', onclick: () => { unlockSound(); b.remove(); } });
+    player.appendChild(b);
+  }
+  function unlockSound() { E.ensureCtx(); try { if (S.ctx && S.ctx.state !== 'running') S.ctx.resume(); } catch (e) {} }
   function paintMirrorSound() {
     const b = $('mirSound'); if (!b) return;
     b.textContent = S.muted ? '🔇 Sound: car speakers' : '🔊 Sound: this device';
@@ -2432,7 +2438,7 @@
     openPlayerShell(info.title, (info.sub ? info.sub + ' · ' : '') + 'Synced with the car');
     document.body.classList.add('mirror-mode');
     if (!$('mirSound')) {
-      const b = h('button', { class: 'pb', id: 'mirSound', type: 'button', onclick: () => { E.setMuted(!S.muted); store.set('dm_mirror_muted', S.muted); paintMirrorSound(); } });
+      const b = h('button', { class: 'pb', id: 'mirSound', type: 'button', onclick: () => { unlockSound(); E.setMuted(!S.muted); store.set('dm_mirror_muted', S.muted); paintMirrorSound(); } });
       document.querySelector('.pl-top').appendChild(b);
     }
     paintMirrorSound();
@@ -2449,6 +2455,7 @@
       MIR.po = !!n.phonesOnly;
       E.setMuted(MIR.po ? false : store.get('dm_mirror_muted', true)); paintMirrorSound();
       if (MIR.po) toast('Car screen is off — sound is on this phone now.');
+      if (MIR.po && S.ctx && S.ctx.state !== 'running') showTapForSound();
     }
     const carGoing = !!n.playing;   // false while the car is paused OR buffering
     // Wait with the car: pause while it's paused or buffering, go when it goes.
@@ -2576,12 +2583,14 @@
     const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send({ type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
     const phonesBtn = h('button', { class: 'rm-phones', type: 'button', hidden: true, onclick: () => {
+      unlockSound();
       const on = !(now && now.phonesOnly);
       send({ type: 'phones', on });
       if (on && !MIR && !mirrorReq) watchHere.click();   // start it on this phone too
     } });
     let mirrorReq = 0;
     const watchHere = h('button', { class: 'rm-watch', type: 'button', hidden: true, onclick: () => {
+      unlockSound();
       mirrorReq = Date.now(); watchHere.textContent = 'Starting…'; send({ type: 'mirror', req: mirrorReq });
       setTimeout(() => { watchHere.textContent = '📲 Watch here too'; }, 6000);
     } }, '📲 Watch here too');

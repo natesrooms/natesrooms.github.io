@@ -83,6 +83,8 @@ var Engine = (function () {
 
   /* ---------- Clock ---------- */
   function ensureCtx() {
+    // iPhone: play like a media app, so the ring/silent switch doesn't mute it.
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
     if (!S.ctx) {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (AC) {

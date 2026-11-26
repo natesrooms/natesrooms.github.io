@@ -210,6 +210,8 @@
   .seg { display: inline-flex; background: var(--bg3); border-radius: 12px; padding: 4px; gap: 4px; }
   .seg a { padding: 9px 16px; border-radius: 9px; font-weight: 700; font-size: 15px; color: var(--dim); }
   .seg a.on { background: var(--text); color: #111; }
+  .tapsound { position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%); z-index: 40; background: var(--accent); color: #fff; border: 0;
+    border-radius: 999px; padding: 14px 24px; font-size: 18px; font-weight: 800; box-shadow: 0 8px 30px rgba(0,0,0,.5); cursor: pointer; }
   .tapflash { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; background: rgba(0,0,0,.55);
     color: #fff; font-size: 38px; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; z-index: 25; }
   .tapflash.go { animation: tapflash .6s ease-out; }
@@ -1619,6 +1621,8 @@ var Engine = (function () {
 
   /* ---------- Clock ---------- */
   function ensureCtx() {
+    // iPhone: play like a media app, so the ring/silent switch doesn't mute it.
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
     if (!S.ctx) {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (AC) {
@@ -5058,6 +5062,12 @@ var MiniQR = (function () {
     }
     S.autoplay = true;
   }
+  function showTapForSound() {
+    if ($('tapSound')) return;
+    const b = h('button', { class: 'tapsound', id: 'tapSound', type: 'button', text: '🔊 Tap for sound', onclick: () => { unlockSound(); b.remove(); } });
+    player.appendChild(b);
+  }
+  function unlockSound() { E.ensureCtx(); try { if (S.ctx && S.ctx.state !== 'running') S.ctx.resume(); } catch (e) {} }
   function paintMirrorSound() {
     const b = $('mirSound'); if (!b) return;
     b.textContent = S.muted ? '🔇 Sound: car speakers' : '🔊 Sound: this device';
@@ -5077,7 +5087,7 @@ var MiniQR = (function () {
     openPlayerShell(info.title, (info.sub ? info.sub + ' · ' : '') + 'Synced with the car');
     document.body.classList.add('mirror-mode');
     if (!$('mirSound')) {
-      const b = h('button', { class: 'pb', id: 'mirSound', type: 'button', onclick: () => { E.setMuted(!S.muted); store.set('dm_mirror_muted', S.muted); paintMirrorSound(); } });
+      const b = h('button', { class: 'pb', id: 'mirSound', type: 'button', onclick: () => { unlockSound(); E.setMuted(!S.muted); store.set('dm_mirror_muted', S.muted); paintMirrorSound(); } });
       document.querySelector('.pl-top').appendChild(b);
     }
     paintMirrorSound();
@@ -5094,6 +5104,7 @@ var MiniQR = (function () {
       MIR.po = !!n.phonesOnly;
       E.setMuted(MIR.po ? false : store.get('dm_mirror_muted', true)); paintMirrorSound();
       if (MIR.po) toast('Car screen is off — sound is on this phone now.');
+      if (MIR.po && S.ctx && S.ctx.state !== 'running') showTapForSound();
     }
     const carGoing = !!n.playing;   // false while the car is paused OR buffering
     // Wait with the car: pause while it's paused or buffering, go when it goes.
@@ -5221,12 +5232,14 @@ var MiniQR = (function () {
     const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send({ type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
     const phonesBtn = h('button', { class: 'rm-phones', type: 'button', hidden: true, onclick: () => {
+      unlockSound();
       const on = !(now && now.phonesOnly);
       send({ type: 'phones', on });
       if (on && !MIR && !mirrorReq) watchHere.click();   // start it on this phone too
     } });
     let mirrorReq = 0;
     const watchHere = h('button', { class: 'rm-watch', type: 'button', hidden: true, onclick: () => {
+      unlockSound();
       mirrorReq = Date.now(); watchHere.textContent = 'Starting…'; send({ type: 'mirror', req: mirrorReq });
       setTimeout(() => { watchHere.textContent = '📲 Watch here too'; }, 6000);
     } }, '📲 Watch here too');
@@ -5470,7 +5483,7 @@ var MiniQR = (function () {
 
   /* Auto-update: when a newer version is published, reload by itself -
      but never during a movie, a podcast, or while typing; it waits. */
-  const APP_BUILD = '398060fa7418';
+  const APP_BUILD = 'a8e351c7aec3';
   let updateReady = false;
   function checkUpdate() {
     if (APP_BUILD.charAt(0) === '_' || updateReady) return;
