@@ -202,6 +202,14 @@
   body.yt-embed #screen, body.yt-embed .pl-bottom, body.yt-embed .pl-center { display: none; }
   body.yt-embed .pl-ui { pointer-events: none; } body.yt-embed .pl-top { pointer-events: auto; }
   body.yt-embed .player.idle .pl-ui { opacity: 1; }
+  .chipsel { background: var(--bg3); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; font: 600 15px inherit; }
+  .lbl { display: block; color: var(--dim); font-size: 14px; margin: 14px 0 6px; }
+  details.sub { margin-top: 16px; } details.sub summary, details.adv summary { cursor: pointer; font-weight: 800; }
+  details.adv summary { font-size: 20px; }
+  details.adv .card { margin: 14px 0 0; background: var(--bg3); max-width: none; }
+  .seg { display: inline-flex; background: var(--bg3); border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg a { padding: 9px 16px; border-radius: 9px; font-weight: 700; font-size: 15px; color: var(--dim); }
+  .seg a.on { background: var(--text); color: #111; }
   .tapflash { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; background: rgba(0,0,0,.55);
     color: #fff; font-size: 38px; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; z-index: 25; }
   .tapflash.go { animation: tapflash .6s ease-out; }
@@ -492,7 +500,7 @@
   }
 
   /* ---------- Phones (the full app away from the car) ---------- */
-  @media (max-width: 600px) {
+  @media (max-width: 600px), (max-height: 500px) and (pointer: coarse) {
     :root { --navh: 106px; }
     .nav { height: auto; flex-wrap: wrap; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 0; }
     .brand { font-size: 19px; }
@@ -561,9 +569,7 @@
       <a href="#/tv" data-tab="tv">TV Shows</a>
       <a href="#/live" data-tab="live">Live TV</a>
       <a href="#/youtube" data-tab="youtube">YouTube</a>
-      <a href="#/radio" data-tab="radio">Radio</a>
-      <a href="#/podcasts" data-tab="podcasts">Podcasts</a>
-      <a href="#/traffic" data-tab="traffic">Traffic</a>
+      <a href="#/radio" data-tab="audio">Audio</a>
     </nav>
     <span class="navgap"></span>
     <a class="navfs" href="#/search" id="searchBtn" aria-label="Search" title="Search">&#128269;</a>

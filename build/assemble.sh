@@ -19,6 +19,9 @@ cd "$(dirname "$0")"
   cat part4-app.js
   printf '</script>\n</body>\n</html>\n'
 } > ../index.html
+# Stamp the build (a hash of the page) so open copies can tell they're out of date.
+BUILD=$(sha1sum ../index.html | cut -c1-12)
+sed -i "s/const APP_BUILD = '__BUILD__'/const APP_BUILD = '$BUILD'/" ../index.html
 cat > ../player.html <<'EOF'
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -52,6 +52,8 @@
   $('gatePassenger').addEventListener('click', attest);
   $('gateDriver').addEventListener('click', attest);
   { const at = store.get('dm_attested_at', 0); if (at && Date.now() - at < 12 * 3600 * 1000) dismissGate(); }
+  // The passenger check is for the car screen only - not phones or tablets.
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent))) dismissGate();
 
   if (!E.hasWC) $('wcWarn').hidden = false;
 
@@ -762,12 +764,17 @@
   }
   function podGrid(list) { const g = h('div', { class: 'grid sq' }); list.forEach((s) => g.appendChild(podShowCard(s))); return g; }
 
+  function audioSwitch(cur) {
+    return h('div', { class: 'seg' },
+      h('a', { href: '#/radio', class: cur === 'radio' ? 'on' : '', text: '📻 Radio' }),
+      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '', text: '🎙 Podcasts' }));
+  }
   function podcastsView(root, [sec, a]) {
     if (sec === 'show') { podShowPage(root, a); return; }
     const input = h('input', { type: 'text', placeholder: 'Search podcasts', value: sec === 'search' ? (a || '') : '', autocomplete: 'off', spellcheck: 'false' });
     const submit = () => { const v = input.value.trim(); if (v) go('#/podcasts/search/' + enc(v)); };
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Podcasts' })));
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Podcasts' }), audioSwitch('podcasts')));
     root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }))));
     const cur = sec === 'genre' ? 'g' + a : sec ? '' : 'g';
     root.appendChild(chips(POD_GENRES.map(([id, label]) => ({ id: 'g' + id, label })), cur, (c) => c.id === 'g' ? '#/podcasts' : '#/podcasts/genre/' + c.id.slice(1)));
@@ -1037,7 +1044,7 @@
     if (currentKey !== null) { const c = cache.get(currentKey); if (c) c.y = window.scrollY; }
     currentKey = r.key;
     document.querySelectorAll('#tabs a').forEach((a) => a.classList.toggle('on',
-      a.dataset.tab === r.name || (r.name === 'library' && a.dataset.tab === (r.args[1] === 'show' ? 'tv' : 'movies'))));
+      a.dataset.tab === r.name || (a.dataset.tab === 'audio' && (r.name === 'radio' || r.name === 'podcasts')) || (r.name === 'library' && a.dataset.tab === (r.args[1] === 'show' ? 'tv' : 'movies'))));
     const hit = cache.get(r.key);
     if (hit && Date.now() - hit.at < 10 * 60 * 1000) {
       view.replaceChildren(hit.node);
@@ -1074,7 +1081,7 @@
     const hero = h('div'); root.appendChild(hero);
     const rows = h('div'); root.appendChild(rows);
     const slot = () => { const s = h('div'); rows.appendChild(s); return s; };
-    const sCW = slot(), sPlex = slot(), sFav = slot(), sLive = slot(), sYT = slot(), sRadio = slot(), sPod = slot();
+    const sCW = slot(), sPlex = slot(), sLive = slot(), sYT = slot(), sRadio = slot(), sPod = slot();
     const podCont = podInProgress();
     if (podCont.length) { const r = row('Continue listening', '#/podcasts'); podCont.forEach((ep) => r.scroller.appendChild(podEpCard(ep))); sPod.appendChild(r.sec); }
 
@@ -1119,9 +1126,11 @@
       });
     }
 
-    const f = favs();
-    if (f.length) { const r = row('Your channels', '#/live/fav'); f.slice(0, 20).forEach((ch) => r.scroller.appendChild(channelCard(ch))); sFav.appendChild(r.sec); }
-    { const r = row('Live TV', '#/live'); VERIFIED.slice(0, 16).forEach((ch) => r.scroller.appendChild(channelCard(ch))); sLive.appendChild(r.sec); }
+    // One Live TV row: your favorites first, then tested channels.
+    { const r = row('Live TV', '#/live');
+      favs().concat(VERIFIED).filter((c, i, l) => l.findIndex((x) => x.url === c.url) === i).slice(0, 20)
+        .forEach((ch) => r.scroller.appendChild(channelCard(ch)));
+      sLive.appendChild(r.sec); }
     {
       const q = store.get('dm_yt_lastq', '') || YT_CHIPS[0][1];
       ytSearch(q, 16).then((res) => {
@@ -1129,17 +1138,13 @@
         const r = row('YouTube', '#/youtube'); res.forEach((x) => r.scroller.appendChild(ytCard(x))); sYT.appendChild(r.sec);
       }).catch(() => {});
     }
-    if (radioFavs().length) {
-      const r = row('Your radio stations', '#/radio/US/' + enc('★'));
-      radioFavs().slice(0, 20).forEach((st) => r.scroller.appendChild(stationCard(st))); sRadio.appendChild(r.sec);
-    }
-    radioSearch({ countrycode: 'US', limit: '24' }).then((list) => {
-      if (!list.length) return;
-      const r = row('Popular radio', '#/radio'); list.forEach((st) => r.scroller.appendChild(stationCard(st))); sRadio.appendChild(r.sec);
-      const t = row('Talk & news radio', '#/radio/US/talk'); sRadio.appendChild(t.sec);
-      radioSearch({ countrycode: 'US', tag: 'talk', limit: '20' })
-        .then((l2) => { if (!l2.length) t.sec.remove(); l2.forEach((st) => t.scroller.appendChild(stationCard(st))); }).catch(() => t.sec.remove());
-    }).catch(() => {});
+    // One Radio row: your stations first, then popular ones.
+    { const r = row('Radio', '#/radio'); sRadio.appendChild(r.sec);
+      const mine = radioFavs().slice(0, 20); mine.forEach((st) => r.scroller.appendChild(stationCard(st)));
+      radioSearch({ countrycode: 'US', limit: '24' }).then((list) => {
+        list.filter((st) => !mine.some((m) => m.stationuuid === st.stationuuid)).forEach((st) => r.scroller.appendChild(stationCard(st)));
+        if (!r.scroller.children.length) r.sec.remove();
+      }).catch(() => { if (!mine.length) r.sec.remove(); }); }
   };
   function heroFor(m, resume) {
     const isEp = m.type === 'episode';
@@ -1326,19 +1331,27 @@
   function myLists() { return store.get('dm_lists', []); }
   function myChannels() { return store.get('dm_mychans', []); }
   function liveSources() {
-    const sources = [{ id: 'fav', label: '★ Favorites' }, { id: 'iptv', label: iptvCfg() ? '📡 My IPTV' : '📡 Add IPTV' }, { id: 'verified', label: 'Tested channels' }];
+    const sources = [{ id: 'fav', label: '★ Favorites' }, { id: 'verified', label: 'Channels' }];
+    if (iptvCfg()) sources.push({ id: 'iptv', label: '📡 My IPTV' });
     if (myChannels().length) sources.push({ id: 'mine', label: 'My channels' });
     myLists().forEach((l, i) => sources.push({ id: 'list' + i, label: l.name }));
-    REGIONS.forEach(([cc, name]) => sources.push({ id: 'cc-' + cc, label: name }));
     return sources;
+  }
+  // Source buttons, plus one "More channels" menu for the country lists.
+  function liveSourceBar(src) {
+    const bar = chips(liveSources(), src, (c) => '#/live/' + c.id);
+    const sel = h('select', { class: 'chipsel', onchange: (e) => { if (e.target.value) go('#/live/' + e.target.value); } },
+      h('option', { value: '', text: 'More channels…' }), REGIONS.map(([cc, name]) => h('option', { value: 'cc-' + cc, text: name })));
+    sel.value = src && src.startsWith('cc-') ? src : '';
+    bar.appendChild(sel);
+    return bar;
   }
   VIEWS.live = (root, [src, cat, q]) => {
     src = src || (favs().length ? 'fav' : 'verified');
     if (src === 'iptv') { root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' })));
-      root.appendChild(chips(liveSources(), 'iptv', (c) => '#/live/' + c.id)); iptvBody(root, cat, q); return; }
-    const sources = liveSources();
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' }), h('a', { class: 'btn ghost', href: '#/settings', text: '+ Add your own list' })));
-    root.appendChild(chips(sources, src, (c) => '#/live/' + c.id));
+      root.appendChild(liveSourceBar('iptv')); iptvBody(root, cat, q); return; }
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' })));
+    root.appendChild(liveSourceBar(src));
     const body = h('div'); root.appendChild(body);
     let p;
     if (src === 'fav') p = Promise.resolve(favs());
@@ -1356,9 +1369,6 @@
         note.appendChild(msg('Community-maintained channel list (iptv-org), not checked yet — some channels won’t play here; those show an error, just try another.'));
         return loadM3U('https://iptv-org.github.io/iptv/countries/' + cc + '.m3u');
       });
-    } else if (src.startsWith('all-')) {
-      body.appendChild(msg('All channels in this region’s community list, unchecked — many won’t play (dead links, region locks, formats the player can’t decode).'));
-      p = loadM3U('https://iptv-org.github.io/iptv/countries/' + src.slice(4) + '.m3u');
     } else p = Promise.resolve([]);
     const loading = msg('Loading channels…'); body.appendChild(loading);
     p.then((list) => {
@@ -1479,7 +1489,7 @@
     const input = h('input', { type: 'text', value: q, placeholder: 'Find a station (name, city, show…)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const doSearch = () => go(href(cc, tag === '★' ? '' : tag, input.value.trim()));
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Radio' }), h('span', { class: 'msg', style: { padding: '0' }, text: 'US stations' })));
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Radio' }), audioSwitch('radio')));
     root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
     root.appendChild(chips([{ id: '', label: 'Popular' }, { id: '★', label: '★ Your stations' }].concat(RADIO_TAGS.map(([id, label]) => ({ id, label }))),
       tag, (c) => href(cc, c.id, '')));
@@ -1653,16 +1663,13 @@
       h('option', { value: 'auto', text: 'Automatic (starts at 720p, lowers itself on a weak signal)' }),
       QUALITIES.map((q) => h('option', { value: q.id, text: q.label })));
     sel.value = store.get('dm_quality', 'auto');
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Plex playback quality' }),
-      h('p', { text: 'Lower quality uses less mobile data and is steadier on LTE. Plex converts the video on your server to fit.' }),
-      h('div', { class: 'field' }, sel)));
     // Dead-zone buffer
     const ah = h('select', { onchange: (e) => { store.set('dm_ahead', +e.target.value); S.aheadMax = +e.target.value * 60; toast('Saved.'); } },
       [[0, 'Off (about 40 seconds)'], [2, '2 minutes'], [5, '5 minutes (recommended)'], [10, '10 minutes']].map(([v, t]) => h('option', { value: String(v), text: t })));
     ah.value = String(store.get('dm_ahead', 5));
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Dead-zone buffer' }),
-      h('p', { text: 'While the signal is good, movies, shows and YouTube download ahead so they keep playing through stretches with no signal. Live TV can only buffer a few seconds. Higher-quality video may save a bit less, to keep memory use safe.' }),
-      h('div', { class: 'field' }, ah)));
+    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Playback' }),
+      h('label', { class: 'lbl', text: 'Plex quality — lower uses less mobile data' }), h('div', { class: 'field' }, sel),
+      h('label', { class: 'lbl', text: 'Dead-zone buffer — saves ahead so movies keep playing with no signal' }), h('div', { class: 'field' }, ah)));
     // Own lists
     const listBox = h('div');
     const drawLists = () => {
@@ -1677,8 +1684,8 @@
     drawLists();
     const ln = h('input', { type: 'text', placeholder: 'Name (e.g. My IPTV)' });
     const lu = h('input', { type: 'text', placeholder: 'Playlist (.m3u) or stream (.m3u8) address', autocapitalize: 'off', spellcheck: 'false' });
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Your own channels' }),
-      h('p', { text: 'Add an M3U playlist (it shows up as its own tab in Live TV) or a single stream address. Streams must be HLS with MPEG-TS segments, H.264 video and AAC audio, and allow playback from other websites.' }),
+    const ownBox = h('details', { class: 'sub' }, h('summary', { text: 'Add your own channel list or stream' }),
+      h('p', { text: 'An M3U playlist shows up as its own button in Live TV; a single .m3u8 stream goes under My channels.' }),
       listBox,
       h('div', { class: 'field' }, ln, lu, h('button', { class: 'btn red', type: 'button', text: 'Add', onclick: () => {
         const url = lu.value.trim(), name = ln.value.trim() || 'My list';
@@ -1686,17 +1693,20 @@
         if (/\.m3u8(\?|$)/i.test(url)) { const a = myChannels(); a.push({ name, url, cat: 'My channels', logo: '' }); store.set('dm_mychans', a); }
         else { const a = myLists(); a.push({ name, url }); store.set('dm_lists', a); }
         ln.value = lu.value = ''; invalidate('live'); drawLists(); toast('Added — find it under Live TV.');
-      } }))));
-    root.appendChild(iptvSetupCard());
+      } })));
+    const tvCard = iptvSetupCard(); tvCard.appendChild(ownBox); root.appendChild(tvCard);
     root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Phone remote' }),
-      h('p', { text: 'Control the car screen from a phone in the back seat: pick what to watch, pause, skip. On the car tap 📱 at the top; on the phone open this page and enter the code.' }),
+      h('p', { text: 'Control the car screen from a phone. Tap 📱 on the car for the code.' }),
       h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '📱 Show pairing code (car)', onclick: showRemotePairing }),
         h('a', { class: 'btn ghost', href: '#/remote', text: 'Use this device as the remote' }))));
-    root.appendChild(locationCard());
     root.appendChild(backupCard());
+    const adv = h('details', { class: 'card adv' }, h('summary', { text: 'Advanced' }),
+      h('div', { class: 'btns', style: { marginTop: '12px' } }, h('a', { class: 'btn ghost', href: '#/traffic', text: '🗺 Traffic map (Waze)' })),
+      locationCard());
+    root.appendChild(adv);
     // Direct stream
     const du = h('input', { type: 'text', placeholder: 'https://example.com/stream.m3u8', autocapitalize: 'off', spellcheck: 'false' });
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Play a link' }),
+    adv.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Play a link' }),
       h('p', { text: 'Paste an HLS (.m3u8) address or a direct MP4 file. MP4 files download fully before they start.' }),
       h('div', { class: 'field' }, du,
         h('button', { class: 'btn red', type: 'button', text: 'Play', onclick: () => { if (du.value.trim()) go('#/watch/url/' + enc(du.value.trim())); } }),
@@ -1704,7 +1714,7 @@
     // YouTube helper
     const yb = h('input', { type: 'text', value: store.get('dm_yt_base', '') || '', placeholder: YT_DEFAULT, autocapitalize: 'off', spellcheck: 'false' });
     const ys = msg('');
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'YouTube helper' }),
+    adv.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Home helper address' }),
       h('p', { text: 'YouTube plays through the helper on your home NAS, which converts videos into a format this player can draw. Leave empty for the built-in address.' }),
       h('div', { class: 'field' }, yb,
         h('button', { class: 'btn ghost', type: 'button', text: 'Save & check', onclick: () => {
@@ -1714,7 +1724,7 @@
           E.fetchRead(ytBase() + '/health', 'text', 8000).then(() => { ys.textContent = 'Helper is answering.'; })
             .catch((e) => { ys.textContent = 'Helper not reachable: ' + e.message; ys.className = 'msg err'; });
         } })), ys));
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'About' }),
+    adv.appendChild(h('div', { class: 'card' }, h('h2', { text: 'About' }),
       h('p', { text: 'Nate’s Theater draws the picture itself with WebCodecs on a canvas instead of using the browser’s video player — the part Tesla pauses outside Park. While the car is moving, it’s for the passenger only. DRM services (Netflix, Disney+ and similar) can’t play this way; use the car’s own apps while parked.' })));
   };
 
@@ -1910,7 +1920,7 @@
     } else if (kind === 'yt') {
       openPlayerShell(b || 'YouTube', 'YouTube');
       const viaHelper = () => {
-        $('plNote').textContent = 'Converting at home — the first play of a video can take a little while to start.';
+        $('plNote').textContent = 'Getting the video ready…';
         E.load(ytBase() + '/stream?v=' + enc(a), b); S.autoplay = auto;
       };
       // A phone or tablet can use YouTube's own player (no helper needed);
@@ -2581,14 +2591,6 @@
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
-    const sendLink = (text, title) => {
-      const t = linkTarget(text, title);
-      if (!t) return false;
-      if (t.unsupported) { toast('That link can’t play in the car yet — YouTube and direct video links work.'); return true; }
-      send({ type: 'go', hash: t.hash }); toast('Sent to the car: ' + t.label);
-      search.value = ''; resultsEl.replaceChildren(); window.scrollTo({ top: 0, behavior: 'smooth' });
-      return true;
-    };
     const pasteBtn = h('button', { class: 'rm-paste', type: 'button', text: '🔗 Paste link', onclick: () => {
       if (!(navigator.clipboard && navigator.clipboard.readText)) { search.focus(); toast('Paste the link into the search box.'); return; }
       navigator.clipboard.readText().then((txt) => { if (!offerLink(txt)) toast('No link found — copy a video link first, then tap Paste link.'); })
@@ -2596,7 +2598,10 @@
     } });
     /* Saved for the car: clips kept on this phone to play in the car later
        (or here, when the car is off). */
-    const carUp = () => Date.now() - lastHeard < 30000 && !!(now && now.seen) && serverNow() - now.seen < 45000;
+    // The car counts as on while we've heard from it lately, timed on this
+    // phone's own clock (comparing two devices' clocks was fragile).
+    let carHeardAt = 0;
+    const carUp = () => Date.now() - lastHeard < 30000 && Date.now() - carHeardAt < 45000;
     const savedClips = () => store.get('dm_saved_clips', []);
     const savedEl = h('div');
     function drawSaved() {
@@ -2614,7 +2619,7 @@
     }
     function playClip(c) {
       if (carUp()) { send({ type: 'go', hash: c.hash }); toast('Playing on the car: ' + c.title); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else { toast('Tesla is offline — playing on this device.'); go(c.hash); }
+      else { toast('Car is offline — playing on this device.'); go(c.hash); }
     }
     function saveClip(t) {
       const yt = (t.hash.match(/^#\/watch\/yt\/([^/]+)/) || [])[1];
@@ -2728,16 +2733,18 @@
       tl.textContent = idle ? '' : n.buffering ? 'Loading…' : dur ? E.fmt(n.pos || 0) : (n.kind === 'radio' ? 'Live radio' : 'Live');
       tr.textContent = dur ? '−' + E.fmt(Math.max(0, dur - (n.pos || 0))) : '';
     }
-    function paintConn() {
+    function paintConn(once) {
       if (!alive()) return;
       const home = Date.now() - lastHeard < 30000;
-      const car = home && !!(now && now.seen) && serverNow() - now.seen < 45000;
+      const car = home && carUp();
       dot.className = 'rm-dot' + (car ? ' ok' : '');
       conn.lastChild.textContent = car ? 'Connected' : home ? 'Offline' : 'Reconnecting…';
       offline.hidden = car || !lastHeard;
       nowCard.hidden = !offline.hidden;              // Tesla off: no stale now-playing card
       nowCard.classList.toggle('off', !car);
-      setTimeout(paintConn, 2000);
+      // Not hearing from the car: ask "are you there?" now and then.
+      if (home && !car && once !== true && Date.now() - (paintConn.asked || 0) > 20000) { paintConn.asked = Date.now(); send({ type: 'hello' }); }
+      if (once !== true) setTimeout(paintConn, 2000);
     }
     function gone() {
       if (!alive()) return;
@@ -2748,7 +2755,7 @@
         h('a', { class: 'rm-btn', href: '#/remote', text: 'Enter a new code' }))));
     }
     const offline = h('div', { class: 'rm-offline', hidden: true },
-      h('b', { text: 'Tesla is offline' }),
+      h('b', { text: 'Car is offline' }),
       h('a', { class: 'rm-off-btn', href: '#/home', text: 'Watch on this device' }));
     let nowCard;
     root.appendChild(h('div', { class: 'rm-page' }, brand(conn), offline,
@@ -2779,10 +2786,16 @@
       const t0 = Date.now();
       remoteApi('/' + room + '/state?wait=20&v=' + ver + '&p=' + enc(phoneId())).then((d) => {
         lastHeard = Date.now(); noteServerTime(d, t0);
+        const first = !ver;
         ver = d.ver || ver;
         const sl = d.slots || {};
         if (sl.now) {
           now = sl.now; if (MIR) MIR.carNow = now; drawNow(now);
+          // A live update means the car is there. The first reply may be an
+          // old saved state, so only trust it if it says it's recent.
+          if (!first) carHeardAt = Date.now();
+          else if (now.seen && Math.abs(serverNow() - now.seen) < 45000) carHeardAt = Date.now() - Math.max(0, serverNow() - now.seen);
+          paintConn(true);
           // The car switched to something else: follow it on this device.
           if (MIR && !mirrorReq && now.key && MIR.info.key && now.key !== MIR.info.key && now.mirrorable) {
             mirrorReq = Date.now(); send({ type: 'mirror', req: mirrorReq });
@@ -2809,6 +2822,28 @@
     send({ type: 'hello' }); send({ type: 'lists' });
     poll();
   };
+
+  /* Auto-update: when a newer version is published, reload by itself -
+     but never during a movie, a podcast, or while typing; it waits. */
+  const APP_BUILD = '__BUILD__';
+  let updateReady = false;
+  function checkUpdate() {
+    if (APP_BUILD.charAt(0) === '_' || updateReady) return;
+    fetch(location.pathname + '?u=' + Date.now(), { cache: 'no-store' }).then((r) => r.ok ? r.text() : '').then((t) => {
+      const m = t.match(/const APP_BUILD = '([0-9a-f]{8,})'/);
+      if (m && m[1] !== APP_BUILD) { updateReady = true; maybeUpdate(); }
+    }).catch(() => {});
+  }
+  function maybeUpdate() {
+    if (!updateReady || playerOpen || MIR || (radioNow && !radio.paused) || document.querySelector('.pairshade')) return;
+    const f = document.activeElement;
+    if (f && /INPUT|TEXTAREA|SELECT/.test(f.tagName)) return;
+    location.reload();
+  }
+  setTimeout(checkUpdate, 15000);
+  setInterval(checkUpdate, 5 * 60 * 1000);
+  setInterval(maybeUpdate, 5000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 
   /* ---------- start ---------- */
   // A link shared to the app (Android share menu, or the iPhone Shortcut,
