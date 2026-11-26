@@ -1009,9 +1009,8 @@ var Engine = (function () {
   }
 
   function updatePlayBtn() {
-    if (S.ended) btnPlay.innerHTML = '&#8635;';
-    else if (S.playing) btnPlay.innerHTML = '&#10073;&#10073;';
-    else btnPlay.innerHTML = '&#9654;';
+    var ic = function (n) { return '<svg class="ic" aria-hidden="true"><use href="#i-' + n + '"/></svg>'; };
+    btnPlay.innerHTML = ic(S.ended ? 'replay' : S.playing ? 'pause' : 'play');
     if (hooks.onState) hooks.onState();
   }
 

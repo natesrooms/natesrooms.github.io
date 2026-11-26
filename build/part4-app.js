@@ -11,6 +11,14 @@
   const enc = encodeURIComponent;
 
   /* ---------- small helpers ---------- */
+  // Icons from the sprite in the page (one line-icon set on every screen).
+  function ic(name, cls) {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('class', 'ic' + (cls ? ' ' + cls : '')); s.setAttribute('aria-hidden', 'true');
+    const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#i-' + name); s.appendChild(u);
+    return s;
+  }
+  const icHTML = (n) => '<svg class="ic" aria-hidden="true"><use href="#i-' + n + '"/></svg>';
   function h(tag, props, ...kids) {
     const el = document.createElement(tag);
     if (props) for (const k in props) {
@@ -75,14 +83,19 @@
     if (img) {
       const im = h('img', { src: img, alt: '', loading: 'lazy', decoding: 'async', class: 'fade' });
       im.addEventListener('load', () => im.classList.add('in'));
-      im.addEventListener('error', () => { im.remove(); box.prepend(h('div', { class: 'ph', text: ph || '' })); });
+      im.addEventListener('error', () => { im.remove(); box.style.background = grad(ph || '?'); box.prepend(phBox(ph)); });
       box.appendChild(im);
     } else {
       box.style.background = grad(ph);
-      box.appendChild(h('div', { class: 'ph', text: ph || '' }));
+      if (ph) box.appendChild(phBox(ph));
     }
     if (extra) extra.forEach((x) => x && box.appendChild(x));
     return box;
+  }
+  // Missing art: the first letter big, the name under it, on the item's own color.
+  function phBox(name) {
+    const t = String(name || '').trim(), L = (t.replace(/^(the|a|an)\s+/i, '').match(/[A-Za-z0-9]/) || [''])[0].toUpperCase();
+    return h('div', { class: 'ph' }, L ? h('b', { text: L }) : null, h('span', { text: t }));
   }
   function progressBar(p) {
     if (!(p > 0.01 && p < 0.99)) return null;
@@ -99,7 +112,7 @@
   function wideCard(c) {
     const extras = [progressBar(c.progress)];
     if (c.live) extras.push(h('div', { class: 'live-tag', text: 'LIVE' }));
-    if (c.play) extras.push(h('div', { class: 'play', text: '▶' }));
+    if (c.play) extras.push(h('div', { class: 'play' }, ic('play')));
     if (c.channel) extras.push(h('div', { class: 'chan' }, h('div', { class: 'n', text: c.channel }), c.cat ? h('div', { class: 'c', text: c.cat }) : null));
     if (c.star) extras.push(c.star);
     const box = artBox(c.img, c.channel ? '' : c.title, extras);
@@ -162,7 +175,7 @@
   function msg(text, err) { return h('div', { class: 'msg' + (err ? ' err' : ''), text }); }
   function chips(list, current, hrefOf) {
     return h('div', { class: 'chips pad' }, list.map((c) =>
-      h('a', { class: 'chip' + (c.id === current ? ' on' : ''), href: hrefOf(c), text: c.label })));
+      h('a', { class: 'chip' + (c.id === current ? ' on' : ''), href: hrefOf(c) }, c.icon ? ic(c.icon) : null, c.label)));
   }
 
   /* =====================================================================
@@ -400,9 +413,9 @@
     const star = h('button', {
       class: 'badge', type: 'button', 'aria-label': 'Favorite',
       style: { border: '0', cursor: 'pointer', background: 'rgba(0,0,0,.55)', color: isFav(ch.url) ? '#f5c518' : '#fff', minWidth: '40px', height: '40px', fontSize: '20px' },
-      text: isFav(ch.url) ? '★' : '☆',
-      onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleFav(ch); e.currentTarget.textContent = isFav(ch.url) ? '★' : '☆'; e.currentTarget.style.color = isFav(ch.url) ? '#f5c518' : '#fff'; }
+      onclick: (e) => { e.preventDefault(); e.stopPropagation(); toggleFav(ch); e.currentTarget.classList.toggle('on', isFav(ch.url)); e.currentTarget.style.color = isFav(ch.url) ? '#f5c518' : '#fff'; }
     });
+    star.appendChild(ic('star')); star.classList.toggle('on', isFav(ch.url)); star.classList.add('rstar');
     const card = wideCard({ channel: ch.logo ? '' : ch.name, cat: ch.logo ? '' : ch.cat, img: '', live: true, href: channelHref(ch), star,
       title: ch.name, sub: ch.logo ? (ch.cat || '') : '' });
     if (ch.logo) {
@@ -415,6 +428,11 @@
     }
     card.dataset.url = ch.url;
     paintHealth(card);
+    if (String(ch.url).startsWith('plexlive:')) whenSeen(card, () => guideNow(ch.url).then((g) => {
+      if (!g || !g.now) return;
+      let s = card.querySelector('.s'); if (!s) { s = h('div', { class: 's' }); card.appendChild(s); }
+      s.textContent = 'Now: ' + g.now.title;
+    }));
     return card;
   }
 
@@ -522,7 +540,7 @@
     store.set('dm_radiofavs', f.slice(0, 200));
     document.querySelectorAll('.rstar').forEach((b) => { if (b.dataset.id === st.stationuuid) paintStar(b, isRadioFav(st)); });
   }
-  function paintStar(b, on) { b.textContent = on ? '★' : '☆'; b.style.color = on ? '#f5c518' : '#fff'; }
+  function paintStar(b, on) { b.replaceChildren(ic('star')); b.classList.toggle('on', !!on); b.style.color = ''; }
   const plainAudio = h('audio', { preload: 'none' });
   const musicAudio = h('audio', { preload: 'none', crossorigin: 'anonymous' });
   let radio = plainAudio, musicWired = false;
@@ -534,6 +552,8 @@
   // Same handlers on both elements; each only acts for the one in use.
   function onAudio(ev, fn) { [plainAudio, musicAudio].forEach((el) => el.addEventListener(ev, (x) => { if (el === radio) fn(x); })); }
   let radioBar = null, radioNow = null;
+  // Tapping the words in the bottom bar opens the full-screen Now Playing.
+  document.addEventListener('click', (e) => { const t = e.target.closest && e.target.closest('.radiobar .rb-txt'); if (t) openNowPlaying(); });
   onAudio('error', () => { if (radioNow && radioNow.music && radio === musicAudio) { playTrackPlain(radioNow.t, 0); return; } if (radioNow && radioNow.music) { musicFailed(radioNow.t); return; } if (radioNow && radioNow.pod) { toast('That episode couldn’t be loaded — try another one.'); return; } if (radioNow) { const st = radioNow; toast(st.name + ' isn’t playing right now — removed it from the list.'); markBadStation(st); stopRadio(); } });
   function markPlayingCards() {
     document.querySelectorAll('[data-station]').forEach((c) => c.classList.toggle('now', !!radioNow && c.dataset.station === radioNow.stationuuid));
@@ -555,9 +575,9 @@
     radioBar.hidden = false;
     const star = h('button', { class: 'pb rstar', type: 'button', 'data-id': st.stationuuid, 'aria-label': 'Save station', onclick: () => toggleRadioFav(st) });
     paintStar(star, isRadioFav(st));
-    const pp = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) { radio.play(); pp.textContent = '❚❚'; } else { radio.pause(); pp.textContent = '▶'; } } });
+    const pp = h('button', { class: 'pb', type: 'button', 'aria-label': 'Pause', onclick: () => { if (radio.paused) { radio.play(); pp.replaceChildren(ic('pause')); } else { radio.pause(); pp.replaceChildren(ic('play')); } } }, ic('pause'));
     radioSongEl = h('div', { class: 'rb-song', hidden: true });
-    const getBtn = h('button', { class: 'pb rb-get', type: 'button', text: '＋ Get', 'aria-label': 'Add this song to your Get list', onclick: () => addToGetList() });
+    const getBtn = h('button', { class: 'pb rb-get', type: 'button', 'aria-label': 'Add this song to your Get list', onclick: () => addToGetList(null) }, ic('plus'), 'Get');
     radioBar.replaceChildren(
       h('div', { class: 'rb-logo', style: { background: grad(st.name) } },
         okUrl(st.favicon || '') ? h('img', { src: st.favicon, alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
@@ -565,7 +585,7 @@
         radioSongEl,
         h('div', { class: 'rb-s', text: ['Live radio', (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', '), st.bitrate ? st.bitrate + ' kbps' : ''].filter(Boolean).join(' · ') })),
       getBtn, star, pp,
-      h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio })
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Stop', onclick: stopRadio }, ic('close'))
     );
     markPlayingCards();
     radioSong = null; pollSong();
@@ -576,13 +596,19 @@
   let radioSong = null, radioSongEl = null, songTimer = null;
   function parseSong(raw, st) {
     raw = String(raw || '').replace(/\s+/g, ' ').trim();
+    // Some stations send coded text: "...ArtistName=The Killers SongTitle=Somebody Told Me"
+    const coded = raw.match(/ArtistName=(.*?)\s+SongTitle=(.*?)(?:\s+\w+=|$)/i);
+    if (coded) return coded[2].trim() ? { artist: coded[1].trim(), song: coded[2].trim(), raw } : null;
     if (!raw || raw.length < 3) return null;
+    // Ads, breaks, slogans and station IDs aren't songs.
+    if (/advertis|commercial|right back|station id|^live365\b|your .*station|\bstation\b.*-|\b(radio|fm|hits)\s*\d{2,3}(\.\d)?\b$/i.test(raw)) return null;
     const station = String((st && st.name) || '').toLowerCase();
     if (station && (raw.toLowerCase() === station || station.includes(raw.toLowerCase()))) return null;
     let m = raw.match(/^(.+?) by (.+?)(?: - .*)?$/i);       // "Song by Artist - extra"
     if (m && !/ - /.test(m[1])) return { song: m[1].trim(), artist: m[2].trim(), raw };
     m = raw.match(/^(.+?) - (.+)$/);                          // "Artist - Song"
-    if (m) return { artist: m[1].trim(), song: m[2].replace(/\s*\[[^\]]*\]\s*$/, '').trim(), raw };
+    const tidy = (v) => v.replace(/\s*\[[^\]]*\]\s*$/, '').replace(/\s+-\s+from\b.*$/i, '').replace(/\s*[(\[][^)\]]*(remaster|single version|radio edit|album version)[^)\]]*[)\]]/ig, '').replace(/\s+-\s+(\d{4}\s+)?remaster.*$/i, '').trim();
+    if (m) return { artist: m[1].trim(), song: tidy(m[2]) || m[2].trim(), raw };
     return { song: raw, artist: '', raw };
   }
   function pollSong() {
@@ -611,8 +637,16 @@
       return pl ? pwrite('PUT', '/playlists/' + pl.ratingKey + '/items?uri=' + uri) : pwrite('POST', '/playlists?type=audio&smart=0&title=' + enc(RADIO_PL) + '&uri=' + uri);
     });
   }
-  function addToGetList(song) {
+  function addToGetList(song, checked) {
     const st = radioNow;
+    // No song known yet (the station just started)? Ask right now before deciding.
+    if (!checked && !song && !radioSong && st && !st.pod && !st.music && st.url_resolved) {
+      toast('Checking what’s playing…');
+      E.fetchRead(ytBase() + '/nowplaying?u=' + enc(st.url_resolved), 'json', 12000)
+        .then((d) => { if (radioNow === st) radioSong = parseSong(d && d.title, st); })
+        .catch(() => {}).finally(() => { if (radioNow === st) addToGetList(radioSong, true); });
+      return;
+    }
     const s = song || radioSong;
     const l = getList();
     if (s && l.some((x) => x.song.toLowerCase() === s.song.toLowerCase() && (x.artist || '').toLowerCase() === (s.artist || '').toLowerCase())) { toast('Already on your Get list'); return; }
@@ -750,7 +784,7 @@
     if (!radioBar) { radioBar = h('div', { class: 'radiobar' }); document.body.appendChild(radioBar); }
     radioBar.hidden = false;
     podTimeEl = h('span', { class: 'rb-time' });
-    podPP = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } });
+    podPP = h('button', { class: 'pb', type: 'button', 'aria-label': 'Pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } }, ic('pause'));
     const speed = h('button', { class: 'pb rb-speed', type: 'button', 'aria-label': 'Playback speed', onclick: () => {
       const cur = radio.playbackRate || 1, nx = POD_SPEEDS[(POD_SPEEDS.indexOf(cur) + 1) % POD_SPEEDS.length];
       radio.defaultPlaybackRate = radio.playbackRate = nx; store.set('dm_podspeed', nx); speed.textContent = nx + '×';
@@ -760,18 +794,18 @@
       h('a', { class: 'rb-logo', href: '#/podcasts/show/' + enc(ep.showId), style: { background: grad(ep.show) } },
         ep.favicon ? h('img', { src: podArt(ep.favicon, 160), alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
       h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: ep.name }), h('div', { class: 'rb-s' }, h('span', { text: ep.show + ' · ' }), podTimeEl)),
-      h('button', { class: 'pb', type: 'button', text: '↺ 15', 'aria-label': 'Back 15 seconds', onclick: () => podSkip(-15) }),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Back 15 seconds', onclick: () => podSkip(-15) }, ic('back'), '15'),
       podPP,
-      h('button', { class: 'pb', type: 'button', text: '30 ↻', 'aria-label': 'Forward 30 seconds', onclick: () => podSkip(30) }),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => podSkip(30) }, '30', ic('fwd')),
       speed,
-      h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio }));
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Stop', onclick: stopRadio }, ic('close')));
     paintPodTime();
   }
   function paintPodTime() {
     if (!(radioNow && radioNow.pod) || !podTimeEl) return;
     const d = podDur();
     podTimeEl.textContent = E.fmt(radio.currentTime || 0) + (d ? ' / ' + E.fmt(d) : '');
-    if (podPP) podPP.textContent = radio.paused ? '▶' : '❚❚';
+    if (podPP) podPP.replaceChildren(ic(radio.paused ? 'play' : 'pause'));
   }
   onAudio('timeupdate', () => {
     if (!(radioNow && radioNow.pod)) return;
@@ -797,7 +831,7 @@
     const p = sv && sv.dur ? sv.t / sv.dur : 0;
     const left = sv && sv.dur ? E.fmt(Math.max(0, sv.dur - sv.t)) + ' left' : ep.show;
     return h('div', { class: 'pc sq', 'data-station': ep.stationuuid, onclick: () => playPodcast(ep) },
-      artBox(ep.favicon ? podArt(ep.favicon, 400) : '', ep.name, [progressBar(p), h('div', { class: 'play', text: '▶' })]),
+      artBox(ep.favicon ? podArt(ep.favicon, 400) : '', ep.name, [progressBar(p), h('div', { class: 'play' }, ic('play'))]),
       h('div', { class: 't', text: ep.name }), h('div', { class: 's', text: left }));
   }
   function podEpRow(ep) {
@@ -807,7 +841,7 @@
     const meta = [podFmtDate(ep.date), ep.dur ? Math.max(1, Math.round(ep.dur / 60)) + ' min' : '',
       sv && sv.done ? '✓ Played' : sv && sv.t > 30 && dur ? E.fmt(Math.max(0, dur - sv.t)) + ' left' : ''].filter(Boolean).join(' · ');
     return h('button', { class: 'podep', type: 'button', 'data-station': ep.stationuuid, onclick: () => playPodcast(ep) },
-      h('div', { class: 'podep-play', text: '▶' }),
+      h('div', { class: 'podep-play' }, ic('play')),
       h('div', { class: 'podep-txt' }, h('div', { class: 't', text: ep.name }), h('div', { class: 's', text: meta }),
         ep.desc ? h('div', { class: 'd', text: ep.desc }) : null,
         p > 0.01 ? h('div', { class: 'podep-bar' }, h('i', { style: { width: Math.min(100, Math.round(p * 100)) + '%' } })) : null));
@@ -828,8 +862,8 @@
   window.addEventListener('hashchange', () => { inAppNavs++; });
   function subNav(fallback) {
     return h('div', { class: 'subnav' },
-      h('button', { class: 'btn ghost', type: 'button', text: '‹ Back', onclick: () => { if (inAppNavs > 0) history.back(); else go(fallback); } }),
-      h('a', { class: 'btn ghost', href: '#/home', text: '⌂ Home' }));
+      h('button', { class: 'btn ghost', type: 'button', onclick: () => { if (inAppNavs > 0) history.back(); else go(fallback); } }, ic('left'), 'Back'),
+      h('a', { class: 'btn ghost', href: '#/home' }, ic('home'), 'Home'));
   }
   function musicSections() {
     const uid = plex.user ? plex.user.id : 'owner';
@@ -948,22 +982,22 @@
     if (!radioBar) { radioBar = h('div', { class: 'radiobar' }); document.body.appendChild(radioBar); }
     radioBar.hidden = false;
     mTimeEl = h('span', { class: 'rb-time' });
-    mPP = h('button', { class: 'pb', type: 'button', text: '❚❚', 'aria-label': 'Pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } });
+    mPP = h('button', { class: 'pb', type: 'button', 'aria-label': 'Pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } }, ic('pause'));
     radioBar.replaceChildren(
       h('a', { class: 'rb-logo', href: t.albumRk ? '#/music/album/' + enc(t.albumRk) : '#/music', style: { background: grad(t.album || t.title) } },
         t.thumb ? h('img', { src: mArt(t.thumb, 160), alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
       h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: t.title }), h('div', { class: 'rb-s' }, h('span', { text: t.artist + ' · ' }), mTimeEl)),
-      h('button', { class: 'pb', type: 'button', text: '⏮', 'aria-label': 'Previous', onclick: musicPrev }),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Previous', onclick: musicPrev }, ic('prev')),
       mPP,
-      h('button', { class: 'pb', type: 'button', text: '⏭', 'aria-label': 'Next', onclick: musicNext }),
-      h('button', { class: 'pb', type: 'button', text: '✕', 'aria-label': 'Stop', onclick: stopRadio }));
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Next', onclick: musicNext }, ic('next')),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Stop', onclick: stopRadio }, ic('close')));
     paintMusicTime();
   }
   function paintMusicTime() {
     if (!(radioNow && radioNow.music) || !mTimeEl) return;
     const d = podDur();
     mTimeEl.textContent = E.fmt(radio.currentTime || 0) + (d ? ' / ' + E.fmt(d) : '') + (MQ.list.length > 1 ? '  ·  ' + (MQ.i + 1) + ' of ' + MQ.list.length : '');
-    if (mPP) mPP.textContent = radio.paused ? '▶' : '❚❚';
+    if (mPP) mPP.replaceChildren(ic(radio.paused ? 'play' : 'pause'));
   }
   onAudio('timeupdate', paintMusicTime);
   onAudio('play', paintMusicTime);
@@ -987,7 +1021,7 @@
   }
   function trackRow(t, i, all, showArtist, showAlbum) {
     return h('button', { class: 'podep', type: 'button', 'data-station': 'm' + t.rk, onclick: () => playMusic(all, i) },
-      h('div', { class: 'podep-play', text: '▶' }),
+      h('div', { class: 'podep-play' }, ic('play')),
       h('div', { class: 'podep-txt' }, h('div', { class: 't', text: t.title }),
         h('div', { class: 's', text: [showArtist ? t.artist : '', showAlbum ? t.album : '', t.dur ? E.fmt(t.dur) : ''].filter(Boolean).join(' · ') })));
   }
@@ -996,8 +1030,8 @@
       h('div', { class: 'pod-cover', style: { background: grad(title) } }, img ? h('img', { src: img, alt: '' }) : null),
       h('div', { class: 'pod-info' }, h('h1', { text: title }), h('div', { class: 'pod-by', text: by }),
         h('div', { class: 'btns' },
-          h('button', { class: 'btn red', type: 'button', text: '▶ Play', onclick: () => playMusic(tracks(), 0) }),
-          h('button', { class: 'btn ghost', type: 'button', text: '🔀 Shuffle', onclick: () => playMusic(tracks(), 0, true) }))));
+          h('button', { class: 'btn red', type: 'button', onclick: () => playMusic(tracks(), 0) }, ic('play'), 'Play'),
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => playMusic(tracks(), 0, true) }, ic('shuffle'), 'Shuffle'))));
   }
   function musicView(root, [sec, a, b]) {
     root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, /^(album|artist|playlist|search)$/.test(sec || '') ? subNav('#/music') : null, h('h1', { text: 'Music' })), audioSwitch('music')));
@@ -1041,7 +1075,7 @@
             h('div', { class: 'pod-info' }, h('h1', { text: m.title || '' }),
               h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album · ' : ' albums · ') + songs.length + ' songs' }),
               h('div', { class: 'btns' },
-                h('button', { class: 'btn red', type: 'button', text: '🔀 Shuffle ' + (m.title || ''), onclick: () => playMusic(songs, 0, true) })))));
+                h('button', { class: 'btn red', type: 'button', onclick: () => playMusic(songs, 0, true) }, ic('shuffle'), 'Shuffle')))));
           // Sections like Plexamp: Albums, Singles & EPs, Compilations, Live, Soundtracks & remixes.
           // Plex keeps a release's type (Format / Subformat) on its full details, fetched in one go.
           const shelf = h('div'); body.appendChild(shelf);
@@ -1073,9 +1107,9 @@
       const submit = () => { const v = input.value.trim(); go(v ? '#/music/search/' + enc(v) : '#/music'); };
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
       body.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }),
-        h('button', { class: 'btn ghost', type: 'button', text: '🔀 Shuffle all', onclick: () =>
+        h('button', { class: 'btn ghost', type: 'button', onclick: () =>
           pget('/library/sections/' + sk + '/all?type=10&sort=random&X-Plex-Container-Start=0&X-Plex-Container-Size=150')
-            .then((d) => playMusic(MC(d).Metadata || [], 0)).catch((e) => toast('Couldn’t shuffle: ' + e.message)) }))));
+            .then((d) => playMusic(MC(d).Metadata || [], 0)).catch((e) => toast('Couldn’t shuffle: ' + e.message)) }, ic('shuffle'), 'Shuffle all'))));
       if (sec === 'search' && a) {
         return pget('/hubs/search?query=' + enc(a) + '&sectionId=' + sk + '&limit=30').then((d) => {
           let any = false;
@@ -1105,8 +1139,8 @@
       }
       // Three tabs: For you (recent + suggestions), every artist, every album (both with A–Z).
       const tab = sec === 'artists' || sec === 'albums' || sec === 'get' ? sec : 'foryou';
-      body.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: '✨ For you' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' },
-        { id: 'get', label: '🛒 Get list' + (getList().length ? ' (' + getList().length + ')' : '') }],
+      body.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: 'For you', icon: 'sparkle' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' },
+        { id: 'get', label: 'Get list' + (getList().length ? ' (' + getList().length + ')' : ''), icon: 'bag' }],
         tab, (c) => c.id === 'foryou' ? '#/music' : '#/music/' + c.id)));
       const hubCard = (m) => m.type === 'artist' ? artistCard(m) : m.type === 'playlist' ? playlistCard(m) : albumCard(m);
       if (tab === 'get') {
@@ -1122,15 +1156,15 @@
               h('div', { class: 'podep-txt' }, h('div', { class: 't', text: x.song || 'Song not named by the station' }),
                 h('div', { class: 's', text: [x.artist, (x.station ? 'heard on ' + x.station : ''), when].filter(Boolean).join(' · ') })),
               lib,
-              q ? h('a', { class: 'btn ghost', href: '#/youtube/' + enc(q), text: '▶ YouTube' }) : null,
-              h('button', { class: 'btn ghost', type: 'button', text: '✕', 'aria-label': 'Remove', onclick: () => { store.set('dm_getlist', getList().filter((y) => y.id !== x.id)); draw(); } }));
+              q ? h('a', { class: 'btn ghost', href: '#/youtube/' + enc(q) }, ic('play'), 'YouTube') : null,
+              h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Remove', onclick: () => { store.set('dm_getlist', getList().filter((y) => y.id !== x.id)); draw(); } }, ic('close')));
             // Already in your music? Then offer to play it from there.
             if (x.song) pget('/hubs/search?query=' + enc(x.song) + '&sectionId=' + sk + '&limit=10').then((d) => {
               const tr = []; (MC(d).Hub || []).forEach((hb) => { if (hb.type === 'track') (hb.Metadata || []).forEach((m) => tr.push(m)); });
               const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
               const hit = tr.find((m) => norm(m.title) === norm(x.song) && (!x.artist || norm(m.originalTitle || m.grandparentTitle).includes(norm(x.artist).slice(0, 6))));
               if (!hit) return;
-              lib.replaceWith(h('button', { class: 'btn red', type: 'button', text: '✓ In your music — play', onclick: () => playMusic([hit], 0) }));
+              lib.replaceWith(h('button', { class: 'btn red', type: 'button', onclick: () => playMusic([hit], 0) }, ic('check'), 'In your music — play'));
               if (!x.pl) addToRadioPlaylist(hit.ratingKey).then(() => {
                 store.set('dm_getlist', getList().map((y) => y.id === x.id ? Object.assign(y, { pl: true }) : y));
                 toast('Added “' + x.song + '” to your “' + RADIO_PL + '” playlist in Plex');
@@ -1198,11 +1232,80 @@
     }).catch((e) => { wait.remove(); body.appendChild(msg('Couldn’t reach Plex: ' + e.message, true)); });
   }
 
+  /* ---------- Now Playing: full screen for music, podcasts and radio ----------
+     Tap the title in the bottom bar to open it; the down arrow closes it.
+     The background is the cover itself, blurred, so each song gets its own colors. */
+  let npEl = null, npTimer = 0, npFor = null;
+  function npArt() {
+    const n = radioNow; if (!n) return '';
+    if (n.music) return n.t.thumb ? mArt(n.t.thumb, 800) : '';
+    if (n.pod) return n.favicon ? podArt(n.favicon, 800) : '';
+    return okUrl(n.favicon || '') ? n.favicon : '';
+  }
+  function openNowPlaying() {
+    if (!radioNow) return;
+    if (!npEl) {
+      npEl = h('div', { class: 'np', role: 'dialog', 'aria-label': 'Now playing' });
+      document.body.appendChild(npEl);
+    }
+    npFor = null; drawNowPlaying(); npEl.hidden = false;
+    requestAnimationFrame(() => npEl.classList.add('open'));
+    clearInterval(npTimer); npTimer = setInterval(drawNowPlaying, 500);
+  }
+  function closeNowPlaying() {
+    if (!npEl) return;
+    npEl.classList.remove('open'); clearInterval(npTimer);
+    setTimeout(() => { if (npEl && !npEl.classList.contains('open')) npEl.hidden = true; }, 300);
+  }
+  function drawNowPlaying() {
+    if (!npEl) return;
+    const n = radioNow;
+    if (!n) { closeNowPlaying(); return; }
+    const key = n.music ? 'm' + n.t.rk : n.pod ? 'p' + n.guid : 'r' + n.stationuuid;
+    const dur = n.music || n.pod ? podDur() : 0, pos = radio.currentTime || 0;
+    if (npFor !== key) {
+      npFor = key;
+      const art = npArt();
+      const title = n.music ? n.t.title : n.name;
+      const sub = n.music ? [n.t.artist, n.t.album].filter(Boolean).join(' · ') : n.pod ? n.show : 'Live radio';
+      const pp = h('button', { class: 'np-pp', type: 'button', 'aria-label': 'Play or pause', onclick: () => { if (radio.paused) radio.play(); else radio.pause(); } }, ic('pause'));
+      const seek = h('input', { type: 'range', class: 'np-seek', min: '0', max: '1000', value: '0', 'aria-label': 'Position' });
+      seek.addEventListener('change', () => { const d = podDur(); if (d) podSeek(seek.value / 1000 * d); });
+      const tl = h('span', { class: 'np-tl' }), tr = h('span', { class: 'np-tr' });
+      const song = h('div', { class: 'np-song' });
+      const btn = (icon, label, fn, extra) => h('button', { class: 'np-b', type: 'button', 'aria-label': label, onclick: fn }, ic(icon), extra || null);
+      const ctrls = n.music ? [btn('prev', 'Previous', musicPrev), pp, btn('next', 'Next', musicNext)]
+        : n.pod ? [btn('back', 'Back 15 seconds', () => podSkip(-15), h('small', { text: '15' })), pp, btn('fwd', 'Forward 30 seconds', () => podSkip(30), h('small', { text: '30' }))]
+        : [btn('plus', 'Add this song to your Get list', () => addToGetList(null)), pp, btn('close', 'Stop', () => { stopRadio(); closeNowPlaying(); })];
+      npEl.replaceChildren(
+        h('div', { class: 'np-bg', style: art ? { backgroundImage: 'url("' + art + '")' } : { background: grad(title) } }),
+        h('div', { class: 'np-shade' }),
+        h('div', { class: 'np-top' },
+          h('button', { class: 'np-x', type: 'button', 'aria-label': 'Close', onclick: closeNowPlaying }, ic('down')),
+          h('div', { class: 'np-kind' }, ic(n.music ? 'music' : n.pod ? 'mic' : 'radio'), n.music ? 'Music' : n.pod ? 'Podcast' : 'Radio'),
+          h('span', { style: { width: '52px' } })),
+        h('div', { class: 'np-main' },
+          h('div', { class: 'np-art' + (n.music || n.pod ? '' : ' logo') }, art ? h('img', { src: art, alt: '' }) : phBox(title)),
+          h('div', { class: 'np-info' },
+            h('div', { class: 'np-title', text: title }),
+            h('div', { class: 'np-sub', text: sub }),
+            song,
+            n.music || n.pod ? h('div', { class: 'np-prog' }, seek, h('div', { class: 'np-times' }, tl, tr)) : h('div', { class: 'np-live' }, h('i'), 'LIVE'),
+            h('div', { class: 'np-ctrls' }, ...ctrls))));
+      npEl._pp = pp; npEl._seek = seek; npEl._tl = tl; npEl._tr = tr; npEl._song = song;
+    }
+    npEl._pp.replaceChildren(ic(radio.paused ? 'play' : 'pause'));
+    if (dur && document.activeElement !== npEl._seek) npEl._seek.value = Math.round(1000 * pos / dur);
+    npEl._tl.textContent = dur ? E.fmt(pos) : ''; npEl._tr.textContent = dur ? '−' + E.fmt(Math.max(0, dur - pos)) : '';
+    const s = !n.music && !n.pod && radioSong ? '♪ ' + [radioSong.artist, radioSong.song].filter(Boolean).join(' – ') : '';
+    if (npEl._song.textContent !== s) npEl._song.textContent = s;
+  }
+
   function audioSwitch(cur) {
     return h('div', { class: 'seg' },
-      h('a', { href: '#/radio', class: cur === 'radio' ? 'on' : '', text: '📻 Radio' }),
-      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '', text: '🎙 Podcasts' }),
-      h('a', { href: '#/music', class: cur === 'music' ? 'on' : '', text: '🎵 Music' }));
+      h('a', { href: '#/radio', class: cur === 'radio' ? 'on' : '' }, ic('radio'), 'Radio'),
+      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '' }, ic('mic'), 'Podcasts'),
+      h('a', { href: '#/music', class: cur === 'music' ? 'on' : '' }, ic('music'), 'Music'));
   }
   function podcastsView(root, [sec, a]) {
     if (sec === 'show') { root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, subNav('#/podcasts'), h('h1', { text: 'Podcasts' })), audioSwitch('podcasts'))); podShowPage(root, a); return; }
@@ -1386,7 +1489,7 @@
       requestAnimationFrame(() => window.scrollTo(0, hit.y || 0));
       return;
     }
-    const node = h('div');
+    const node = h('div', { class: 'fresh' });
     view.replaceChildren(node);
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
@@ -1401,7 +1504,7 @@
   function updateMe() {
     // Always a clear gear; the Plex profile shows as a small badge on it.
     const me = $('meBtn');
-    me.replaceChildren(h('span', { class: 'gear', text: '⚙' }));
+    me.replaceChildren(ic('gear'));
     if (plex.user) {
       const badge = h('span', { class: 'mebadge' });
       if (plex.user.thumb && okUrl(plex.user.thumb)) badge.appendChild(h('img', { src: plex.user.thumb, alt: '' }));
@@ -1545,7 +1648,7 @@
           start += (mc.Metadata || []).length || size;
           status.textContent = start >= total ? '' : '';
           if (!(mc.Metadata || []).length) total = start;
-          moreWrap.replaceChildren(start < total ? h('button', { class: 'btn ghost', type: 'button', text: 'Load more', onclick: more }) : null);
+          moreWrap.replaceChildren(...(start < total ? [h('button', { class: 'btn ghost', type: 'button', text: 'Load more', onclick: more })] : []));
         }).catch((e) => { status.textContent = 'Could not load: ' + e.message; status.className = 'msg err'; })
           .finally(() => { busy = false; });
       }
@@ -1668,6 +1771,65 @@
   /* Plex's free live channels (no DRM, H.264 HLS). Plex's genre ids have
      no names in the lineup, so they're named here; new ones go under "More". */
   const PLEX_EPG = 'https://epg.provider.plex.tv';
+  /* ---------- Live TV guide (Plex's schedule): what's on now and next ----------
+     One small request per channel per day, cached; at most 4 at a time. */
+  const guideCache = new Map();
+  let guideBusy = 0; const guideQ = [];
+  function gridKeyOf(url) { const m = String(url || '').match(/-([0-9a-f]{24})\.m3u8/i); return m ? m[1] : ''; }
+  function guideDay(gk, day) {
+    const k = gk + '|' + day, hit = guideCache.get(k);
+    if (hit && Date.now() - hit.at < 20 * 60 * 1000) return hit.p;
+    const p = new Promise((res, rej) => {
+      const run = () => { guideBusy++;
+        fetch(PLEX_EPG + '/grid?channelGridKey=' + gk + '&date=' + day + '&X-Plex-Token=' + enc(plexActiveToken()), { headers: { Accept: 'application/json' } })
+          .then((r) => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+          .then((d) => res(((d.MediaContainer || {}).Metadata || []).map((m) => {
+            const md = (m.Media || [])[0] || {};
+            const show = m.grandparentTitle || '', ep = m.title || '';
+            return { title: show && ep && show !== ep ? show + ' — ' + ep : (show || ep), start: md.beginsAt || 0, end: md.endsAt || 0 };
+          }).filter((x) => x.start && x.end).sort((x, y) => x.start - y.start)), rej)
+          .finally(() => { guideBusy--; if (guideQ.length) guideQ.shift()(); });
+      };
+      if (guideBusy < 4) run(); else guideQ.push(run);
+    });
+    guideCache.set(k, { at: Date.now(), p });
+    p.catch(() => guideCache.delete(k));
+    return p;
+  }
+  // {now, next} for a channel (looks at yesterday/tomorrow too around midnight UTC).
+  function guideNow(url) {
+    const gk = gridKeyOf(url); if (!gk || !plex.auth) return Promise.resolve(null);
+    const t = Date.now() / 1000, day = (o) => new Date(Date.now() + o * 864e5).toISOString().slice(0, 10);
+    return Promise.all([guideDay(gk, day(0)), guideDay(gk, day(-1)).catch(() => []), guideDay(gk, day(1)).catch(() => [])]).then((ls) => {
+      const seen = {}, all = [].concat(...ls).filter((x) => seen[x.start] ? false : (seen[x.start] = 1)).sort((x, y) => x.start - y.start);
+      const now = all.find((x) => x.start <= t && x.end > t) || null;
+      const next = all.find((x) => x.start >= (now ? now.end - 1 : t)) || null;
+      return now || next ? { now, next } : null;
+    }).catch(() => null);
+  }
+  function clockOf(sec) { return new Date(sec * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  // Fill something in when it scrolls into view (so a long list doesn't ask for everything at once).
+  const whenSeen = (() => {
+    if (!('IntersectionObserver' in window)) return (el, fn) => fn();
+    const fns = new WeakMap();
+    const io = new IntersectionObserver((ents) => ents.forEach((e) => { if (e.isIntersecting) { const f = fns.get(e.target); io.unobserve(e.target); if (f) f(); } }), { rootMargin: '300px' });
+    return (el, fn) => { fns.set(el, fn); io.observe(el); };
+  })();
+  function guideRow(ch) {
+    const nowEl = h('div', { class: 'gd-now', text: ' ' }), bar = h('i'), nextEl = h('div', { class: 'gd-next' });
+    const row = h('a', { class: 'gd-row', href: channelHref(ch) },
+      h('div', { class: 'gd-logo' }, ch.logo ? h('img', { src: ch.logo, alt: '', loading: 'lazy' }) : h('span', { text: ch.name })),
+      h('div', { class: 'gd-txt' }, h('div', { class: 'gd-ch', text: ch.name }), nowEl, h('div', { class: 'gd-bar' }, bar), nextEl));
+    whenSeen(row, () => guideNow(ch.url).then((g) => {
+      if (!g) { nowEl.textContent = ch.cat || ''; row.classList.add('nog'); return; }
+      const t = Date.now() / 1000;
+      if (g.now) { nowEl.textContent = g.now.title; bar.style.width = Math.max(2, Math.min(100, (t - g.now.start) / (g.now.end - g.now.start) * 100)) + '%'; nowEl.title = 'Until ' + clockOf(g.now.end); }
+      else nowEl.textContent = ch.cat || '';
+      if (g.next) nextEl.textContent = clockOf(g.next.start) + '  ' + g.next.title;
+    }));
+    return row;
+  }
+
   const PLEX_GENRES = {
     '6006cc1d610ee2002c74f37a': 'News', '620143f98578b9238e1cdb8a': 'Sports', '620143f98578b9238e1cdb89': 'Movies',
     '6a0c2728768cf9b31f6fe02a': 'Drama', '6006cc18610ee2002c74f2f9': 'Comedy', '6a0c2728768cf9b31f6fe030': 'Sci-Fi & Horror',
@@ -1693,8 +1855,10 @@
   }
   VIEWS.live = (root, [src, cat]) => {
     src = src === 'fav' ? 'fav' : 'plex';
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' })));
-    root.appendChild(chips([{ id: 'plex', label: 'Channels' }, { id: 'fav', label: '★ Favorites' }], src, (c) => '#/live/' + c.id));
+    const viewMode = store.get('dm_live_view', 'grid');
+    const modeBtn = (m, icon, label) => h('a', { href: '#', class: viewMode === m ? 'on' : '', onclick: (e) => { e.preventDefault(); store.set('dm_live_view', m); invalidate('live'); currentKey = null; route(); } }, ic(icon), label);
+    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' }), h('div', { class: 'seg' }, modeBtn('grid', 'grid', 'Channels'), modeBtn('guide', 'list', 'Guide'))));
+    root.appendChild(chips([{ id: 'plex', label: 'All channels', icon: 'tv' }, { id: 'fav', label: 'Favorites', icon: 'star' }], src, (c) => '#/live/' + c.id));
     const body = h('div'); root.appendChild(body);
     if (src === 'plex' && !plex.auth) {
       body.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Free live TV with Plex' }),
@@ -1706,15 +1870,16 @@
     const loading = msg('Loading channels…'); body.appendChild(loading);
     p.then((list) => {
       loading.remove();
-      if (!list.length) { body.appendChild(h('div', { class: 'empty', text: src === 'fav' ? 'No favorites yet — tap ☆ on any channel to add it here.' : 'No channels in this list.' })); return; }
+      if (!list.length) { body.appendChild(h('div', { class: 'empty', text: src === 'fav' ? 'No favorites yet. Tap the star on any channel to keep it here.' : 'No channels in this list.' })); return; }
       const cats = [...new Set(list.map((c) => c.cat || 'Other'))];
       if (cats.length > 1 && list.length > 12) {
         body.appendChild(chips([{ id: '', label: 'All' }].concat(cats.map((c) => ({ id: c, label: c }))), cat || '', (c) => '#/live/' + src + (c.id ? '/' + enc(c.id) : '')));
       }
       const shown = src === 'plex' ? (cat ? list.filter((c) => c.cat === cat) : list) : sortByHealth(cat ? list.filter((c) => (c.cat || 'Other') === cat) : list);
-      const grid = h('div', { class: 'grid wide' }); body.appendChild(grid);
+      const guide = viewMode === 'guide';
+      const grid = h('div', { class: guide ? 'guide' : 'grid wide' }); body.appendChild(grid);
       let i = 0;
-      const step = () => { shown.slice(i, i + 60).forEach((ch) => grid.appendChild(channelCard(ch))); i += 60; btn.hidden = i >= shown.length; };
+      const step = () => { shown.slice(i, i + 60).forEach((ch) => grid.appendChild(guide ? guideRow(ch) : channelCard(ch))); i += 60; btn.hidden = i >= shown.length; };
       const btn = h('button', { class: 'btn ghost', type: 'button', text: 'Show more', onclick: step });
       body.appendChild(h('div', { class: 'more' }, btn));
       step();
@@ -1934,16 +2099,33 @@
     { id: '480', label: '480p (1.5 Mbps)', res: '854x480', br: 1500 },
     { id: '360', label: '360p (0.7 Mbps)', res: '640x360', br: 720 }
   ];
+  // Settings building blocks: a row (title, line under it, control on the right),
+  // an on/off switch, and a segmented choice.
+  function setRow(title, sub, control) {
+    return h('div', { class: 'setrow' }, h('div', { class: 'setrow-t' }, h('div', { class: 'st', text: title }), sub ? h('div', { class: 'ss', text: sub }) : null), control);
+  }
+  function switchEl(on, onchange, label) {
+    const inp = h('input', { type: 'checkbox', 'aria-label': label || '' });
+    inp.checked = !!on;
+    inp.addEventListener('change', () => onchange(inp.checked));
+    return h('label', { class: 'switch' }, inp, h('span'));
+  }
+  function segEl(options, cur, onpick) {
+    const box = h('div', { class: 'seg segbtns', role: 'radiogroup' });
+    const paint = (v) => box.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+    options.forEach(([v, label]) => box.appendChild(h('button', { type: 'button', 'data-v': v, text: label, onclick: () => { paint(v); onpick(v); } })));
+    paint(cur);
+    return box;
+  }
   VIEWS.settings = (root) => {
     root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Settings' })));
     // Plex
     const pc = h('div', { class: 'card' }, h('h2', { text: 'Plex' }));
     if (!plex.auth) pc.append(h('p', { text: 'Not signed in.' }), h('a', { class: 'btn red', href: '#/signin', text: 'Sign in with Plex' }));
     else {
-      const kv = h('div', { class: 'kv' },
-        h('b', { text: 'Profile' }), h('span', { text: plex.user ? plex.user.name : '—' }),
-        h('b', { text: 'Server' }), h('span', { text: plex.conn ? plex.conn.name : 'not connected yet' }),
-        h('b', { text: 'Connection' }), h('span', { text: plex.conn ? (plex.conn.relay ? 'Plex relay (slow — about 2 Mbps max)' : plex.conn.local ? 'Home network' : 'Remote, direct') : '—' }));
+      const kv = h('div', { class: 'setlist' },
+        setRow('Profile', plex.user ? plex.user.name : '—', h('a', { class: 'btn ghost sm', href: '#/profiles', text: 'Switch' })),
+        setRow('Server', (plex.conn ? plex.conn.name : 'Not connected yet') + (plex.conn ? ' · ' + (plex.conn.relay ? 'Plex relay (slow, about 2 Mbps)' : plex.conn.local ? 'Home network' : 'Remote, direct') : ''), null));
       const spRaw = store.get('dm_start_profile', null), sp = spRaw && spRaw.id ? spRaw : null;
       const spSel = h('select', { onchange: (e) => {
         const v = e.target.value;
@@ -1957,8 +2139,8 @@
         sp && (!plex.user || sp.id !== plex.user.id) ? h('option', { value: 'saved', text: 'Always ' + sp.name }) : null,
         plex.user ? h('option', { value: 'cur', text: 'Always ' + plex.user.name }) : null);
       spSel.value = spRaw === 'last' && onCar ? 'last' : !sp ? 'auto' : plex.user && sp.id === plex.user.id ? 'cur' : 'saved';
-      pc.append(kv, h('label', { class: 'lbl', text: 'When the app opens on this screen' }), h('div', { class: 'field' }, spSel), h('div', { class: 'btns' },
-        h('a', { class: 'btn ghost', href: '#/profiles', text: 'Switch profile' }),
+      kv.appendChild(setRow('When the app opens', 'Which profile this screen starts with', spSel));
+      pc.append(kv, h('div', { class: 'btns', style: { marginTop: '16px' } },
         h('button', { class: 'btn ghost', type: 'button', text: 'Reconnect', onclick: (e) => {
           plex.conn = null; store.set('dm_plex_conn', null); e.currentTarget.textContent = 'Connecting…';
           ensurePlex().then(() => { invalidate(); render(parse()); toast('Connected to ' + plex.conn.name); })
@@ -1969,37 +2151,28 @@
     root.appendChild(pc);
     // Quality
     const sel = h('select', { onchange: (e) => { store.set('dm_quality', e.target.value); toast('Saved.'); } },
-      h('option', { value: 'auto', text: 'Automatic (starts at 720p, lowers itself on a weak signal)' }),
+      h('option', { value: 'auto', text: 'Automatic' }),
       QUALITIES.map((q) => h('option', { value: q.id, text: q.label })));
     sel.value = store.get('dm_quality', 'auto');
     // Dead-zone buffer
     const ah = h('select', { onchange: (e) => { store.set('dm_ahead', +e.target.value); S.aheadMax = +e.target.value * 60; toast('Saved.'); } },
-      [[0, 'Off (about 40 seconds)'], [2, '2 minutes'], [5, '5 minutes (recommended)'], [10, '10 minutes']].map(([v, t]) => h('option', { value: String(v), text: t })));
+      [[0, 'Off (about 40 s)'], [2, '2 minutes'], [5, '5 minutes'], [10, '10 minutes']].map(([v, t]) => h('option', { value: String(v), text: t })));
     ah.value = String(store.get('dm_ahead', 5));
-    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Playback' }),
-      h('label', { class: 'lbl', text: 'Plex quality — lower uses less mobile data' }), h('div', { class: 'field' }, sel),
-      h('label', { class: 'lbl', text: 'Dead-zone buffer — saves ahead so movies keep playing with no signal' }), h('div', { class: 'field' }, ah),
-      h('label', { class: 'lbl', text: 'Colour' }), h('div', { class: 'field' }, (() => {
-        const cs = h('select', { onchange: (e) => { store.set('dm_color', e.target.value); applyPicture(); toast(e.target.value === 'soft' ? 'Softer colour on' : 'Natural colour'); } },
-          h('option', { value: 'natural', text: 'Natural' }), h('option', { value: 'soft', text: 'Softer — tames faces that look too red' }));
-        cs.value = store.get('dm_color', 'natural'); return cs; })()),
-      h('label', { class: 'lbl', text: 'Sound — movies, TV, YouTube and music' }), h('div', { class: 'field' }, (() => {
-        const ts = h('select', { onchange: (e) => { store.set('dm_tone', e.target.value); applyTone(); toast('Sound: ' + e.target.selectedOptions[0].text); } },
-          TONES.map((t) => h('option', { value: t.id, text: t.label })));
-        ts.value = toneNow().id; return ts; })()),
-      h('label', { class: 'lbl', text: 'Music quality' }), h('div', { class: 'field' }, (() => {
-        const mq = h('select', { onchange: (e) => { store.set('dm_music_q', e.target.value); toast(e.target.value === 'lossless' ? 'Lossless music on' : 'Data saver music on'); } },
-          h('option', { value: 'lossless', text: 'Lossless — full CD quality, bass & treble apply (about 1 Mbps)' }),
-          h('option', { value: 'saver', text: 'Data saver — 320k MP3 (about a quarter of the data)' }));
-        mq.value = musicLossless() ? 'lossless' : 'saver'; return mq; })()),
-      h('p', { class: 'msg', style: { padding: '8px 0 0' }, text: 'In the player: 🗣 Voice makes talking easier to hear, ☀ brightens the picture. The car’s own Audio settings (equalizer, Immersive Sound) add on top.' })));
+    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Picture & sound' }), h('div', { class: 'setlist' },
+      setRow('Sound', 'Movies, TV, YouTube and music', segEl(TONES.map((t) => [t.id, t.short]), toneNow().id, (v) => { store.set('dm_tone', v); applyTone(); toast('Sound: ' + TONES.find((t) => t.id === v).label); })),
+      setRow('Dialogue boost', 'Voices louder, explosions softer (also the Voice button in the player)', switchEl(store.get('dm_voice', false), (on) => { store.set('dm_voice', on); applyVoice(); })),
+      setRow('Softer colour', 'Tames faces that look too red', switchEl(store.get('dm_color', 'natural') === 'soft', (on) => { store.set('dm_color', on ? 'soft' : 'natural'); applyPicture(); })),
+      setRow('Lossless music', 'Full CD quality with the bass setting (about 1 Mbps). Off: 320k MP3, a quarter of the data', switchEl(musicLossless(), (on) => { store.set('dm_music_q', on ? 'lossless' : 'saver'); })))));
+    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Streaming' }), h('div', { class: 'setlist' },
+      setRow('Plex quality', 'Lower uses less mobile data', sel),
+      setRow('Dead-zone buffer', 'Saves ahead so movies keep playing with no signal', ah))));
     root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Phone remote' }),
-      h('p', { text: 'Control the car screen from a phone. Tap 📱 on the car for the code.' }),
-      h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', text: '📱 Show pairing code (car)', onclick: showRemotePairing }),
+      h('p', { text: 'Control the car screen from a phone. Tap the phone button at the top of the car screen for the code.' }),
+      h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', onclick: showRemotePairing }, ic('phone'), 'Show pairing code (car)'),
         h('a', { class: 'btn ghost', href: '#/remote', text: 'Use this device as the remote' }))));
     root.appendChild(backupCard());
     const adv = h('details', { class: 'card adv' }, h('summary', { text: 'Advanced' }),
-      h('div', { class: 'btns', style: { marginTop: '12px' } }, h('a', { class: 'btn ghost', href: '#/traffic', text: '🗺 Traffic map (Waze)' })),
+      h('div', { class: 'btns', style: { marginTop: '12px' } }, h('a', { class: 'btn ghost', href: '#/traffic' }, ic('map'), 'Traffic map (Waze)')),
       locationCard());
     root.appendChild(adv);
     // Direct stream
@@ -2053,7 +2226,7 @@
     if (MIR || ytEmbed || !S.started || S.ended || !playerOpen) return;
     if (e.target.closest('button, a, input, select, .pl-top, .pl-row, .upnext, .po-cover')) return;
     $('btnPlay').click();
-    tapFlash.textContent = S.playing ? '▶' : '❚❚';
+    tapFlash.replaceChildren(ic(S.playing ? 'play' : 'pause'));
     tapFlash.classList.remove('go'); void tapFlash.offsetWidth; tapFlash.classList.add('go');
   });
 
@@ -2063,7 +2236,7 @@
     const err = $('status').classList.contains('err');
     $('plSpin').hidden = !waiting || err;
     $('plBig').hidden = waiting || err || !(S.loaded && (!S.started || S.ended));
-    $('plBig').innerHTML = S.ended ? '&#8635;' : '&#9654;';
+    $('plBig').innerHTML = icHTML(S.ended ? 'replay' : 'play');
     $('btnBack10').hidden = $('btnFwd10').hidden = !E.canSeek();
     $('seek').disabled = !E.canSeek();
     $('plLive').hidden = !(S.isLive && !S.view) || !S.loaded;
@@ -2208,6 +2381,14 @@
       openPlayerShell(b || 'Plex channel', c ? 'Plex · ' + c : 'Plex channel');
       if (!plex.auth) E.setStatus('Sign in to Plex (Settings) to watch Plex channels.', true);
       else { E.load(PLEX_EPG + a + '?X-Plex-Token=' + enc(plexActiveToken()), b); S.autoplay = auto; }
+      const paintOn = () => { if (watchKey !== key) return; guideNow('plexlive:' + a).then((g) => {
+        if (watchKey !== key || !g) return;
+        const parts = [c || 'Plex'];
+        if (g.now) parts.push('Now: ' + g.now.title);
+        if (g.next) parts.push(clockOf(g.next.start) + ' ' + g.next.title);
+        $('plSub').textContent = parts.join('   ·   ');
+      }); setTimeout(paintOn, 3 * 60 * 1000); };
+      paintOn();
     } else if (kind === 'live') {
       openPlayerShell(b || 'Live TV', c ? 'Live TV · ' + c : 'Live TV');
       E.load(a, b); S.autoplay = auto;
@@ -2377,9 +2558,9 @@
   }
   function paintFs() {
     const on = fsOn();
-    $('fsAll').innerHTML = on ? '&#10006;' : '&#9974;';
+    $('fsAll').innerHTML = icHTML(on ? 'shrink' : 'expand');
     $('fsAll').title = $('fsAll').ariaLabel = on ? 'Exit full screen' : 'Full screen';
-    $('btnFs').innerHTML = on ? '&#10006;' : '&#9974;';
+    $('btnFs').innerHTML = icHTML(on ? 'shrink' : 'expand');
   }
   $('fsAll').addEventListener('click', toggleFullscreen);
   $('btnFs').addEventListener('click', toggleFullscreen);
@@ -2403,8 +2584,8 @@
     const on = !store.get('dm_voice', false);
     store.set('dm_voice', on); applyVoice(); toast(on ? 'Dialogue boost on — voices louder, booms softer' : 'Dialogue boost off');
   });
-  const TONES = [{ id: 'flat', label: 'Flat — as recorded', b: 0, t: 0 }, { id: 'rich', label: 'Rich — fuller bass, crisp highs', b: 5, t: 2 },
-    { id: 'bass', label: 'Bass boost — big low end', b: 9, t: 1.5 }, { id: 'bright', label: 'Bright — clearer highs', b: 2, t: 5 }];
+  const TONES = [{ id: 'flat', short: 'Flat', label: 'Flat — as recorded', b: 0, t: 0 }, { id: 'rich', short: 'Rich', label: 'Rich — fuller bass, crisp highs', b: 5, t: 2 },
+    { id: 'bass', short: 'Bass', label: 'Bass boost — big low end', b: 9, t: 1.5 }, { id: 'bright', short: 'Bright', label: 'Bright — clearer highs', b: 2, t: 5 }];
   function toneNow() { const id = store.get('dm_tone', 'rich'); return TONES.find((t) => t.id === id) || TONES[1]; }
   function applyTone() { const t = toneNow(); E.setTone(t.b, t.t); }
   applyPicture(); applyVoice(); applyTone();
@@ -2896,7 +3077,7 @@
       const saved = store.get('dm_remote_phone', null);
       root.appendChild(h('div', { class: 'rm-page' }, brand(),
         h('div', { class: 'rm-connect' },
-          h('div', { class: 'rm-icon', text: '📱' }),
+          h('div', { class: 'rm-icon' }, ic('phone')),
           h('h1', { text: 'Connect to your car' }),
           h('p', { text: 'Enter the 6-digit code shown on the car screen.' }),
           input, st, btn,
@@ -2912,15 +3093,15 @@
     const clockPing = setInterval(() => { if (!alive()) { clearInterval(clockPing); return; } if (MIR) { const t0 = Date.now(); remoteApi('/' + room + '/state?wait=0&v=999999999').then((d) => noteServerTime(d, t0)).catch(() => {}); } }, 5000);
     const dot = h('span', { class: 'rm-dot' });
     const conn = h('span', { class: 'rm-conn' }, dot, h('span', { text: 'Connecting…' }));
-    const icon = h('div', { class: 'rm-kind', text: '🎬' });
+    const icon = h('div', { class: 'rm-kind' }, ic('car'));
     const title = h('div', { class: 'rm-t', text: 'Connecting to the car…' });
     const sub = h('div', { class: 'rm-s' });
     const bar = h('input', { type: 'range', min: '0', max: '1000', value: '0', class: 'rm-seek', disabled: true, 'aria-label': 'Position' });
     const tl = h('span'), tr = h('span');
-    const pp = h('button', { class: 'rm-round big', type: 'button', text: '▶', 'aria-label': 'Play or pause', onclick: () => send({ type: 'toggle' }) });
+    const pp = h('button', { class: 'rm-round big', type: 'button', 'aria-label': 'Play or pause', onclick: () => send({ type: 'toggle' }) }, ic('play'));
     let nowKind = 'idle';
-    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mprev' } : { type: 'skip', s: -10 }) }, h('span', { text: '↺' }), h('small', { text: '10' }));
-    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mnext' } : { type: 'skip', s: 30 }) }, h('span', { text: '↻' }), h('small', { text: '30' }));
+    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mprev' } : { type: 'skip', s: -10 }) }, ic('back'), h('small', { text: '10' }));
+    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mnext' } : { type: 'skip', s: 30 }) }, ic('fwd'), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
     const phonesBtn = h('button', { class: 'rm-phones', type: 'button', hidden: true, onclick: () => {
       unlockSound();
@@ -2932,19 +3113,19 @@
     const watchHere = h('button', { class: 'rm-watch', type: 'button', hidden: true, onclick: () => {
       unlockSound();
       mirrorReq = Date.now(); watchHere.textContent = 'Starting…'; send({ type: 'mirror', req: mirrorReq });
-      setTimeout(() => { watchHere.textContent = '📲 Watch here too'; }, 6000);
-    } }, '📲 Watch here too');
+      setTimeout(() => { watchHere.replaceChildren(ic('cast'), 'Watch here too'); }, 6000);
+    } }, ic('cast'), 'Watch here too');
     let dur = 0, lastHeard = 0, now = null, lists = null, results = null;
     bar.addEventListener('change', () => { if (dur) send({ type: 'seek', pos: Math.round(bar.value / 1000 * dur) }); });
-    const ICON = { plex: '🎬', live: '📺', yt: '▶', youtube: '▶', radio: '📻', podcast: '🎙', url: '🎞', site: '🌐', plexlive: '📺', music: '🎵', idle: '🚗' };
+    const ICON = { plex: 'film', live: 'tv', yt: 'play', youtube: 'play', radio: 'radio', podcast: 'mic', url: 'film', site: 'globe', plexlive: 'tv', music: 'music', idle: 'car' };
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
-    const pasteBtn = h('button', { class: 'rm-paste', type: 'button', text: '🔗 Paste link', onclick: () => {
+    const pasteBtn = h('button', { class: 'rm-paste', type: 'button', onclick: () => {
       if (!(navigator.clipboard && navigator.clipboard.readText)) { search.focus(); toast('Paste the link into the search box.'); return; }
       navigator.clipboard.readText().then((txt) => { if (!offerLink(txt)) toast('No link found — copy a video link first, then tap Paste link.'); })
         .catch(() => { search.focus(); toast('Paste the link into the search box.'); });
-    } });
+    } }, ic('link'), 'Paste link');
     /* Saved for the car: clips kept on this phone to play in the car later
        (or here, when the car is off). */
     // The car counts as on while we've heard from it lately, timed on this
@@ -3064,24 +3245,24 @@
       const idle = !n || n.kind === 'idle';
       const mus = !!(n && n.kind === 'music');
       if (mus !== (nowKind === 'music')) {
-        back10.replaceChildren(h('span', { text: mus ? '⏮' : '↺' }), mus ? null : h('small', { text: '10' }));
-        fwd30.replaceChildren(h('span', { text: mus ? '⏭' : '↻' }), mus ? null : h('small', { text: '30' }));
+        back10.replaceChildren(...[ic(mus ? 'prev' : 'back'), mus ? null : h('small', { text: '10' })].filter(Boolean));
+        fwd30.replaceChildren(...[ic(mus ? 'next' : 'fwd'), mus ? null : h('small', { text: '30' })].filter(Boolean));
       }
       nowKind = n ? n.kind : 'idle';
       const art = n && n.art && /^(data:image\/|https:\/\/)/.test(n.art) ? n.art : null;
       icon.classList.toggle('poster', !!art && n.kind === 'plex');
       if (art) { if (!icon.firstChild || icon.firstChild.src !== art) icon.replaceChildren(h('img', { src: art, alt: '' })); }
-      else icon.textContent = ICON[(n && n.kind) || 'idle'] || '🎬';
+      else icon.replaceChildren(ic(ICON[(n && n.kind) || 'idle'] || 'film'));
       title.textContent = idle ? 'Nothing playing' : (n.title || '');
       sub.textContent = idle ? 'Pick something below to play it on the car.' : (n.sub || '');
-      pp.textContent = n && n.playing ? '❚❚' : '▶';
+      pp.replaceChildren(ic(n && n.playing ? 'pause' : 'play'));
       dur = (n && n.dur) || 0;
       const seek = !!(n && n.seek && dur);
       bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek && !mus; pp.disabled = idle; close.hidden = idle;
       watchHere.hidden = idle || !(n && n.mirrorable) || !!MIR;
       const video = !idle && n && n.kind !== 'radio' && n.kind !== 'podcast' && n.kind !== 'music';
       phonesBtn.hidden = !video;
-      phonesBtn.textContent = n && n.phonesOnly ? '📺 Turn the car screen back on' : '📱 Phones only — car screen off';
+      phonesBtn.replaceChildren(ic(n && n.phonesOnly ? 'tv' : 'phone'), n && n.phonesOnly ? 'Turn the car screen back on' : 'Phones only — car screen off');
       phonesBtn.classList.toggle('on', !!(n && n.phonesOnly));
       if (dur && document.activeElement !== bar) bar.value = Math.round(1000 * (n.pos || 0) / dur);
       if (!dur) bar.value = 0;
@@ -3158,7 +3339,7 @@
         }
         if (sl.lists) { lists = sl.lists; drawRows(); }
         if (sl.results) { results = sl.results; drawResults(); }
-        if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.textContent = '📲 Watch here too'; mirrorStart(sl.mirror, now); }
+        if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.replaceChildren(ic('cast'), 'Watch here too'); mirrorStart(sl.mirror, now); }
         setTimeout(poll, 100);
       }).catch((e) => {
         if (/404/.test(e.message)) { gone(); return; }
@@ -3260,5 +3441,8 @@
   });
   if (store.get('dm_remote_car', null)) carRemoteStart().catch(() => {});
   route();
+  setTimeout(() => { const sp = $('splash'); if (sp) { sp.classList.add('gone'); setTimeout(() => sp.remove(), 500); } }, 450);
   startProfileReset();
+  // Test hook (only when a tester sets dm_debug on this device): read the player clock from outside.
+  if (store.get('dm_debug', false)) window.__T = { E, S, mir: () => MIR, now: () => serverNow() };
 })();
