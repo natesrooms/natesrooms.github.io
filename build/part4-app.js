@@ -1836,7 +1836,8 @@
     if (playerOpen && !MIR) {
       return { kind: P ? 'plex' : (watchKey || '').split('/')[0], art: nowArt(), title: $('plTitle').textContent, sub: $('plSub').textContent,
         pos: +E.dispPos(E.mediaNow()).toFixed(2), at: serverNow(), dur: Math.round(E.dispDur() || 0), seek: E.canSeek(), live: !!(S.isLive && !S.view),
-        playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended, mirrorable: true };
+        playing: !!S.playing && !S.buffering, buffering: !!(S.buffering || S.loading), ended: !!S.ended, mirrorable: true,
+        liveRef: E.livePos() };
     }
     if (radioNow) return { kind: 'radio', art: okUrl(radioNow.favicon || '') ? radioNow.favicon : null, title: radioNow.name, sub: 'Live radio', playing: !radio.paused, seek: false, mirrorable: true };
     return { kind: 'idle' };
@@ -1934,7 +1935,8 @@
         return { kind: 'plex', base: plex.conn.base, token: tok, rk: P.rk, dur: P.duration, title, sub };
       });
     }
-    return Promise.resolve({ kind: (watchKey || '').split('/')[0], url: S.srcUrl, ts: !!(S.srcOpts && S.srcOpts.ts), live: !!(S.isLive && !S.view), title, sub });
+    return Promise.resolve({ kind: (watchKey || '').split('/')[0], url: S.srcUrl, ts: !!(S.srcOpts && S.srcOpts.ts),
+      live: !!(S.isLive && !S.isEvent && !S.view), liveRef: E.livePos(), at: serverNow(), title, sub });
   }
   function updateRemoteBtn() {
     const b = $('remoteBtn');
@@ -1962,6 +1964,16 @@
 
   // ---- phone side: "Watch here too" ----
   let MIR = null; // { info, carNow, sid, timer }
+  function carElapsed(n) { return n && n.playing ? Math.max(0, serverNow() - (n.at || serverNow())) / 1000 : 0; }
+  function mirrorTarget() {
+    const n = MIR && MIR.carNow;
+    if (!n) return null;
+    if (MIR.info.live) {                       // live: same broadcast chunk as the car
+      if (MIR.info.ts || !n.liveRef) return null;
+      return E.liveTimeOf(n.liveRef.seq, n.liveRef.off + carElapsed(n));
+    }
+    return carPosNow();
+  }
   function carPosNow() {
     const n = MIR && MIR.carNow;
     if (!n || n.pos == null) return null;
@@ -1989,8 +2001,13 @@
       MIR.sid = newSid();
       E.load(mirrorPlexUrl(info, at || 0), info.title);
       S.view = { offset: Math.floor(at || 0), duration: info.dur };
+    } else if (info.live) {
+      const ref = (MIR.carNow && MIR.carNow.liveRef) || info.liveRef;
+      const lead = ref ? Object.assign({}, ref, { off: ref.off + carElapsed(MIR.carNow || info) + 1 }) : null;
+      E.load(info.url, info.title, { ts: !!info.ts, joinRef: lead });
     } else {
       E.load(info.url, info.title, { ts: !!info.ts });
+      MIR.firstJump = true;                    // jump to the car's spot once it's playing
     }
     S.autoplay = true;
   }
@@ -2013,11 +2030,11 @@
       document.querySelector('.pl-top').appendChild(b);
     }
     paintMirrorSound();
-    mirrorLoad(info.live ? 0 : (carPosNow() || 0));
+    mirrorLoad(carPosNow() || 0);
     MIR.timer = setInterval(mirrorSync, 1000);
   }
   function mirrorSync() {
-    if (!MIR || !S.loaded || MIR.info.live) return;
+    if (!MIR || !S.loaded) return;
     const n = MIR.carNow;
     if (!n || n.kind === 'idle') return;
     const carGoing = !!n.playing;   // false while the car is paused OR buffering
@@ -2027,9 +2044,18 @@
       else if (!carGoing && S.playing) E.togglePlay();
     }
     if (!S.started || !S.firstFrameAt || S.buffering || !carGoing) return;
-    const target = carPosNow();
+    const target = mirrorTarget();
     if (target == null) return;
     const diff = E.dispPos(E.mediaNow()) - target;
+    if (MIR.firstJump && E.canSeek()) {        // YouTube / links: start where the car is
+      MIR.firstJump = false;
+      if (Math.abs(diff) > 2) { E.seekTo(target + 0.5); MIR.fixing = Date.now() + 5000; return; }
+    }
+    if (MIR.info.live && Math.abs(diff) > 15) {
+      // live and far apart (e.g. the phone fell behind the broadcast): rejoin the car's chunk
+      if (Date.now() < MIR.fixing) return;
+      MIR.fixing = Date.now() + 30000; mirrorLoad(0); return;
+    }
     if (Math.abs(diff) > 15) {
       // A real jump (the car skipped). Reloading starts a new conversion on
       // the server, so do it at most once every 30 seconds.

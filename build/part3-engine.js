@@ -380,7 +380,7 @@ var Engine = (function () {
       // now a normal on-demand stream with a known end.
       S.isLive = false;
       S.duration = track.endOfKnown;
-    } else if (!S.isLive) {
+    } else if (!S.isLive || S.isEvent) {
       S.duration = Math.max(S.duration, track.endOfKnown);
     }
   }
@@ -402,11 +402,17 @@ var Engine = (function () {
     if (!pl.endList && pl.playlistType !== 'EVENT' && pl.segments.length > 4) {
       addSegments(track, pl);
       track.nextSeq = track.demuxSeq = pl.mediaSequence + pl.segments.length - 3;
+      // Joining another screen (play-along): start on the same broadcast
+      // chunk it's showing, if that chunk is still listed.
+      if (S.joinRef && S.tracks.length === 1 && track.segments[S.joinRef.seq]) track.nextSeq = track.demuxSeq = S.joinRef.seq;
       // Start the clock where we joined, not at the start of the
       // playlist window - otherwise the picture waits (looks frozen)
       // until the clock catches up with the segment we jumped to.
       var joinAt = track.segments[track.nextSeq];
-      if (joinAt && S.tracks.length === 1) { S.mediaTarget = joinAt.start; S.dropAudioBefore = joinAt.start; }
+      if (joinAt && S.tracks.length === 1) {
+        var into = S.joinRef && S.joinRef.seq === track.nextSeq ? Math.max(0, Math.min(joinAt.duration - 0.1, S.joinRef.off || 0)) : 0;
+        S.mediaTarget = joinAt.start + into; S.dropAudioBefore = S.mediaTarget;
+      }
     } else {
       addSegments(track, pl);
     }
@@ -609,9 +615,23 @@ var Engine = (function () {
     }
   }
 
+  function livePos() {
+    var tr = S.tracks[0]; if (!tr || !S.isLive || S.isEvent || S.mode !== 'hls') return null;
+    var t = mediaNow();
+    for (var k in tr.segments) {
+      var sg = tr.segments[k];
+      if (t >= sg.start && t < sg.start + sg.duration) return { seq: +k, off: +(t - sg.start).toFixed(3) };
+    }
+    return null;
+  }
+  function liveTimeOf(seq, off) {
+    var tr = S.tracks[0]; if (!tr) return null;
+    var sg = tr.segments[seq];
+    return sg ? sg.start + off : null;
+  }
   function dispPos(t) { return S.view ? S.view.offset + t : t; }
   function dispDur() { return S.view ? S.view.duration : S.duration; }
-  function canSeek() { return S.view ? S.view.duration > 0 : (!S.isLive && S.duration > 0); }
+  function canSeek() { return S.view ? S.view.duration > 0 : ((!S.isLive || S.isEvent) && S.duration > 0); }
 
   function updateTimeUi(t) {
     if (S.isLive && !S.view) { timeLabel.textContent = ''; return; }
@@ -654,7 +674,7 @@ var Engine = (function () {
     S.loaded = false; S.loading = false; S.started = false; S.playing = false; S.ended = false; S.autoplay = false;
     if (S.buffering) { S.buffering = false; }
     if (S.ctx && S.ctx.state === 'suspended') { try { S.ctx.resume(); } catch (e) {} }
-    S.mode = null; S.isLive = false; S.duration = 0; S.view = null; S.firstFrameAt = 0;
+    S.mode = null; S.isLive = false; S.isEvent = false; S.duration = 0; S.view = null; S.firstFrameAt = 0;
     S.tracks = []; S.mp4 = null; S.mp4VIdx = 0; S.mp4AIdx = 0;
     vSamples = []; aSamples = []; S.audioPtsQueue = [];
     closeFrames();
@@ -701,7 +721,7 @@ var Engine = (function () {
           if (gen !== S.gen) return;
           var vpl = dmParsePlaylist(vtext, variant.uri);
           if (vpl.encrypted || vpl.hasMap) throw new Error('the chosen variant is encrypted or fMP4 — not supported.');
-          S.duration = vpl.totalDuration; S.isLive = !vpl.endList;
+          S.duration = vpl.totalDuration; S.isLive = !vpl.endList; S.isEvent = S.isLive && vpl.playlistType === 'EVENT';
           makeTrack(variant.audioGroup ? 'video' : 'muxed', variant.uri, vpl);
           S.pendingStart = vpl;
           var audioUrl = null;
@@ -726,7 +746,7 @@ var Engine = (function () {
           readyUp(label);
         });
       }
-      S.duration = pl.totalDuration; S.isLive = !pl.endList;
+      S.duration = pl.totalDuration; S.isLive = !pl.endList; S.isEvent = S.isLive && pl.playlistType === 'EVENT';
       makeTrack('muxed', url, pl);
       applyStart(pl);
       readyUp(label);
@@ -849,6 +869,7 @@ var Engine = (function () {
     url = (url || '').trim();
     if (!url) { onEngineError('No stream address.'); return; }
     S.srcUrl = url; S.srcOpts = opts || null;
+    S.joinRef = opts && opts.joinRef ? opts.joinRef : null;
     if (opts && opts.ts) loadTs(url, label || 'channel');
     else if (/\.mp4($|\?)/i.test(url) && !/\.m3u8/i.test(url)) loadMp4(url, label || 'MP4 file');
     else loadHls(url, label || 'stream', opts);
@@ -857,7 +878,7 @@ var Engine = (function () {
 
   /* ---------- Seek / transport ---------- */
   function seekTo(t) {
-    if (!S.loaded || S.isLive || !(S.duration > 0)) return;
+    if (!S.loaded || (S.isLive && !S.isEvent) || !(S.duration > 0)) return;
     t = Math.max(0, Math.min(S.duration - 0.25, t));
     S.gen++;
     vSamples = []; aSamples = []; S.audioPtsQueue = [];
@@ -926,7 +947,7 @@ var Engine = (function () {
 
   return {
     S: S, hooks: hooks, hasWC: hasWC, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge,
-    load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo,
+    load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo, livePos: livePos, liveTimeOf: liveTimeOf,
     ensureCtx: ensureCtx, mediaNow: mediaNow, dispPos: dispPos, dispDur: dispDur, canSeek: canSeek,
     setStatus: setStatus, updateTimeUi: updateTimeUi
   };
