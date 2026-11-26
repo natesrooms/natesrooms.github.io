@@ -174,6 +174,7 @@
   /* phone playing along (mirror) */
   body.mirror-mode .pl-bottom .pl-row > :not(#btnFs), body.mirror-mode .seek { display: none !important; }
   body.mirror-mode .pl-bottom { padding-top: 10px; }
+  .pl-ahead { font-size: 13px; color: var(--dim); white-space: nowrap; }
   .skel-row { background: linear-gradient(90deg, #17191e 0%, #20232a 50%, #17191e 100%); background-size: 200% 100%; animation: shimmer 1.2s infinite linear; border-color: transparent; }
 
   .view { padding: 0 0 60px; min-height: calc(100vh - var(--navh)); }
@@ -492,6 +493,7 @@
     <div class="pl-ui">
       <div class="pl-top">
         <button class="pb" id="plBack" type="button">&larr; Back</button>
+        <button class="pb" id="plHome" type="button" aria-label="Home">&#8962; Home</button>
         <div>
           <div class="tt" id="plTitle"></div>
           <div class="ts" id="plSub"></div>
@@ -505,6 +507,7 @@
           <button class="pb" id="btnBack10" type="button" aria-label="Back 10 seconds">&#8634; 10</button>
           <button class="pb" id="btnFwd10" type="button" aria-label="Forward 30 seconds">30 &#8635;</button>
           <span class="timelabel" id="timeLabel"></span>
+          <span class="pl-ahead" id="plAhead" hidden></span>
           <span class="status" id="status"></span>
           <button class="pb" id="btnFs" type="button" aria-label="Fullscreen">&#9974;</button>
         </div>

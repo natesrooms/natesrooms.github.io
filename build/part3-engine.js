@@ -13,7 +13,7 @@ var Engine = (function () {
   var btnPlay = $('btnPlay'), seek = $('seek');
   var timeLabel = $('timeLabel'), statusEl = $('status');
   var ctx2d = canvas.getContext('2d');
-  var hooks = { onTeardown: null, onEnded: null, onBuffering: null, onState: null, onFirstFrame: null, onError: null };
+  var hooks = { onStreamGone: null, onTeardown: null, onEnded: null, onBuffering: null, onState: null, onFirstFrame: null, onError: null };
 
   var hasWC = (typeof VideoDecoder !== 'undefined') && (typeof AudioDecoder !== 'undefined');
 
@@ -426,6 +426,29 @@ var Engine = (function () {
     return prev ? prev.start + prev.duration : track.endOfKnown;
   }
 
+  /* Dead-zone buffer: for movies, shows and YouTube, keep downloading
+     minutes ahead while the signal is good, so playback carries on
+     through a stretch with no signal. A live broadcast can't be fetched
+     ahead of what's been aired, so it keeps a short buffer. The amount
+     is capped by memory (compressed video, about 160 MB at most). */
+  var AHEAD_MEM = 160e6;
+  function aheadLimitSec() {
+    if (S.isLive && !S.isEvent) return 14;
+    var want = Math.max(40, S.aheadMax || 300), bps = 0;
+    for (var i = 0; i < S.tracks.length; i++) {
+      var tr = S.tracks[i];
+      if (tr.secFetched > 4) bps += tr.bytesFetched / tr.secFetched;
+    }
+    return bps > 0 ? Math.max(40, Math.min(want, AHEAD_MEM / bps)) : 40;
+  }
+  // Seconds of video downloaded beyond what's playing (null: not known).
+  function bufferedAhead() {
+    if (S.mode !== 'hls' || !S.tracks.length || !S.loaded) return null;
+    var lo = Infinity;
+    for (var i = 0; i < S.tracks.length; i++) lo = Math.min(lo, S.tracks[i].done ? Infinity : fetchedUptoTime(S.tracks[i]));
+    if (lo === Infinity) return S.duration ? Math.max(0, S.duration - mediaNow()) : null;
+    return Math.max(0, lo - mediaNow());
+  }
   function maybeFetch(track) {
     if (track.fetching || track.done) return;
     if (track.retryAfter && performance.now() < track.retryAfter) return;
@@ -441,8 +464,7 @@ var Engine = (function () {
       }
       return;
     }
-    var aheadLimit = S.isLive ? 14 : 40;
-    if (track.hasFetchedOnce && S.started && fetchedUptoTime(track) - mediaNow() > aheadLimit) return;
+    if (track.hasFetchedOnce && S.started && fetchedUptoTime(track) - mediaNow() > aheadLimitSec()) return;
     if (track.hasFetchedOnce && !S.started && fetchedUptoTime(track) - S.mediaTarget > 12) return;
     fetchSegment(track, gen);
   }
@@ -472,6 +494,8 @@ var Engine = (function () {
         track.demuxer.push(buf);
       }
       track.failCount = 0;
+      track.bytesFetched = (track.bytesFetched || 0) + buf.length;
+      track.secFetched = (track.secFetched || 0) + (seg.duration || 0);
       track.nextSeq = seq + 1;
       if (track.nextSeq > track.lastSeq && track.endList) { track.demuxer.flush(); track.done = true; }
     }).catch(function (e) {
@@ -481,7 +505,14 @@ var Engine = (function () {
       // keeps failing is skipped — the next one is still useful.
       track.retryAfter = performance.now() + Math.min(8000, 1000 * Math.pow(2, track.failCount - 1));
       if (S.isLive && track.failCount >= 3) { track.nextSeq = seq + 1; track.failCount = 0; track.rebaseNext = true; }
-      if (track.failCount >= 2) setStatus('Weak connection — retrying (' + e.message + ')…', false);
+      // With minutes saved ahead, a dead zone isn't worth a warning yet.
+      var left = bufferedAhead();
+      if (track.failCount >= 2 && (left == null || left < 20)) setStatus('Weak connection — retrying (' + e.message + ')…', false);
+      // The server forgot this stream (e.g. Plex ended the session during
+      // a long dead zone): let the app restart it at the current spot.
+      if (!S.isLive && /HTTP 4\d\d/.test(e.message || '') && track.failCount >= 3 && hooks.onStreamGone) {
+        track.failCount = 0; hooks.onStreamGone(mediaNow());
+      }
     }).then(function () { if (gen === S.gen) track.fetching = false; });
   }
 
@@ -946,7 +977,7 @@ var Engine = (function () {
   });
 
   return {
-    S: S, hooks: hooks, hasWC: hasWC, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge,
+    S: S, hooks: hooks, hasWC: hasWC, bufferedAhead: bufferedAhead, fmt: fmt, fetchRead: fetchRead, setMuted: setMuted, nudge: nudge,
     load: load, teardown: teardown, togglePlay: togglePlay, seekTo: seekTo, livePos: livePos, liveTimeOf: liveTimeOf,
     ensureCtx: ensureCtx, mediaNow: mediaNow, dispPos: dispPos, dispDur: dispDur, canSeek: canSeek,
     setStatus: setStatus, updateTimeUi: updateTimeUi

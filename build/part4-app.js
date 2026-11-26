@@ -681,7 +681,7 @@
   }
 
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_iptv', 'dm_lists', 'dm_mychans', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
@@ -1379,6 +1379,13 @@
     root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Plex playback quality' }),
       h('p', { text: 'Lower quality uses less mobile data and is steadier on LTE. Plex converts the video on your server to fit.' }),
       h('div', { class: 'field' }, sel)));
+    // Dead-zone buffer
+    const ah = h('select', { onchange: (e) => { store.set('dm_ahead', +e.target.value); S.aheadMax = +e.target.value * 60; toast('Saved.'); } },
+      [[0, 'Off (about 40 seconds)'], [2, '2 minutes'], [5, '5 minutes (recommended)'], [10, '10 minutes']].map(([v, t]) => h('option', { value: String(v), text: t })));
+    ah.value = String(store.get('dm_ahead', 5));
+    root.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Dead-zone buffer' }),
+      h('p', { text: 'While the signal is good, movies, shows and YouTube download ahead so they keep playing through stretches with no signal. Live TV can only buffer a few seconds. Higher-quality video may save a bit less, to keep memory use safe.' }),
+      h('div', { class: 'field' }, ah)));
     // Own lists
     const listBox = h('div');
     const drawLists = () => {
@@ -1467,6 +1474,20 @@
     if (err) player.classList.remove('idle');
   }
   E.hooks.onState = refreshOverlay;
+  // Dead-zone buffer setting (minutes saved ahead), and a small "saved" readout.
+  const aheadMin = () => +store.get('dm_ahead', 5) || 0;
+  S.aheadMax = aheadMin() * 60;
+  setInterval(() => {
+    S.aheadMax = aheadMin() * 60;
+    const el = $('plAhead'); if (!el) return;
+    const b = playerOpen && S.started ? E.bufferedAhead() : null;
+    el.hidden = b == null || b < 45 || aheadMin() === 0;
+    if (!el.hidden) el.textContent = '⬇ ' + E.fmt(b) + ' saved';
+  }, 1000);
+  E.hooks.onStreamGone = () => {
+    if (MIR) { if (MIR.info.kind === 'plex') mirrorLoad(carPosNow() || 0); return; }
+    if (P && playerOpen) { E.setStatus('Reconnecting to Plex…'); startPlexAt(plexPos(), true); }
+  };
   let watchChannel = null;
   E.hooks.onError = (m) => {
     // Phone playing along: Plex often refuses the first stream request
@@ -1676,6 +1697,7 @@
     E.togglePlay(); showUi();
   });
   $('plBack').addEventListener('click', () => { if (MIR) { mirrorStop(); return; } if (sawAppView) history.back(); else go('#/home', true); });
+  $('plHome').addEventListener('click', () => { if (MIR) { mirrorStop(); return; } go('#/home'); });
   /* Full screen: one toggle for the whole app (menu button and the
      player's button do the same thing), so browsing and watching stay
      full screen together and the two can't fight each other. */
