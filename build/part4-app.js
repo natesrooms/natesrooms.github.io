@@ -866,6 +866,7 @@
   }
   // The same song stored twice (same artist, same title, same length within
   // 2 s) shows and plays once - the FLAC copy if there is one.
+  const songsN = (n) => n + (n === 1 ? ' song' : ' songs');
   function dedupeTracks(list) {
     const out = [], seen = new Map();
     list.forEach((t) => {
@@ -993,7 +994,7 @@
   function playlistCard(m) {
     return h('a', { class: 'pc sq', href: '#/music/playlist/' + enc(m.ratingKey) },
       artBox(mArt(m.composite || m.thumb), m.title, []), h('div', { class: 't', text: m.title }),
-      h('div', { class: 's', text: (m.leafCount || 0) + ' songs' }));
+      h('div', { class: 's', text: songsN(m.leafCount || 0) }));
   }
   function trackRow(t, i, all, showArtist, showAlbum) {
     return h('button', { class: 'podep', type: 'button', 'data-station': 'm' + t.rk, onclick: () => playMusic(all, i) },
@@ -1030,7 +1031,7 @@
         const meta = sec === 'album' ? pget('/library/metadata/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {}) : pget('/playlists/' + enc(a)).then((d) => (MC(d).Metadata || [])[0] || {});
         const items = pget(sec === 'album' ? '/library/metadata/' + enc(a) + '/children' : '/playlists/' + enc(a) + '/items').then((d) => dedupeTracks((MC(d).Metadata || []).map(trackItem)));
         return Promise.all([meta, items]).then(([m, tracks]) => {
-          body.appendChild(musicHero(mArt(m.composite || m.thumb, 600), m.title || '', sec === 'album' ? [m.parentTitle, m.year].filter(Boolean).join(' · ') : tracks.length + ' songs', () => tracks));
+          body.appendChild(musicHero(mArt(m.composite || m.thumb, 600), m.title || '', sec === 'album' ? [m.parentTitle, m.year].filter(Boolean).join(' · ') : songsN(tracks.length), () => tracks));
           body.appendChild(h('div', { class: 'pad podeps' }, tracks.map((t, i) => trackRow(t, i, tracks, sec === 'playlist' || t.artist !== m.parentTitle))));
           markPlayingCards();
           if (b === 'play' && !(radioNow && radioNow.music && MQ.list === tracks)) playMusic(tracks, 0, false, true);
@@ -1052,7 +1053,7 @@
           body.appendChild(h('div', { class: 'pod-hero pad' },
             h('div', { class: 'pod-cover round', style: { background: grad(m.title || '') } }, m.thumb ? h('img', { src: mArt(m.thumb, 600), alt: '' }) : null),
             h('div', { class: 'pod-info' }, h('h1', { text: m.title || '' }),
-              h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album · ' : ' albums · ') + songs.length + ' songs' }),
+              h('div', { class: 'pod-by', text: albums.length + (albums.length === 1 ? ' album · ' : ' albums · ') + songsN(songs.length) }),
               h('div', { class: 'btns' },
                 h('button', { class: 'btn red', type: 'button', onclick: () => playMusic(songs, 0, true) }, ic('shuffle'), 'Shuffle')))));
           // Sections like Plexamp: Albums, Singles & EPs, Compilations, Live, Soundtracks & remixes.
@@ -1381,7 +1382,7 @@
         const mark = h('span', { class: 'pl-mark' });
         let itemId = null;
         const row = h('button', { type: 'button', class: 'plist-row' }, h('div', { class: 'pl-art', style: { background: grad(p.title) } }, p.composite ? h('img', { src: mArt(p.composite, 120), alt: '' }) : null),
-          h('div', { class: 'pl-t' }, h('div', { class: 't', text: p.title }), h('div', { class: 's', text: (p.leafCount || 0) + ' songs' })), mark);
+          h('div', { class: 'pl-t' }, h('div', { class: 't', text: p.title }), h('div', { class: 's', text: songsN(p.leafCount || 0) })), mark);
         const paint = () => { row.classList.toggle('in', !!itemId); mark.replaceChildren(ic(itemId ? 'check' : 'plus')); };
         paint();
         // already in this playlist? (tap again to take it out)
@@ -1566,6 +1567,11 @@
   function render(r) {
     if (currentKey !== null) { const c = cache.get(currentKey); if (c) c.y = window.scrollY; }
     currentKey = r.key;
+    // Set the tab title on every visit (cached pages too, which skip the build below)
+    const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', youtube: 'YouTube',
+      music: 'Music', radio: 'Radio', podcasts: 'Podcasts', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
+    const tt = r.name === 'library' ? (r.args[1] === 'show' ? 'TV Shows' : 'Movies') : TITLES[r.name];
+    document.title = (tt ? tt + ' · ' : '') + 'Nate’s Theater';
     document.querySelectorAll('#tabs a').forEach((a) => a.classList.toggle('on',
       a.dataset.tab === r.name || (a.dataset.tab === 'audio' && (r.name === 'radio' || r.name === 'podcasts' || r.name === 'music')) || (r.name === 'library' && a.dataset.tab === (r.args[1] === 'show' ? 'tv' : 'movies'))));
     const hit = cache.get(r.key);
@@ -1579,9 +1585,6 @@
     view.replaceChildren(node);
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
-    const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', youtube: 'YouTube',
-      radio: 'Radio', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
-    document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
     if (!['settings', 'signin', 'profiles', 'remote', 'movies', 'tv'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
     if (cache.size > 20) cache.delete(cache.keys().next().value);
     try { fn(node, r.args); } catch (e) { node.appendChild(msg('Something went wrong on this page: ' + e.message, true)); }
@@ -2092,36 +2095,48 @@
     root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: q ? `Results for “${q}”` : 'Search' })));
     root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, h('div', { class: 'bigsearch' }, ic('search'), box), h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
     if (!q) { setTimeout(() => box.focus(), 50); return; }
-    const slots = [h('div'), h('div'), h('div'), h('div')]; slots.forEach((s) => root.appendChild(s));
+    // slots keep the sections in a fixed order however fast each answers: video, music, live TV, YouTube, radio
+    const slots = [h('div'), h('div'), h('div'), h('div'), h('div')]; slots.forEach((s) => root.appendChild(s));
     const ql = q.toLowerCase();
     let any = false;
     const none = msg('Searching…'); root.appendChild(none);
     const done = [];
     if (plex.auth) {
       done.push(pget('/hubs/search?query=' + enc(q) + '&limit=20').then((d) => {
-        (MC(d).Hub || []).forEach((hub) => {
-          const items = (hub.Metadata || []).filter((m) => ['movie', 'show', 'episode'].includes(m.type));
-          if (!items.length) return;
-          any = true;
-          const r = row(hub.title || 'Plex');
-          items.forEach((m) => r.scroller.appendChild(plexCard(m)));
-          slots[0].appendChild(r.sec);
-        });
+        const ORDER = ['movie', 'show', 'episode', 'artist', 'album', 'track'];
+        (MC(d).Hub || []).filter((hub) => ORDER.includes(hub.type))
+          .sort((x, y) => ORDER.indexOf(x.type) - ORDER.indexOf(y.type)).forEach((hub) => {
+            const items = (hub.Metadata || []).filter((m) => m.type === hub.type);
+            if (!items.length) return;
+            if (hub.type === 'track') {
+              const tracks = dedupeTracks(items.map((m) => trackItem(m)).filter((t) => t.part)).slice(0, 8);
+              if (!tracks.length) return;
+              any = true;
+              slots[1].appendChild(h('div', { class: 'pad' }, h('h2', { text: 'Songs' }),
+                h('div', { class: 'podeps' }, tracks.map((t, i) => trackRow(t, i, tracks, true, true)))));
+              return;
+            }
+            any = true;
+            const music = hub.type === 'artist' || hub.type === 'album';
+            const r = row(hub.title || 'Plex');
+            items.forEach((m) => r.scroller.appendChild(hub.type === 'artist' ? artistCard(m) : hub.type === 'album' ? albumCard(m) : plexCard(m)));
+            slots[music ? 1 : 0].appendChild(r.sec);
+          });
       }).catch(() => {}));
     }
     done.push((plex.auth ? plexLive() : Promise.resolve([])).then((l) => {
       const chans = favs().concat(l).filter((c, i, a) => a.findIndex((x) => x.url === c.url) === i)
         .filter((c) => (c.name + ' ' + (c.cat || '')).toLowerCase().includes(ql)).slice(0, 40);
       if (!chans.length) return; any = true;
-      const r = row('Live TV'); chans.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[1].appendChild(r.sec);
+      const r = row('Live TV'); chans.forEach((c) => r.scroller.appendChild(channelCard(c))); slots[2].appendChild(r.sec);
     }).catch(() => {}));
     done.push(ytSearch(q, 16).then((res) => {
       if (!res.length) return; any = true;
-      const r = row('YouTube', '#/youtube/' + enc(q)); res.forEach((x) => r.scroller.appendChild(ytCard(x))); slots[2].appendChild(r.sec);
+      const r = row('YouTube', '#/youtube/' + enc(q)); res.forEach((x) => r.scroller.appendChild(ytCard(x))); slots[3].appendChild(r.sec);
     }).catch(() => {}));
     done.push(radioSearch({ name: q, countrycode: 'US', limit: '16' }).then((list) => {
       if (!list.length) return; any = true;
-      const r = row('Radio'); list.forEach((st) => r.scroller.appendChild(stationCard(st))); slots[3].appendChild(r.sec);
+      const r = row('Radio'); list.forEach((st) => r.scroller.appendChild(stationCard(st))); slots[4].appendChild(r.sec);
     }).catch(() => {}));
     Promise.all(done).then(() => { none.remove(); if (!any) root.appendChild(h('div', { class: 'empty', text: 'Nothing found.' })); });
   };

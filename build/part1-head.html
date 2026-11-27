@@ -747,6 +747,7 @@
     .grid.posters { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .grid.wide { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     .grid.sq { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+    .grid .pc.sq { width: auto; }   /* fit the grid column (the fixed width above is for scrolling rows) */
     #view:has(.azbar) .grid.posters, #view:has(.azbar) .grid.az { padding-right: 34px; }
     .azbar button { padding: 0 7px; }
     .hero { min-height: 300px; } .hero .in { padding: 30px 14px 22px; }
