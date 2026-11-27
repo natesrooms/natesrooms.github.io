@@ -3446,7 +3446,18 @@
   });
   if (store.get('dm_remote_car', null)) carRemoteStart().catch(() => {});
   route();
-  setTimeout(() => { const sp = $('splash'); if (sp) { sp.classList.add('gone'); setTimeout(() => sp.remove(), 500); } }, 450);
+  // Launch screen: stays until the first page has real content (at least 1.2 s, at most 5 s), then fades out.
+  (() => {
+    const sp = $('splash'); if (!sp) return;
+    const t0 = Date.now();
+    const ready = () => !!document.querySelector('#view .pc, #view .podep, #view .gd-row, #view .card, #view .center-card, #view .empty, .rm-now, .rm-connect');
+    const tick = () => {
+      const waited = Date.now() - t0;
+      if ((waited >= 1200 && ready()) || waited >= 5000) { sp.classList.add('gone'); setTimeout(() => sp.remove(), 800); return; }
+      setTimeout(tick, 150);
+    };
+    tick();
+  })();
   startProfileReset();
   // Test hook (only when a tester sets dm_debug on this device): read the player clock from outside.
   if (store.get('dm_debug', false)) window.__T = { E, S, mir: () => MIR, now: () => serverNow() };
