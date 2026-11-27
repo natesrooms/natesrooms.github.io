@@ -53,7 +53,9 @@
   .pb:active, .chip:active, .navfs:active, .row-arrow:active, .seg a:active { transform: scale(.95); }
   /* ---------- Page and card motion ---------- */
   @keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  #view > div.fresh { animation: viewIn .28s var(--ease) both; }
+  /* A plain fade (no slide): a moving page would pin the A–Z bar to the page instead of the screen. */
+  @keyframes viewFade { from { opacity: 0; } to { opacity: 1; } }
+  #view > div.fresh { animation: viewFade .25s ease-out; }
   .pc { transition: transform .15s var(--ease); }
   .pc:active { transform: scale(.97); }
   @media (hover: hover) and (pointer: fine) {
