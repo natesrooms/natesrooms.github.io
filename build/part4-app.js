@@ -465,24 +465,6 @@
       raw.match(/\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/);
     return m ? m[1] : null;
   }
-  /* Send to car: turn a shared or pasted link into something the car can
-     play. YouTube (videos, Shorts, live) and direct video links for now. */
-  function linkTarget(text, title) {
-    text = String(text || '');
-    const id = ytIdFrom(text) || (text.match(/https?:\/\/\S+/g) || []).map(ytIdFrom).find(Boolean);
-    if (id) return { hash: '#/watch/yt/' + enc(id) + '/' + enc((title || 'YouTube video').slice(0, 120)), label: title || 'YouTube video' };
-    const url = (text.match(/https?:\/\/[^\s"'<>]+/) || [])[0];
-    if (url && /\.(m3u8|mp4|m4v|mov|ts)(\?|#|$)/i.test(url)) return { hash: '#/watch/url/' + enc(url), label: 'Video link' };
-    if (!url) return null;
-    let host = '';
-    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return null; }
-    // Subscription services lock their video (DRM): nothing outside their own app can play it.
-    if (DRM_SITES.test(host)) return { unsupported: url, drm: true };
-    // Any other site: the home helper finds the video on the page and converts it.
-    const label = (title || host).slice(0, 120);
-    return { hash: '#/watch/site/' + enc(url) + '/' + enc(label), label };
-  }
-  const DRM_SITES = /(^|\.)(netflix|hulu|disneyplus|max|hbomax|primevideo|amazon|peacocktv|paramountplus|tv\.apple|apple|sling|fubo|spotify|crunchyroll|starz|showtime|discoveryplus|espn)\.(com|tv)$/i;
   const ytCache = {};
   function ytSearch(q, n) {
     const key = q + '|' + (n || 24);
@@ -594,14 +576,13 @@
     paintStar(star, isRadioFav(st));
     const pp = h('button', { class: 'pb', type: 'button', 'aria-label': 'Pause', onclick: () => { if (radio.paused) { radio.play(); pp.replaceChildren(ic('pause')); } else { radio.pause(); pp.replaceChildren(ic('play')); } } }, ic('pause'));
     radioSongEl = h('div', { class: 'rb-song', hidden: true });
-    const getBtn = h('button', { class: 'pb rb-get', type: 'button', 'aria-label': 'Add this song to your Get list', onclick: () => addToGetList(null) }, ic('plus'), 'Get');
     radioBar.replaceChildren(
       h('div', { class: 'rb-logo', style: { background: grad(st.name) } },
         okUrl(st.favicon || '') ? h('img', { src: st.favicon, alt: '', onerror: (e) => e.currentTarget.remove() }) : null),
       h('div', { class: 'rb-txt' }, h('div', { class: 'rb-n', text: st.name }),
         radioSongEl,
         h('div', { class: 'rb-s', text: ['Live radio', (st.tags || '').split(',').filter(Boolean).slice(0, 2).join(', '), st.bitrate ? st.bitrate + ' kbps' : ''].filter(Boolean).join(' · ') })),
-      getBtn, star, pp,
+      star, pp,
       h('button', { class: 'pb', type: 'button', 'aria-label': 'Stop', onclick: stopRadio }, ic('close'))
     );
     markPlayingCards();
@@ -639,37 +620,9 @@
       if (REM.room) publishNow(true);
     }).catch(() => {}).finally(() => { if (radioNow === st) songTimer = setTimeout(pollSong, document.hidden ? 60000 : 20000); });
   }
-  const getList = () => store.get('dm_getlist', []);
-  // Songs from the Get list that turn up in your Plex music go into this Plex
-  // playlist (so they show in Plexamp too). Plex playlists can only hold songs you own.
-  const RADIO_PL = 'Heard on the radio';
   function pwrite(method, path) {
     return ensurePlex().then((c) => fetch(c.base + path + (path.includes('?') ? '&' : '?') + plexQS(c.token), { method, headers: { Accept: 'application/json' } })
       .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json().catch(() => ({})); }));
-  }
-  function addToRadioPlaylist(rk) {
-    return Promise.all([pget('/identity'), pget('/playlists?playlistType=audio')]).then(([idd, pls]) => {
-      const uri = enc('server://' + MC(idd).machineIdentifier + '/com.plexapp.plugins.library/library/metadata/' + rk);
-      const pl = (MC(pls).Metadata || []).find((x) => x.title === RADIO_PL && !x.smart);
-      return pl ? pwrite('PUT', '/playlists/' + pl.ratingKey + '/items?uri=' + uri) : pwrite('POST', '/playlists?type=audio&smart=0&title=' + enc(RADIO_PL) + '&uri=' + uri);
-    });
-  }
-  function addToGetList(song, checked) {
-    const st = radioNow;
-    // No song known yet (the station just started)? Ask right now before deciding.
-    if (!checked && !song && !radioSong && st && !st.pod && !st.music && st.url_resolved) {
-      toast('Checking what’s playing…');
-      E.fetchRead(ytBase() + '/nowplaying?u=' + enc(st.url_resolved), 'json', 12000)
-        .then((d) => { if (radioNow === st) radioSong = parseSong(d && d.title, st); })
-        .catch(() => {}).finally(() => { if (radioNow === st) addToGetList(radioSong, true); });
-      return;
-    }
-    const s = song || radioSong;
-    const l = getList();
-    if (s && l.some((x) => x.song.toLowerCase() === s.song.toLowerCase() && (x.artist || '').toLowerCase() === (s.artist || '').toLowerCase())) { toast('Already on your Get list'); return; }
-    l.unshift({ id: Date.now().toString(36), song: s ? s.song : '', artist: s ? s.artist : '', station: st && !st.pod && !st.music ? st.name : '', at: Date.now() });
-    store.set('dm_getlist', l.slice(0, 300)); invalidate('music');
-    toast(s ? '＋ Added “' + s.song + '” to your Get list (Music → Get list)' : 'This station doesn’t say the song — saved the station and time to your Get list.');
   }
   function stopRadio() { clearTimeout(songTimer); radioSong = null; if (radioNow && radioNow.pod) savePodNow(); if (radioNow && radioNow.music && 'mediaSession' in navigator) { try { navigator.mediaSession.metadata = null; } catch (e) {} } radio.pause(); radio.removeAttribute('src'); radioNow = null; if (radioBar) radioBar.hidden = true; markPlayingCards(); }
   function stationCard(st) {
@@ -1164,44 +1117,10 @@
         }).catch(fail);
       }
       // Three tabs: For you (recent + suggestions), every artist, every album (both with A–Z).
-      const tab = sec === 'artists' || sec === 'albums' || sec === 'get' ? sec : 'foryou';
-      head.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: 'For you', icon: 'sparkle' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' },
-        { id: 'get', label: 'Get list' + (getList().length ? ' (' + getList().length + ')' : ''), icon: 'bag' }],
+      const tab = sec === 'artists' || sec === 'albums' ? sec : 'foryou';
+      head.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: 'For you', icon: 'sparkle' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' }],
         tab, (c) => c.id === 'foryou' ? '#/music' : '#/music/' + c.id)));
       const hubCard = (m) => m.type === 'artist' ? artistCard(m) : m.type === 'playlist' ? playlistCard(m) : albumCard(m);
-      if (tab === 'get') {
-        const l = getList();
-        if (!l.length) { body.appendChild(h('div', { class: 'empty', text: 'Hear a song you like on the radio? Tap ＋ Get on the radio bar and it lands here.' })); return; }
-        const box = h('div', { class: 'pad podeps' }); body.appendChild(box);
-        const draw = () => {
-          box.replaceChildren(...getList().map((x) => {
-            const q = [x.artist, x.song].filter(Boolean).join(' ');
-            const when = new Date(x.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-            const lib = h('span');
-            const row = h('div', { class: 'getrow' },
-              h('div', { class: 'podep-txt' }, h('div', { class: 't', text: x.song || 'Song not named by the station' }),
-                h('div', { class: 's', text: [x.artist, (x.station ? 'heard on ' + x.station : ''), when].filter(Boolean).join(' · ') })),
-              lib,
-              q ? h('a', { class: 'btn ghost', href: '#/youtube/' + enc(q) }, ic('play'), 'YouTube') : null,
-              h('button', { class: 'btn ghost', type: 'button', 'aria-label': 'Remove', onclick: () => { store.set('dm_getlist', getList().filter((y) => y.id !== x.id)); draw(); } }, ic('close')));
-            // Already in your music? Then offer to play it from there.
-            if (x.song) pget('/hubs/search?query=' + enc(x.song) + '&sectionId=' + sk + '&limit=10').then((d) => {
-              const tr = []; (MC(d).Hub || []).forEach((hb) => { if (hb.type === 'track') (hb.Metadata || []).forEach((m) => tr.push(m)); });
-              const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-              const hit = tr.find((m) => norm(m.title) === norm(x.song) && (!x.artist || norm(m.originalTitle || m.grandparentTitle).includes(norm(x.artist).slice(0, 6))));
-              if (!hit) return;
-              lib.replaceWith(h('button', { class: 'btn red', type: 'button', onclick: () => playMusic([hit], 0) }, ic('check'), 'In your music — play'));
-              if (!x.pl) addToRadioPlaylist(hit.ratingKey).then(() => {
-                store.set('dm_getlist', getList().map((y) => y.id === x.id ? Object.assign(y, { pl: true }) : y));
-                toast('Added “' + x.song + '” to your “' + RADIO_PL + '” playlist in Plex');
-              }).catch(() => {});
-            }).catch(() => {});
-            return row;
-          }));
-        };
-        draw();
-        return;
-      }
       if (tab === 'foryou') {
         const sRecent = h('div'), sMood = h('div'), sHubs = h('div'), sRandom = h('div'), sPl = h('div'), sNew = h('div');
         body.append(sRecent, sPl, sMood, sHubs, sRandom, sNew);
@@ -1308,7 +1227,7 @@
       if (lyricsOn && !n.pod) fillLyrics(lyrBox, n);
       const ctrls = n.music ? [btn('prev', 'Previous', musicPrev), pp, btn('next', 'Next', musicNext), btn('plus', 'Add to a playlist', () => openPlaylistSheet(n.t))]
         : n.pod ? [btn('back', 'Back 15 seconds', () => podSkip(-15), h('small', { text: '15' })), pp, btn('fwd', 'Forward 30 seconds', () => podSkip(30), h('small', { text: '30' }))]
-        : [btn('plus', 'Add this song to your Get list', () => addToGetList(null)), pp, btn('close', 'Stop', () => { stopRadio(); closeNowPlaying(); })];
+        : [pp, btn('close', 'Stop', () => { stopRadio(); closeNowPlaying(); })];
       npEl.replaceChildren(
         h('div', { class: 'np-bg', style: art ? { backgroundImage: 'url("' + art + '")' } : { background: grad(title) } }),
         h('div', { class: 'np-shade' }),
@@ -1568,7 +1487,7 @@
   }
 
   /* ---------- Backup / restore of everything saved on this screen ---------- */
-  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_tone', 'dm_music_q', 'dm_getlist', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
+  const SAVED_KEYS = ['dm_plex_auth', 'dm_plex_user', 'dm_plex_conn', 'dm_plex_client_v2', 'dm_favs', 'dm_quality', 'dm_ahead', 'dm_voice', 'dm_pic', 'dm_color', 'dm_tone', 'dm_music_q', 'dm_podsubs', 'dm_podpos', 'dm_podspeed', 'dm_yt_base', 'dm_yt_lastq'];
   function backupCard() {
     const box = h('textarea', { rows: '4', spellcheck: 'false', style: { width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '12px', padding: '12px', fontSize: '14px', fontFamily: 'monospace' } });
     const st = msg('');
@@ -1596,58 +1515,6 @@
   }
 
 
-
-  /* ---------- Location (the browser's own location permission) ----------
-     Used only on this screen: shown in Settings and used to center the
-     traffic map. The last position is kept in this browser so the map
-     can open near the car even before a fresh fix arrives. */
-  function getPosition(timeoutMs) {
-    return new Promise((resolve, reject) => {
-      if (!('geolocation' in navigator)) { reject(new Error('this browser has no location support')); return; }
-      if (!window.isSecureContext) { reject(new Error('location only works on the secure (https) site')); return; }
-      navigator.geolocation.getCurrentPosition((p) => {
-        const pos = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, speed: p.coords.speed, at: Date.now() };
-        store.set('dm_lastpos', pos);
-        resolve(pos);
-      }, (err) => {
-        const why = err.code === 1 ? 'location permission was declined — allow it for this site in the browser, then try again'
-          : err.code === 3 ? 'no location fix yet (timed out) — try again in a moment'
-          : 'the car didn’t provide a location';
-        reject(new Error(why));
-      }, { enableHighAccuracy: true, timeout: timeoutMs || 15000, maximumAge: 30000 });
-    });
-  }
-  function fmtPos(p) {
-    const mph = p.speed != null && p.speed >= 0 ? ` · ${Math.round(p.speed * 2.23694)} mph` : '';
-    return `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} (within about ${Math.round(p.acc)} m)${mph}`;
-  }
-  function locationCard() {
-    const out = h('div', { class: 'kv', style: { marginTop: '12px' } });
-    const st = msg('');
-    let watchId = null, updates = 0;
-    const stop = () => { if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } };
-    const run = () => {
-      stop(); updates = 0; out.replaceChildren();
-      st.textContent = 'Asking the car for its location… (the browser may ask you to allow it)'; st.className = 'msg';
-      getPosition(20000).then((p) => {
-        st.textContent = 'Location is available — the car shares its position with this site.';
-        const posEl = h('span', { text: fmtPos(p) }), updEl = h('span', { text: '1 (watching for 60 seconds)' });
-        out.replaceChildren(h('b', { text: 'Position' }), posEl, h('b', { text: 'Updates' }), updEl,
-          h('b', { text: 'Map' }), h('a', { href: '#/traffic', style: { textDecoration: 'underline' }, text: 'Open the traffic map here' }));
-        updates = 1;
-        watchId = navigator.geolocation.watchPosition((q) => {
-          updates++;
-          const pos = { lat: q.coords.latitude, lon: q.coords.longitude, acc: q.coords.accuracy, speed: q.coords.speed, at: Date.now() };
-          store.set('dm_lastpos', pos);
-          posEl.textContent = fmtPos(pos); updEl.textContent = updates + ' (watching for 60 seconds)';
-        }, () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
-        setTimeout(() => { stop(); updEl.textContent = updates + ' in 60 seconds' + (updates > 3 ? ' — live updates work' : ''); }, 60000);
-      }).catch((e) => { st.textContent = 'No location: ' + e.message + '.'; st.className = 'msg err'; });
-    };
-    return h('div', { class: 'card' }, h('h2', { text: 'Location' }),
-      h('p', { text: 'Checks whether the car shares its GPS position with this site. Your position stays on this screen — it’s only used to center the traffic map.' }),
-      h('button', { class: 'btn ghost', type: 'button', text: 'Test my location', onclick: run }), out, st);
-  }
 
   /* =====================================================================
      Router
@@ -1707,10 +1574,10 @@
     view.replaceChildren(node);
     window.scrollTo(0, 0);
     const fn = VIEWS[r.name] || VIEWS.home;
-    const TITLES = { home: '', games: 'Trivia Night', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', youtube: 'YouTube',
-      radio: 'Radio', traffic: 'Traffic', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
+    const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', youtube: 'YouTube',
+      radio: 'Radio', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
     document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
-    if (!['settings', 'signin', 'profiles', 'remote', 'movies', 'tv', 'games'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
+    if (!['settings', 'signin', 'profiles', 'remote', 'movies', 'tv'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
     if (cache.size > 20) cache.delete(cache.keys().next().value);
     try { fn(node, r.args); } catch (e) { node.appendChild(msg('Something went wrong on this page: ' + e.message, true)); }
   }
@@ -2150,35 +2017,7 @@
       body.replaceChildren();
       if (!res.length) { body.appendChild(h('div', { class: 'empty', text: 'No results.' })); return; }
       const grid = h('div', { class: 'grid wide' }); res.forEach((r) => grid.appendChild(ytCard(r))); body.appendChild(grid);
-    }).catch((e) => body.replaceChildren(msg('The YouTube helper at home isn’t answering (' + e.message + '). Its address is in Settings.', true)));
-  };
-
-  /* ---------- Traffic (Waze live map) ---------- */
-  function wazeEmbed(lat, lon, zoom) {
-    return `https://embed.waze.com/iframe?zoom=${zoom}&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&pin=1&ct=livemap`;
-  }
-  VIEWS.traffic = (root) => {
-    const note = h('div', { class: 'msg', style: { padding: '8px 0 0' } });
-    const frame = h('iframe', { class: 'wazeframe', title: 'Waze live traffic map', loading: 'eager', referrerpolicy: 'no-referrer',
-      allow: 'geolocation' });
-    const show = (p, zoom, label) => { frame.src = wazeEmbed(p.lat, p.lon, zoom); note.textContent = label; };
-    const centre = () => {
-      note.textContent = 'Finding the car…';
-      getPosition(12000).then((p) => show(p, 14, 'Centered on the car · live traffic, police, hazards and accidents from Waze drivers.'))
-        .catch((e) => {
-          const last = store.get('dm_lastpos', null);
-          if (last) show(last, 13, `Showing the last known position (${new Date(last.at).toLocaleString()}) — ${e.message}.`);
-          else show({ lat: 39.5, lon: -98.35 }, 4, 'Couldn’t get the car’s location (' + e.message + '). Drag and zoom the map to your area.');
-        });
-    };
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Traffic' }),
-      h('div', { class: 'btns' },
-        h('button', { class: 'btn ghost', type: 'button', text: '◎ Center on car', onclick: centre }),
-        h('a', { class: 'btn ghost', href: 'https://www.waze.com/live-map/', target: '_blank', rel: 'noopener', text: 'Open Waze live map' }))));
-    root.appendChild(h('div', { class: 'pad' }, note, frame));
-    const last = store.get('dm_lastpos', null);
-    if (last) show(last, 13, 'Showing the last known position while finding the car…');
-    centre();
+    }).catch((e) => body.replaceChildren(msg('The YouTube helper at home isn’t answering (' + e.message + ').', true)));
   };
 
   /* ---------- Radio ---------- */
@@ -2414,31 +2253,9 @@
       h('div', { class: 'btns' }, h('button', { class: 'btn ghost', type: 'button', onclick: showRemotePairing }, ic('phone'), 'Show pairing code (car)'),
         h('a', { class: 'btn ghost', href: '#/remote', text: 'Use this device as the remote' }))));
     root.appendChild(backupCard());
-    const adv = h('details', { class: 'card adv' }, h('summary', { text: 'Advanced' }),
-      h('div', { class: 'btns', style: { marginTop: '12px' } }, h('a', { class: 'btn ghost', href: '#/traffic' }, ic('map'), 'Traffic map (Waze)')),
-      locationCard());
+    const adv = h('details', { class: 'card adv' }, h('summary', { text: 'About' }));
     root.appendChild(adv);
-    // Direct stream
-    const du = h('input', { type: 'text', placeholder: 'https://example.com/stream.m3u8', autocapitalize: 'off', spellcheck: 'false' });
-    adv.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Play a link' }),
-      h('p', { text: 'Paste an HLS (.m3u8) address or a direct MP4 file. MP4 files download fully before they start.' }),
-      h('div', { class: 'field' }, du,
-        h('button', { class: 'btn red', type: 'button', text: 'Play', onclick: () => { if (du.value.trim()) go('#/watch/url/' + enc(du.value.trim())); } }),
-        h('a', { class: 'btn ghost', href: '#/watch/url/' + enc('https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8'), text: 'Test stream' }))));
-    // YouTube helper
-    const yb = h('input', { type: 'text', value: store.get('dm_yt_base', '') || '', placeholder: YT_DEFAULT, autocapitalize: 'off', spellcheck: 'false' });
-    const ys = msg('');
-    adv.appendChild(h('div', { class: 'card' }, h('h2', { text: 'Home helper address' }),
-      h('p', { text: 'YouTube plays through the helper on your home NAS, which converts videos into a format this player can draw. Leave empty for the built-in address.' }),
-      h('div', { class: 'field' }, yb,
-        h('button', { class: 'btn ghost', type: 'button', text: 'Save & check', onclick: () => {
-          store.set('dm_yt_base', yb.value.trim() || null);
-          Object.keys(ytCache).forEach((k) => delete ytCache[k]);
-          ys.textContent = 'Checking…'; ys.className = 'msg';
-          E.fetchRead(ytBase() + '/health', 'text', 8000).then(() => { ys.textContent = 'Helper is answering.'; })
-            .catch((e) => { ys.textContent = 'Helper not reachable: ' + e.message; ys.className = 'msg err'; });
-        } })), ys));
-    adv.appendChild(h('div', { class: 'card' }, h('h2', { text: 'About' }),
+    adv.appendChild(h('div', { class: 'card' },
       h('p', { text: 'Nate’s Theater draws the picture itself with WebCodecs on a canvas instead of using the browser’s video player — the part Tesla pauses outside Park. While the car is moving, it’s for the passenger only. DRM services (Netflix, Disney+ and similar) can’t play this way; use the car’s own apps while parked.' })));
   };
 
@@ -3104,224 +2921,7 @@
       h('button', { class: 'pb', type: 'button', 'aria-label': 'Skip this request', onclick: () => { REQ.list = REQ.list.filter((y) => y !== top); publishQueue(); } }, ic('close')));
   }
 
-  /* =====================================================================
-     Trivia Night (car = the board, phones = the buttons)
-     Questions: The Trivia API (free), plus rounds from your own library:
-     a 12 s clip of one of your songs (name the artist) and a blurred still
-     from one of your movies that sharpens as the clock runs (name the movie).
-     The car keeps the game and shares it in the "game" slot; phones answer
-     with commands. Points: 500 for right + up to 500 for speed.
-     ===================================================================== */
-  const TRIVIA_CATS = [
-    { id: 'mymusic', label: 'Your music (song clips)', icon: 'music' },
-    { id: 'mymovies', label: 'Your movies', icon: 'film' },
-    { id: 'music', label: 'Music' }, { id: 'film_and_tv', label: 'Movies & TV' }, { id: 'geography', label: 'Geography' },
-    { id: 'general_knowledge', label: 'General' }, { id: 'history', label: 'History' }, { id: 'sport_and_leisure', label: 'Sports' },
-    { id: 'science', label: 'Science' }, { id: 'food_and_drink', label: 'Food' }];
-  const Q_SECONDS = 20, REVEAL_SECONDS = 6;
-  const G = { phase: 'off', players: [], qs: [], qi: -1, endsAt: 0, answers: {}, timer: 0, readAloud: store.get('dm_trivia_voice', true) };
-  const canSpeak = () => 'speechSynthesis' in window;
-  function say(text) {
-    if (!G.readAloud || !canSpeak()) return;
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.02; speechSynthesis.speak(u); } catch (e) {}
-  }
-  function gamePlayers() { return G.players; }
-  function gameState() {
-    const q = G.qs[G.qi];
-    return { phase: G.phase, qi: G.qi, total: G.qs.length, endsAt: G.endsAt - Date.now() + serverNow(),
-      q: q ? { text: q.text, opts: q.opts, cat: q.catLabel, kind: q.kind } : null,
-      answered: Object.keys(G.answers), players: G.players.map((p) => ({ pid: p.pid, name: p.name, score: p.score })),
-      reveal: G.phase === 'reveal' && q ? { correct: q.correct, results: G.lastResults || {} } : null };
-  }
-  function publishGame() { if (REM.room) postSlot('game', gameState()); drawGame(); }
-  function joinPlayer(pid, name) {
-    pid = String(pid || '').slice(0, 60); if (!pid) return;
-    const p = G.players.find((x) => x.pid === pid);
-    if (p) p.name = String(name || p.name).slice(0, 20); else { G.players.push({ pid, name: String(name || 'Player').slice(0, 20), score: 0 }); toast((name || 'A player') + ' joined Trivia Night'); }
-    publishGame();
-  }
-  const shuffle4 = (l) => shuffled(l);
-  function triviaApi(cat, n) {
-    return fetch('https://the-trivia-api.com/v2/questions?limit=' + n + '&categories=' + cat + '&difficulties=easy,medium')
-      .then((r) => r.ok ? r.json() : []).then((l) => l.map((x) => {
-        const opts = shuffle4([x.correctAnswer].concat(x.incorrectAnswers.slice(0, 3)));
-        return { kind: 'text', text: x.question.text, opts, correct: opts.indexOf(x.correctAnswer), catLabel: (TRIVIA_CATS.find((c) => c.id === cat) || {}).label || 'Trivia' };
-      })).catch(() => []);
-  }
-  function libSongs(n) {
-    return musicSections().then((s) => {
-      if (!s.length) return [];
-      const k = s[0].key;
-      return Promise.all([pget('/library/sections/' + k + '/all?type=10&sort=random&X-Plex-Container-Start=0&X-Plex-Container-Size=' + (n * 3)),
-        pget('/library/sections/' + k + '/all?type=8&X-Plex-Container-Start=0&X-Plex-Container-Size=400')]).then(([dt, da]) => {
-        const artists = (MC(da).Metadata || []).map((x) => x.title).filter((t) => !/various/i.test(t));
-        const seen = {}, out = [];
-        (MC(dt).Metadata || []).forEach((t) => {
-          const who = t.originalTitle || t.grandparentTitle; if (!who || /various/i.test(who) || seen[who] || out.length >= n) return;
-          seen[who] = 1;
-          const wrong = shuffled(artists.filter((x) => x !== who)).slice(0, 3);
-          if (wrong.length < 3) return;
-          const opts = shuffled([who].concat(wrong));
-          out.push({ kind: 'song', text: 'Who sings this one?', opts, correct: opts.indexOf(who), catLabel: 'Your music', track: trackItem(t), dur: (t.duration || 0) / 1000 });
-        });
-        return out;
-      });
-    }).catch(() => []);
-  }
-  function libMovies(n) {
-    return getSections().then((secs) => {
-      const mv = secs.find((s) => s.type === 'movie'); if (!mv) return [];
-      return pget('/library/sections/' + mv.key + '/all?type=1&sort=random&X-Plex-Container-Start=0&X-Plex-Container-Size=' + (n * 4 + 12)).then((d) => {
-        const l = (MC(d).Metadata || []).filter((m) => m.art || m.thumb);
-        const titles = l.map((m) => m.title);
-        return l.slice(0, n).map((m) => {
-          const opts = shuffled([m.title].concat(shuffled(titles.filter((t) => t !== m.title)).slice(0, 3)));
-          return { kind: 'movie', text: 'Name this movie', opts, correct: opts.indexOf(m.title), catLabel: 'Your movies', img: pimg(m.art || m.thumb, 1280, 720) };
-        }).filter((q) => q.opts.length === 4);
-      });
-    }).catch(() => []);
-  }
-  function startTrivia(cats, total) {
-    if (playerOpen) closeWatch(); stopRadio();
-    G.phase = 'loading'; G.qs = []; G.qi = -1; G.players.forEach((p) => { p.score = 0; }); drawGame();
-    const per = Math.max(1, Math.ceil(total / cats.length));
-    Promise.all(cats.map((c) => c === 'mymusic' ? libSongs(per) : c === 'mymovies' ? libMovies(per) : triviaApi(c, per))).then((lists) => {
-      // interleave the categories so rounds mix
-      const qs = []; for (let i = 0; i < per; i++) lists.forEach((l) => { if (l[i]) qs.push(l[i]); });
-      G.qs = qs.slice(0, total);
-      if (!G.qs.length) { G.phase = 'lobby'; toast('Couldn’t get questions — check the connection and try again.'); publishGame(); return; }
-      nextQuestion();
-    });
-  }
-  function nextQuestion() {
-    clearTimeout(G.timer); stopClip();
-    G.qi++; G.answers = {}; G.lastResults = null;
-    if (G.qi >= G.qs.length) { G.phase = 'end'; publishGame(); say('Game over! ' + (topPlayer() ? topPlayer().name + ' wins.' : '')); return; }
-    const q = G.qs[G.qi];
-    G.phase = 'q'; G.endsAt = Date.now() + Q_SECONDS * 1000;
-    if (q.kind === 'song') playClip(q);
-    publishGame();
-    say(q.kind === 'text' ? q.text + '. ' + q.opts.map((o, i) => 'ABCD'[i] + ', ' + o).join('. ') : q.text);
-    G.timer = setTimeout(revealAnswer, Q_SECONDS * 1000);
-  }
-  function answerQ(pid, qi, choice) {
-    if (G.phase !== 'q' || qi !== G.qi || G.answers[pid] || !(choice >= 0 && choice < 4)) return;
-    if (!G.players.find((p) => p.pid === pid)) return;
-    G.answers[pid] = { choice, at: Date.now() };
-    publishGame();
-    if (G.players.length && G.players.every((p) => G.answers[p.pid])) { clearTimeout(G.timer); G.timer = setTimeout(revealAnswer, 700); }
-  }
-  function revealAnswer() {
-    clearTimeout(G.timer); stopClip();
-    const q = G.qs[G.qi]; if (!q) return;
-    const res = {};
-    G.players.forEach((p) => {
-      const a = G.answers[p.pid];
-      const ok = !!a && a.choice === q.correct;
-      const left = a ? Math.max(0, (G.endsAt - a.at) / (Q_SECONDS * 1000)) : 0;
-      const pts = ok ? 500 + Math.round(500 * left) : 0;
-      p.score += pts; res[p.pid] = { ok, pts, choice: a ? a.choice : -1 };
-    });
-    G.lastResults = res; G.phase = 'reveal'; publishGame();
-    say('The answer is ' + q.opts[q.correct]);
-    G.timer = setTimeout(nextQuestion, REVEAL_SECONDS * 1000);
-  }
-  const topPlayer = () => G.players.slice().sort((x, y) => y.score - x.score)[0];
-  // the song clip: start part-way in, then stop
-  let clipTimer = 0;
-  function playClip(q) {
-    const t = q.track; if (!t || !plex.conn) return;
-    useAudio(plainAudio); radioNow = null;
-    radio.src = trackUrl(t, true);
-    const start = Math.max(0, Math.min((q.dur || 60) * 0.3, (q.dur || 60) - 20));
-    radio.addEventListener('loadedmetadata', function j() { radio.removeEventListener('loadedmetadata', j); try { radio.currentTime = start; } catch (e) {} });
-    radio.play().catch(() => {});
-    clearTimeout(clipTimer); clipTimer = setTimeout(stopClip, 13000);
-  }
-  function stopClip() { clearTimeout(clipTimer); if (!radioNow) { try { radio.pause(); } catch (e) {} } }
-
-  // ---- the car screen ----
-  let gameRoot = null;
-  VIEWS.games = (root) => {
-    gameRoot = root;
-    if (G.phase === 'off') G.phase = 'lobby';
-    publishGame();   // phones see "Join" straight away
-  };
-  // Leaving the Games page before a game starts takes the Join button off the phones.
-  window.addEventListener('hashchange', () => { if (parse().name !== 'games' && G.phase === 'lobby') { G.phase = 'off'; if (REM.room) postSlot('game', gameState()); } });
-  function drawGame() {
-    if (!gameRoot || !gameRoot.isConnected) return;
-    const root = gameRoot;
-    const head = h('div', { class: 'page-h' }, h('h1', { text: 'Trivia Night' }),
-      G.phase !== 'off' && G.phase !== 'lobby' ? h('button', { class: 'btn ghost sm', type: 'button', text: 'End game', onclick: () => { clearTimeout(G.timer); stopClip(); G.phase = 'lobby'; publishGame(); } }) : null);
-    const playersBox = h('div', { class: 'tv-players' }, G.players.length ? G.players.slice().sort((x, y) => y.score - x.score).map((p, i) =>
-      h('div', { class: 'tv-p' + (G.answers[p.pid] && G.phase === 'q' ? ' in' : '') }, h('b', { text: p.name }), h('span', { text: G.phase === 'lobby' || G.phase === 'off' ? 'ready' : p.score.toLocaleString() }))) :
-      h('div', { class: 'tv-none', text: 'No players yet. On each phone, open the remote and tap Join.' }));
-    if (G.phase === 'off' || G.phase === 'lobby') {
-      if (G.phase === 'off') G.phase = 'lobby';
-      const picked = new Set(store.get('dm_trivia_cats', ['mymusic', 'film_and_tv', 'music', 'general_knowledge']));
-      const catBox = h('div', { class: 'chips tv-cats' });
-      const paintCats = () => catBox.replaceChildren(...TRIVIA_CATS.map((c) => h('button', { type: 'button', class: 'chip' + (picked.has(c.id) ? ' on' : ''), onclick: () => {
-        if (picked.has(c.id)) picked.delete(c.id); else picked.add(c.id); store.set('dm_trivia_cats', [...picked]); paintCats(); } }, c.icon ? ic(c.icon) : null, c.label)));
-      paintCats();
-      let total = store.get('dm_trivia_n', 10);
-      const lenSeg = segEl([['10', '10 questions'], ['15', '15'], ['20', '20']], String(total), (v) => { total = +v; store.set('dm_trivia_n', total); });
-      root.replaceChildren(head,
-        h('div', { class: 'card tv-setup' },
-          h('h2', { text: 'Pick the categories' }), catBox,
-          h('div', { class: 'setlist' },
-            setRow('How long', null, lenSeg),
-            canSpeak() ? setRow('Read questions aloud', 'The car says each question and the answers', switchEl(G.readAloud, (on) => { G.readAloud = on; store.set('dm_trivia_voice', on); })) : null),
-          h('h2', { style: { marginTop: '18px' }, text: 'Players' }), playersBox,
-          !REM.room ? h('p', { class: 'msg', style: { padding: '8px 0 0' }, text: 'Turn on the phone remote first (the phone button at the top) — phones join from there.' }) : null,
-          h('div', { class: 'btns', style: { marginTop: '18px' } },
-            h('button', { class: 'btn red big', type: 'button', onclick: () => { if (!picked.size) { toast('Pick at least one category.'); return; } if (!G.players.length) { toast('Nobody has joined yet — tap Join on a phone.'); return; } startTrivia([...picked], total); } }, ic('play'), 'Start'),
-            !REM.room ? h('button', { class: 'btn ghost', type: 'button', onclick: showRemotePairing }, ic('phone'), 'Turn on phone remote') : null)));
-      return;
-    }
-    if (G.phase === 'loading') { root.replaceChildren(head, h('div', { class: 'empty', text: 'Getting the questions ready…' })); return; }
-    if (G.phase === 'end') {
-      const order = G.players.slice().sort((x, y) => y.score - x.score);
-      root.replaceChildren(head, h('div', { class: 'tv-end' },
-        h('div', { class: 'tv-crown', text: order[0] ? order[0].name + ' wins!' : 'Game over' }),
-        h('div', { class: 'tv-final' }, order.map((p, i) => h('div', { class: 'tv-fr' + (i === 0 ? ' first' : '') }, h('span', { text: (i + 1) + '' }), h('b', { text: p.name }), h('em', { text: p.score.toLocaleString() })))),
-        h('div', { class: 'btns', style: { justifyContent: 'center', marginTop: '20px' } },
-          h('button', { class: 'btn red big', type: 'button', onclick: () => startTrivia(store.get('dm_trivia_cats', ['general_knowledge']), store.get('dm_trivia_n', 10)) }, ic('replay'), 'Play again'),
-          h('button', { class: 'btn ghost', type: 'button', onclick: () => { G.phase = 'lobby'; publishGame(); } }, 'Change settings'))));
-      return;
-    }
-    const q = G.qs[G.qi];
-    const left = Math.max(0, (G.endsAt - Date.now()) / 1000);
-    // same question still on screen: just move the clock, the blur and the counts
-    if (root._drawn === G.phase + G.qi && G.phase === 'q' && root._bar) {
-      root._bar.style.width = (left / Q_SECONDS * 100) + '%';
-      if (root._img) root._img.style.filter = 'blur(' + Math.round(28 * left / Q_SECONDS) + 'px)';
-      root._count.textContent = Object.keys(G.answers).length + ' of ' + G.players.length + ' answered';
-      root._players.replaceWith(root._players = playersBox);
-      return;
-    }
-    const bar = h('div', { class: 'tv-timer' }, h('i', { style: { width: (G.phase === 'q' ? left / Q_SECONDS * 100 : 0) + '%' } }));
-    const optEls = q.opts.map((o, i) => {
-      const cls = 'tv-opt c' + i + (G.phase === 'reveal' ? (i === q.correct ? ' right' : ' dim') : '');
-      const who = G.phase === 'reveal' ? G.players.filter((p) => G.lastResults && G.lastResults[p.pid] && G.lastResults[p.pid].choice === i).map((p) => p.name).join(', ') : '';
-      return h('div', { class: cls }, h('b', { text: 'ABCD'[i] }), h('span', { text: o }), who ? h('small', { text: who }) : null);
-    });
-    const blur = q.kind === 'movie' && G.phase === 'q' ? Math.round(28 * left / Q_SECONDS) : 0;
-    const count = h('span', { text: G.phase === 'q' ? Object.keys(G.answers).length + ' of ' + G.players.length + ' answered' : 'Answer' });
-    const img = q.kind === 'movie' ? h('img', { src: q.img, alt: '', style: { filter: 'blur(' + blur + 'px)' } }) : null;
-    root._drawn = G.phase + G.qi; root._bar = bar.firstChild; root._img = img; root._count = count; root._players = playersBox;
-    root.replaceChildren(head,
-      h('div', { class: 'tv-q' },
-        h('div', { class: 'tv-meta' }, h('span', { text: 'Question ' + (G.qi + 1) + ' of ' + G.qs.length + ' · ' + q.catLabel }), count),
-        bar,
-        img ? h('div', { class: 'tv-still' }, img) : null,
-        q.kind === 'song' ? h('div', { class: 'tv-clip' }, ic('music'), G.phase === 'q' ? 'Listen…' : 'That was ' + q.track.title) : null,
-        h('div', { class: 'tv-text', text: q.text }),
-        h('div', { class: 'tv-opts' }, ...optEls)),
-      playersBox);
-  }
-  setInterval(() => { if (G.phase === 'q') drawGame(); }, 500);
-  const SAFE_HASH = /^#\/(watch\/(plex|plexlive|live|yt|url|site)\/|item\/|home$|movies$|tv$|live|youtube|radio|podcasts|music|traffic$|search\/)/;
+  const SAFE_HASH = /^#\/(watch\/(plex|plexlive|live|yt|url|site)\/|item\/|home$|movies$|tv$|live|youtube|radio|podcasts|music|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
     const saved = store.get('dm_remote_car', null);
@@ -3330,11 +2930,7 @@
     const t = c && c.type;
     if (t === 'hello') { publishNow(true); return; }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
-    else if (t === 'getsong' && radioNow && !radioNow.pod && !radioNow.music) addToGetList();
     else if (t === 'req') addRequest(c);
-    else if (t === 'tjoin') joinPlayer(c.pid, c.name);
-    else if (t === 'tans') answerQ(String(c.pid || ''), +c.qi, +c.choice);
-    else if (t === 'game') publishGame();
     else if (t === 'vote' && typeof c.id === 'string' && c.pid) { const x = REQ.list.find((y) => y.id === c.id); if (x) { x.votes = x.votes.includes(c.pid) ? x.votes.filter((p) => p !== c.pid) : x.votes.concat(String(c.pid).slice(0, 60)); publishQueue(); } }
     else if (t === 'unreq' && typeof c.id === 'string') { REQ.list = REQ.list.filter((y) => !(y.id === c.id && y.by === c.pid)); publishQueue(); }
     else if (t === 'reqmode' && (c.mode === 'fair' || c.mode === 'votes')) { REQ.mode = c.mode; store.set('dm_req_mode', c.mode); publishQueue(); }
@@ -3702,89 +3298,12 @@
     const search = h('input', { class: 'rm-search', type: 'search', placeholder: 'Search movies, shows, channels, YouTube, radio', autocomplete: 'off', enterkeyhint: 'search' });
     const resultsEl = h('div');
     const rowsEl = h('div');
-    const pasteBtn = h('button', { class: 'rm-paste', type: 'button', onclick: () => {
-      if (!(navigator.clipboard && navigator.clipboard.readText)) { search.focus(); toast('Paste the link into the search box.'); return; }
-      navigator.clipboard.readText().then((txt) => { if (!offerLink(txt)) toast('No link found — copy a video link first, then tap Paste link.'); })
-        .catch(() => { search.focus(); toast('Paste the link into the search box.'); });
-    } }, ic('link'), 'Paste link');
-    /* Saved for the car: clips kept on this phone to play in the car later
-       (or here, when the car is off). */
     // The car counts as on while we've heard from it lately, timed on this
     // phone's own clock (comparing two devices' clocks was fragile).
     let carHeardAt = 0;
     const carUp = () => Date.now() - lastHeard < 30000 && Date.now() - carHeardAt < 45000;
-    const savedClips = () => store.get('dm_saved_clips', []);
-    const savedEl = h('div');
-    function drawSaved() {
-      const l = savedClips();
-      if (!l.length) { savedEl.replaceChildren(); return; }
-      savedEl.replaceChildren(h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: 'Saved for the car' }),
-        enableFlow(h('div', { class: 'rm-scroll' }, ...l.map((c) => {
-          const art = h('div', { class: 'rm-art', style: c.img ? null : { background: grad(c.title || '?') } },
-            c.img ? h('img', { src: c.img, alt: '', loading: 'lazy' }) : h('span', { text: c.title }),
-            h('button', { class: 'rm-x', type: 'button', 'aria-label': 'Remove', text: '✕', onclick: (e) => {
-              e.stopPropagation(); store.set('dm_saved_clips', savedClips().filter((x) => x.hash !== c.hash)); drawSaved(); } }));
-          return h('button', { class: 'rm-card wide', type: 'button', onclick: () => playClip(c) }, art,
-            h('div', { class: 'rm-ct', text: c.title }), h('div', { class: 'rm-cs', text: 'Saved ' + podFmtDate(c.at) }));
-        })))));
-    }
-    function playClip(c) {
-      if (carUp()) { send({ type: 'go', hash: c.hash }); toast('Playing on the car: ' + c.title); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-      else { toast('Car is offline — playing on this device.'); go(c.hash); }
-    }
-    function saveClip(t) {
-      const yt = (t.hash.match(/^#\/watch\/yt\/([^/]+)/) || [])[1];
-      const clip = { hash: t.hash, title: t.label, img: yt ? 'https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg' : '', at: Date.now() };
-      store.set('dm_saved_clips', [clip].concat(savedClips().filter((x) => x.hash !== clip.hash)).slice(0, 100));
-      drawSaved(); toast('Saved for the car ⭐');
-      if (yt && (!t.label || t.label === 'YouTube video')) {
-        fetch('https://www.youtube.com/oembed?format=json&url=' + enc('https://www.youtube.com/watch?v=' + decodeURIComponent(yt))).then((r) => r.ok ? r.json() : null).then((d) => {
-          if (!d || !d.title) return;
-          store.set('dm_saved_clips', savedClips().map((x) => x.hash === clip.hash ? Object.assign(x, { title: d.title }) : x)); drawSaved();
-        }).catch(() => {});
-      }
-    }
-    // A link found: play it in the car now, or keep it for later.
-    const linkPanel = h('div', { class: 'rm-linkpanel', hidden: true });
-    function offerLink(text, title) {
-      const t = linkTarget(text, title);
-      if (!t) return false;
-      if (t.unsupported) { toast('That’s a subscription service with copy protection — it only plays in its own app.'); return true; }
-      search.value = ''; resultsEl.replaceChildren();
-      const up = carUp();
-      linkPanel.replaceChildren(
-        h('div', { class: 'rm-lp-t', text: '🔗 ' + (t.label || 'Video link') }),
-        h('div', { class: 'rm-lp-b' },
-          h('button', { class: 'rm-lp-go', type: 'button', text: up ? '▶ Play in the car' : '▶ Play on this phone', onclick: () => {
-            linkPanel.hidden = true;
-            if (carUp()) { send({ type: 'go', hash: t.hash }); toast('Sent to the car: ' + t.label); } else go(t.hash);
-          } }),
-          h('button', { class: 'rm-lp-save', type: 'button', text: '⭐ Save for later', onclick: () => { linkPanel.hidden = true; saveClip(t); } }),
-          h('button', { class: 'rm-lp-x', type: 'button', 'aria-label': 'Cancel', text: '✕', onclick: () => { linkPanel.hidden = true; } })));
-      linkPanel.hidden = false;
-      return true;
-    }
-    // Shared from another app: once we know whether the car is on, offer it
-    // (car on) or just save it (car off).
-    const pend = store.get('dm_share', null);
-    if (pend) {
-      store.set('dm_share', null);
-      if (Date.now() - (pend.at || 0) < 10 * 60 * 1000) {
-        const t0 = Date.now();
-        const tryIt = () => {
-          if (!alive()) return;
-          if (!lastHeard && Date.now() - t0 < 8000) { setTimeout(tryIt, 400); return; }
-          const t = linkTarget(pend.text, pend.title);
-          if (!t) { toast('That share didn’t include a video link.'); return; }
-          if (t.unsupported || carUp()) offerLink(pend.text, pend.title);
-          else saveClip(t);
-        };
-        setTimeout(tryIt, 600);
-      }
-    }
     const doFind = () => {
       const q = search.value.trim(); if (!q) { resultsEl.replaceChildren(); return; }
-      if (/^https?:\/\//i.test(q) || /youtu\.?be/i.test(q)) { if (offerLink(q)) return; }
       search.blur(); results = null;
       resultsEl.replaceChildren(h('div', { class: 'rm-row' }, h('div', { class: 'rm-rh', text: 'Searching…' }), h('div', { class: 'rm-scroll' }, ...skelCards(6, 'poster'))));
       send({ type: 'find', q });
@@ -3834,40 +3353,6 @@
         h('label', { class: 'rm-qname' }, 'Your name ', nameIn));
     }
     drawTap();
-    // Trivia Night on the phone: join, then big A–D buttons.
-    let game = null;
-    const gameEl = h('div', { class: 'rm-game' });
-    function drawPhoneGame() {
-      const g = game;
-      if (!g || g.phase === 'off') { gameEl.replaceChildren(); return; }
-      const me = (g.players || []).find((p) => p.pid === phoneId());
-      if (g.phase === 'lobby') {
-        gameEl.replaceChildren(h('div', { class: 'rm-gh' }, ic('sparkle'), h('b', { text: 'Trivia Night' })),
-          me ? h('div', { class: 'rm-gwait', text: 'You’re in as ' + me.name + '. Waiting for the car to start…' })
-            : h('button', { class: 'rm-gjoin', type: 'button', onclick: () => send({ type: 'tjoin', pid: phoneId(), name: myName() }) }, ic('plus'), 'Join as ' + myName()));
-        return;
-      }
-      if (!me) { gameEl.replaceChildren(h('div', { class: 'rm-gh' }, ic('sparkle'), h('b', { text: 'Trivia Night is on' })), h('div', { class: 'rm-gwait', text: 'A game is in progress — join the next one.' })); return; }
-      if (g.phase === 'loading') { gameEl.replaceChildren(h('div', { class: 'rm-gh' }, ic('sparkle'), h('b', { text: 'Get ready…' }))); return; }
-      if (g.phase === 'end') {
-        const order = (g.players || []).slice().sort((x, y) => y.score - x.score);
-        gameEl.replaceChildren(h('div', { class: 'rm-gh' }, ic('sparkle'), h('b', { text: order[0] ? order[0].name + ' wins!' : 'Game over' })),
-          h('div', { class: 'rm-gwait', text: 'You: ' + me.score.toLocaleString() + ' points · place ' + (order.findIndex((p) => p.pid === me.pid) + 1) + ' of ' + order.length }));
-        return;
-      }
-      const q = g.q; if (!q) return;
-      const mine = g.phase === 'reveal' && g.reveal ? g.reveal.results[me.pid] : null;
-      const locked = (g.answered || []).includes(me.pid);
-      gameEl.replaceChildren(
-        h('div', { class: 'rm-gh' }, h('b', { text: 'Q' + (g.qi + 1) + ' of ' + g.total }), h('span', { text: q.cat }), h('em', { text: me.score.toLocaleString() + ' pts' })),
-        h('div', { class: 'rm-gq', text: q.kind === 'text' ? q.text : q.text + (q.kind === 'song' ? ' (listen in the car)' : ' (look at the car screen)') }),
-        h('div', { class: 'rm-gopts' }, q.opts.map((o, i) => h('button', {
-          type: 'button', class: 'rm-gopt c' + i + (g.phase === 'reveal' ? (i === g.reveal.correct ? ' right' : mine && mine.choice === i ? ' wrong' : ' dim') : locked ? ' dim' : ''),
-          disabled: g.phase !== 'q' || locked,
-          onclick: (e) => { e.currentTarget.classList.add('picked'); send({ type: 'tans', pid: phoneId(), qi: g.qi, choice: i }); } }, h('b', { text: 'ABCD'[i] }), h('span', { text: o })))),
-        h('div', { class: 'rm-gwait', text: g.phase === 'reveal' ? (mine && mine.ok ? 'Right! +' + mine.pts : 'Not this time') : locked ? 'Locked in!' : '' }));
-    }
-
     function skelCards(n, shape) { return Array.from({ length: n }, () => h('div', { class: 'rm-card ' + shape + ' skel' }, h('div', { class: 'rm-art' }))); }
     function card(it, shape) {
       const art = h('div', { class: 'rm-art', style: it.img ? null : { background: grad(it.t || '?') } });
@@ -3956,23 +3441,10 @@
         h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
         bar, h('div', { class: 'rm-times' }, tl, tr),
         h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere, phonesBtn),
-      gameEl, tapSeg, queueEl,
-      h('div', { class: 'rm-searchrow' }, search, pasteBtn),
-      linkPanel,
+      tapSeg, queueEl,
+      h('div', { class: 'rm-searchrow' }, search),
       h('a', { class: 'rm-phonelink', href: '#/home', text: 'Watch on this device instead' }),
-      h('details', { class: 'rm-help' }, h('summary', { text: 'Send videos from other apps' }),
-        h('p', { text: 'Copy a YouTube or video link anywhere, then tap 🔗 Paste link. Or type it into the search box.' }),
-        h('b', { text: 'Android' }),
-        h('p', { text: 'Add this remote to your home screen (Chrome menu ⋮ → Add to Home screen). Then in YouTube or any app, tap Share and pick “Theater”.' }),
-        h('b', { text: 'iPhone — one-time setup' }),
-        h('ol', {},
-          h('li', { text: 'Open the Shortcuts app and tap + to make a new shortcut.' }),
-          h('li', { text: 'Tap ⓘ at the bottom and turn on “Show in Share Sheet”. Set it to receive URLs and Text.' }),
-          h('li', { text: 'Add the action “URL Encode” (it uses the Shortcut Input).' }),
-          h('li', {}, 'Add the action “Open URLs” and type: ', h('code', { text: location.origin + location.pathname + '?send=' }), ' then insert the “URL Encoded Text” right after it.'),
-          h('li', { text: 'Name it “Send to car”. Now tap Share in YouTube, Safari or Messages and pick Send to car.' })),
-        h('p', { class: 'rm-note', text: 'The shortcut opens Safari, so connect Safari to the car once with the 6-digit code too.' })), resultsEl, savedEl, rowsEl));
-    drawSaved();
+      resultsEl, rowsEl));
     drawNow(null); drawRows(); paintConn();
     let ver = 0;
     const poll = () => {
@@ -3997,7 +3469,6 @@
         }
         if (sl.lists) { lists = sl.lists; drawRows(); }
         if (sl.queue) { queue = sl.queue; drawQueue(); }
-        if (sl.game) { game = sl.game; drawPhoneGame(); }
         if (sl.results) { results = sl.results; drawResults(); }
         if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.replaceChildren(ic('cast'), 'Watch here too'); mirrorStart(sl.mirror, now); }
         setTimeout(poll, 100);
@@ -4081,17 +3552,6 @@
   });
 
   /* ---------- start ---------- */
-  // A link shared to the app (Android share menu, or the iPhone Shortcut,
-  // which opens ?send=<link>): keep it, clean the address, and open the
-  // remote - it sends the link to the car once connected.
-  (() => {
-    const qs = new URLSearchParams(location.search);
-    const text = [qs.get('send'), qs.get('url'), qs.get('text')].filter(Boolean).join(' ');
-    if (!text) return;
-    store.set('dm_share', { text: text.slice(0, 2000), title: (qs.get('title') || '').slice(0, 200), at: Date.now() });
-    const room = store.get('dm_remote_phone', null);
-    history.replaceState(null, '', location.pathname + (room ? '#/remote/' + room : '#/remote'));
-  })();
   updateMe();
   if (parse().name === 'remote') { document.body.classList.add('remote-mode'); dismissGate(); }
   else if (plex.auth && !plex.user && parse().name !== 'profiles') go('#/profiles', true);
