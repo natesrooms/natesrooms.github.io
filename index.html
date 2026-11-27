@@ -1826,7 +1826,17 @@ var Engine = (function () {
 
   /* Fetch with a hard timeout covering the body too (a stalled LTE
      connection otherwise hangs a segment forever). */
-  function fetchRead(url, kind, ms, opts) {
+  // A busy server (HTTP 429 "too many requests", or 503) usually answers a
+  // moment later, so wait and ask again a few times before giving up.
+  function fetchRead(url, kind, ms, opts, tries) {
+    tries = tries || 0;
+    return fetchReadOnce(url, kind, ms, opts && Object.assign({}, opts)).catch(function (e) {
+      if (!e || (e.status !== 429 && e.status !== 503) || tries >= 3) throw e;
+      var wait = e.retryAfter > 0 && e.retryAfter <= 10 ? e.retryAfter * 1000 : 1500 * Math.pow(2, tries);
+      return new Promise(function (res) { setTimeout(res, wait); }).then(function () { return fetchRead(url, kind, ms, opts, tries + 1); });
+    });
+  }
+  function fetchReadOnce(url, kind, ms, opts) {
     var ctl = ('AbortController' in window) ? new AbortController() : null;
     opts = opts || {};
     if (ctl) opts.signal = ctl.signal;
@@ -1838,6 +1848,7 @@ var Engine = (function () {
           t = (t || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
           var err = new Error('HTTP ' + r.status + (t ? ' (' + t + ')' : ''));
           err.status = r.status;
+          err.retryAfter = +(r.headers.get('Retry-After') || 0) || 0;
           throw err;
         });
       }
@@ -4847,17 +4858,22 @@ var MiniQR = (function () {
      no names in the lineup, so they're named here; new ones go under "More". */
   const PLEX_EPG = 'https://epg.provider.plex.tv';
   /* ---------- Live TV guide (Plex's schedule): what's on now and next ----------
-     One small request per channel per day, cached; at most 4 at a time. */
+     One small request per channel (today; yesterday/tomorrow only around
+     midnight UTC), cached, at most 3 at a time. The streams come from the same
+     Plex server, so if it says "too many requests" the guide backs off for a
+     couple of minutes and lets the video have it. */
   const guideCache = new Map();
-  let guideBusy = 0; const guideQ = [];
+  let guideBusy = 0, guideRestUntil = 0; const guideQ = [];
   function gridKeyOf(url) { const m = String(url || '').match(/-([0-9a-f]{24})\.m3u8/i); return m ? m[1] : ''; }
   function guideDay(gk, day) {
     const k = gk + '|' + day, hit = guideCache.get(k);
     if (hit && Date.now() - hit.at < 20 * 60 * 1000) return hit.p;
     const p = new Promise((res, rej) => {
-      const run = () => { guideBusy++;
+      const run = () => {
+        if (Date.now() < guideRestUntil) { rej(new Error('guide resting')); if (guideQ.length) guideQ.shift()(); return; }
+        guideBusy++;
         fetch(PLEX_EPG + '/grid?channelGridKey=' + gk + '&date=' + day + '&X-Plex-Token=' + enc(plexActiveToken()), { headers: { Accept: 'application/json' } })
-          .then((r) => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+          .then((r) => { if (r.status === 429) guideRestUntil = Date.now() + 120000; return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
           .then((d) => res(((d.MediaContainer || {}).Metadata || []).map((m) => {
             const md = (m.Media || [])[0] || {};
             const show = m.grandparentTitle || '', ep = m.title || '';
@@ -4865,7 +4881,7 @@ var MiniQR = (function () {
           }).filter((x) => x.start && x.end).sort((x, y) => x.start - y.start)), rej)
           .finally(() => { guideBusy--; if (guideQ.length) guideQ.shift()(); });
       };
-      if (guideBusy < 4) run(); else guideQ.push(run);
+      if (guideBusy < 3) run(); else guideQ.push(run);
     });
     guideCache.set(k, { at: Date.now(), p });
     p.catch(() => guideCache.delete(k));
@@ -4875,7 +4891,13 @@ var MiniQR = (function () {
   function guideNow(url) {
     const gk = gridKeyOf(url); if (!gk || !plex.auth) return Promise.resolve(null);
     const t = Date.now() / 1000, day = (o) => new Date(Date.now() + o * 864e5).toISOString().slice(0, 10);
-    return Promise.all([guideDay(gk, day(0)), guideDay(gk, day(-1)).catch(() => []), guideDay(gk, day(1)).catch(() => [])]).then((ls) => {
+    const extra = (l) => {   // yesterday's late show or tomorrow's first one, only when today's list doesn't cover it
+      const w = [];
+      if (!l.length || l[0].start > t) w.push(guideDay(gk, day(-1)).catch(() => []));
+      if (!l.length || l[l.length - 1].end <= t + 60) w.push(guideDay(gk, day(1)).catch(() => []));
+      return Promise.all(w).then((ls) => [l].concat(ls));
+    };
+    return guideDay(gk, day(0)).then(extra).then((ls) => {
       const seen = {}, all = [].concat(...ls).filter((x) => seen[x.start] ? false : (seen[x.start] = 1)).sort((x, y) => x.start - y.start);
       const now = all.find((x) => x.start <= t && x.end > t) || null;
       const next = all.find((x) => x.start >= (now ? now.end - 1 : t)) || null;
@@ -6494,7 +6516,7 @@ var MiniQR = (function () {
 
   /* Auto-update: when a newer version is published, reload by itself -
      but never during a movie, a podcast, or while typing; it waits. */
-  const APP_BUILD = '3b8c8437ec97';
+  const APP_BUILD = '223946094a53';
   let updateReady = false;
   function checkUpdate() {
     if (APP_BUILD.charAt(0) === '_' || updateReady) return;

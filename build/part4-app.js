@@ -1887,17 +1887,22 @@
      no names in the lineup, so they're named here; new ones go under "More". */
   const PLEX_EPG = 'https://epg.provider.plex.tv';
   /* ---------- Live TV guide (Plex's schedule): what's on now and next ----------
-     One small request per channel per day, cached; at most 4 at a time. */
+     One small request per channel (today; yesterday/tomorrow only around
+     midnight UTC), cached, at most 3 at a time. The streams come from the same
+     Plex server, so if it says "too many requests" the guide backs off for a
+     couple of minutes and lets the video have it. */
   const guideCache = new Map();
-  let guideBusy = 0; const guideQ = [];
+  let guideBusy = 0, guideRestUntil = 0; const guideQ = [];
   function gridKeyOf(url) { const m = String(url || '').match(/-([0-9a-f]{24})\.m3u8/i); return m ? m[1] : ''; }
   function guideDay(gk, day) {
     const k = gk + '|' + day, hit = guideCache.get(k);
     if (hit && Date.now() - hit.at < 20 * 60 * 1000) return hit.p;
     const p = new Promise((res, rej) => {
-      const run = () => { guideBusy++;
+      const run = () => {
+        if (Date.now() < guideRestUntil) { rej(new Error('guide resting')); if (guideQ.length) guideQ.shift()(); return; }
+        guideBusy++;
         fetch(PLEX_EPG + '/grid?channelGridKey=' + gk + '&date=' + day + '&X-Plex-Token=' + enc(plexActiveToken()), { headers: { Accept: 'application/json' } })
-          .then((r) => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+          .then((r) => { if (r.status === 429) guideRestUntil = Date.now() + 120000; return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
           .then((d) => res(((d.MediaContainer || {}).Metadata || []).map((m) => {
             const md = (m.Media || [])[0] || {};
             const show = m.grandparentTitle || '', ep = m.title || '';
@@ -1905,7 +1910,7 @@
           }).filter((x) => x.start && x.end).sort((x, y) => x.start - y.start)), rej)
           .finally(() => { guideBusy--; if (guideQ.length) guideQ.shift()(); });
       };
-      if (guideBusy < 4) run(); else guideQ.push(run);
+      if (guideBusy < 3) run(); else guideQ.push(run);
     });
     guideCache.set(k, { at: Date.now(), p });
     p.catch(() => guideCache.delete(k));
@@ -1915,7 +1920,13 @@
   function guideNow(url) {
     const gk = gridKeyOf(url); if (!gk || !plex.auth) return Promise.resolve(null);
     const t = Date.now() / 1000, day = (o) => new Date(Date.now() + o * 864e5).toISOString().slice(0, 10);
-    return Promise.all([guideDay(gk, day(0)), guideDay(gk, day(-1)).catch(() => []), guideDay(gk, day(1)).catch(() => [])]).then((ls) => {
+    const extra = (l) => {   // yesterday's late show or tomorrow's first one, only when today's list doesn't cover it
+      const w = [];
+      if (!l.length || l[0].start > t) w.push(guideDay(gk, day(-1)).catch(() => []));
+      if (!l.length || l[l.length - 1].end <= t + 60) w.push(guideDay(gk, day(1)).catch(() => []));
+      return Promise.all(w).then((ls) => [l].concat(ls));
+    };
+    return guideDay(gk, day(0)).then(extra).then((ls) => {
       const seen = {}, all = [].concat(...ls).filter((x) => seen[x.start] ? false : (seen[x.start] = 1)).sort((x, y) => x.start - y.start);
       const now = all.find((x) => x.start <= t && x.end > t) || null;
       const next = all.find((x) => x.start >= (now ? now.end - 1 : t)) || null;

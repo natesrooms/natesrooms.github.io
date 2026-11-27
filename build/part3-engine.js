@@ -58,7 +58,17 @@ var Engine = (function () {
 
   /* Fetch with a hard timeout covering the body too (a stalled LTE
      connection otherwise hangs a segment forever). */
-  function fetchRead(url, kind, ms, opts) {
+  // A busy server (HTTP 429 "too many requests", or 503) usually answers a
+  // moment later, so wait and ask again a few times before giving up.
+  function fetchRead(url, kind, ms, opts, tries) {
+    tries = tries || 0;
+    return fetchReadOnce(url, kind, ms, opts && Object.assign({}, opts)).catch(function (e) {
+      if (!e || (e.status !== 429 && e.status !== 503) || tries >= 3) throw e;
+      var wait = e.retryAfter > 0 && e.retryAfter <= 10 ? e.retryAfter * 1000 : 1500 * Math.pow(2, tries);
+      return new Promise(function (res) { setTimeout(res, wait); }).then(function () { return fetchRead(url, kind, ms, opts, tries + 1); });
+    });
+  }
+  function fetchReadOnce(url, kind, ms, opts) {
     var ctl = ('AbortController' in window) ? new AbortController() : null;
     opts = opts || {};
     if (ctl) opts.signal = ctl.signal;
@@ -70,6 +80,7 @@ var Engine = (function () {
           t = (t || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
           var err = new Error('HTTP ' + r.status + (t ? ' (' + t + ')' : ''));
           err.status = r.status;
+          err.retryAfter = +(r.headers.get('Retry-After') || 0) || 0;
           throw err;
         });
       }
