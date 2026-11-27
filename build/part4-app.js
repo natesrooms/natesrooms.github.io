@@ -1991,6 +1991,8 @@
         head.appendChild(chips([{ id: '', label: 'All' }].concat(cats.map((c) => ({ id: c, label: c }))), cat || '', (c) => '#/live/' + src + (c.id ? '/' + enc(c.id) : '')));
       }
       const shown = src === 'plex' ? (cat ? list.filter((c) => c.cat === cat) : list) : sortByHealth(cat ? list.filter((c) => (c.cat || 'Other') === cat) : list);
+      // CH up/down walks this list (the odds and ends under "More" are left out of All)
+      lastLiveList = src === 'plex' && !cat ? shown.filter((c) => c.cat !== 'More') : shown;
       const guide = viewMode === 'guide';
       const grid = h('div', { class: guide ? 'guide' : 'grid wide' }); body.appendChild(grid);
       let i = 0;
@@ -2433,13 +2435,44 @@
     return false;
   }
 
+  /* ---------- Channel up / down while watching Live TV ----------
+     Steps through the list you picked the channel from (a category, your
+     favorites…); if you came from somewhere else, the channel's category. */
+  let lastLiveList = null, watchArgs = [];
+  function channelList(url, cat) {
+    if (lastLiveList && lastLiveList.some((x) => x.url === url)) return Promise.resolve(lastLiveList);
+    if (favs().some((x) => x.url === url)) return Promise.resolve(favs());
+    if (String(url).startsWith('plexlive:') && plex.auth) return plexLive().then((l) => { const same = l.filter((x) => x.cat === cat); return same.some((x) => x.url === url) ? same : l.filter((x) => x.cat !== 'More' || x.url === url); });
+    return Promise.resolve([]);
+  }
+  function stepChannel(dir) {
+    if (!playerOpen) return;
+    const [kind, a, , c] = watchArgs;
+    if (kind !== 'plexlive' && kind !== 'live') return;
+    const url = kind === 'plexlive' ? 'plexlive:' + a : a;
+    channelList(url, c).then((l) => {
+      if (l.length < 2) { toast('No other channels in this list'); return; }
+      const i = l.findIndex((x) => x.url === url);
+      const next = l[((i < 0 ? 0 : i) + dir + l.length) % l.length];
+      toast(next.name);
+      go(channelHref(next), true);
+    });
+  }
+  function paintChannelButtons() {
+    const live = watchArgs[0] === 'plexlive' || watchArgs[0] === 'live';
+    $('btnChDown').hidden = $('btnChUp').hidden = !live;
+    $('btnBack10').hidden = $('btnFwd10').hidden = live;
+  }
+  $('btnChDown').addEventListener('click', (e) => { e.stopPropagation(); stepChannel(-1); });
+  $('btnChUp').addEventListener('click', (e) => { e.stopPropagation(); stepChannel(1); });
   function openWatch(args) {
     const key = args.join('/');
     if (playerOpen && key === watchKey) return;
     watchChannel = args[0] === 'live' ? { url: args[1], done: false } : args[0] === 'plexlive' ? { url: 'plexlive:' + args[1], done: false } : null;
-    watchKey = key;
+    watchKey = key; watchArgs = args;
     const [kind, a, b, c, d] = args;
     const auto = wantAutoplay();
+    setTimeout(paintChannelButtons, 0);
     if (kind === 'plex') { playPlex(a, b != null && b !== '' ? +b : null, auto); return; }
     endPlex();
     if (kind === 'plexlive') {
@@ -2941,6 +2974,8 @@
     else if (t === 'reqmode' && (c.mode === 'fair' || c.mode === 'votes')) { REQ.mode = c.mode; store.set('dm_req_mode', c.mode); publishQueue(); }
     else if (t === 'queue') publishQueue();
     else if (t === 'mnext' && radioNow && radioNow.music) musicNext();
+    else if (t === 'chnext') stepChannel(1);
+    else if (t === 'chprev') stepChannel(-1);
     else if (t === 'mprev' && radioNow && radioNow.music) musicPrev();
     else if (t === 'skip' && radioNow && radioNow.pod) podSkip(Math.max(-600, Math.min(600, +c.s || 0)));
     else if (t === 'seek' && radioNow && (radioNow.pod || radioNow.music)) podSeek(Math.max(0, +c.pos || 0));
@@ -3282,8 +3317,9 @@
     const tl = h('span'), tr = h('span');
     const pp = h('button', { class: 'rm-round big', type: 'button', 'aria-label': 'Play or pause', onclick: () => send({ type: 'toggle' }) }, ic('play'));
     let nowKind = 'idle';
-    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mprev' } : { type: 'skip', s: -10 }) }, ic('back'), h('small', { text: '10' }));
-    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mnext' } : { type: 'skip', s: 30 }) }, ic('fwd'), h('small', { text: '30' }));
+    const liveNow = () => nowKind === 'plexlive' || nowKind === 'live';
+    const back10 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Back 10 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mprev' } : liveNow() ? { type: 'chprev' } : { type: 'skip', s: -10 }) }, ic('back'), h('small', { text: '10' }));
+    const fwd30 = h('button', { class: 'rm-round', type: 'button', 'aria-label': 'Forward 30 seconds', onclick: () => send(nowKind === 'music' ? { type: 'mnext' } : liveNow() ? { type: 'chnext' } : { type: 'skip', s: 30 }) }, ic('fwd'), h('small', { text: '30' }));
     const close = h('button', { class: 'rm-close', type: 'button', text: 'Close', onclick: () => send({ type: 'back' }) });
     const phonesBtn = h('button', { class: 'rm-phones', type: 'button', hidden: true, onclick: () => {
       unlockSound();
@@ -3390,8 +3426,9 @@
     }
     function drawNow(n) {
       const idle = !n || n.kind === 'idle';
-      const mus = !!(n && n.kind === 'music');
-      if (mus !== (nowKind === 'music')) {
+      const mus = !!(n && (n.kind === 'music' || n.kind === 'plexlive' || n.kind === 'live'));
+      const wasMus = nowKind === 'music' || nowKind === 'plexlive' || nowKind === 'live';
+      if (mus !== wasMus) {
         back10.replaceChildren(...[ic(mus ? 'prev' : 'back'), mus ? null : h('small', { text: '10' })].filter(Boolean));
         fwd30.replaceChildren(...[ic(mus ? 'next' : 'fwd'), mus ? null : h('small', { text: '30' })].filter(Boolean));
       }
