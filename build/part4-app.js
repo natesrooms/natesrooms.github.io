@@ -97,6 +97,21 @@
     const t = String(name || '').trim(), L = (t.replace(/^(the|a|an)\s+/i, '').match(/[A-Za-z0-9]/) || [''])[0].toUpperCase();
     return h('div', { class: 'ph' }, L ? h('b', { text: L }) : null, h('span', { text: t }));
   }
+  // The A–Z bar starts level with the first row of the list (below the page's
+  // buttons) and rides up to just under the top menu as you scroll.
+  function pinAzBar(bar, list) {
+    const place = () => {
+      if (!bar.isConnected) return;
+      const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight;
+      const sh = bar.parentNode && bar.parentNode.querySelector('.stickyhead');
+      const floor = sh ? sh.getBoundingClientRect().bottom + 6 : navH + 6;
+      bar.style.top = Math.round(Math.max(floor, list.getBoundingClientRect().top)) + 'px';
+    };
+    window.addEventListener('scroll', place, { passive: true });
+    window.addEventListener('resize', place, { passive: true });
+    requestAnimationFrame(place); setTimeout(place, 300);
+    return bar;
+  }
   function progressBar(p) {
     if (!(p > 0.01 && p < 0.99)) return null;
     return h('div', { class: 'pbar' }, h('i', { style: { width: Math.round(p * 100) + '%' } }));
@@ -173,6 +188,8 @@
     return { sec, scroller };
   }
   function msg(text, err) { return h('div', { class: 'msg' + (err ? ' err' : ''), text }); }
+  // A page's title and buttons, pinned under the top menu while the list scrolls.
+  function pinHead(root, ...els) { const hd = h('div', { class: 'stickyhead' }, ...els.filter(Boolean)); root.appendChild(hd); return hd; }
   function chips(list, current, hrefOf) {
     return h('div', { class: 'chips pad' }, list.map((c) =>
       h('a', { class: 'chip' + (c.id === current ? ' on' : ''), href: hrefOf(c) }, c.icon ? ic(c.icon) : null, c.label)));
@@ -818,6 +835,8 @@
     if (!(radioNow && radioNow.pod)) return;
     savePodPos(radioNow, podDur(), podDur(), true);
     toast('Finished: ' + radioNow.name);
+    if (SLEEP.end) { sleepNow(); return; }
+    if (REQ.list.length) { playRequest(reqOrder()[0]); return; }
     paintPodTime();
   });
 
@@ -907,10 +926,12 @@
   }
   const MQ = { list: [], i: 0 };
   function shuffled(l) { l = l.slice(); for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; } return l; }
-  function playMusic(tracks, start, shuffle) {
+  // quiet: started from the phone remote, so don't cover the car screen with Now Playing.
+  function playMusic(tracks, start, shuffle, quiet) {
     const l = dedupeTracks(tracks.map((t) => (t.rk ? t : trackItem(t))).filter((t) => t.part));
     if (!l.length) { toast('Nothing playable there.'); return; }
     MQ.list = shuffle ? shuffled(l) : l;
+    MQ.openNP = !quiet;   // you picked a song: show it full screen
     playTrackAt(shuffle ? 0 : Math.max(0, Math.min(l.length - 1, start || 0)));
   }
   function playTrackAt(i) {
@@ -947,6 +968,7 @@
         musicFailed(t);
       });
       drawMusicBar(); markPlayingCards(); musicSession(t);
+      if (MQ.openNP) { MQ.openNP = false; openNowPlaying(); }
       if (REM.room) publishNow(true);
     }).catch((e) => toast('Plex isn’t answering: ' + e.message));
   }
@@ -990,6 +1012,7 @@
       h('button', { class: 'pb', type: 'button', 'aria-label': 'Previous', onclick: musicPrev }, ic('prev')),
       mPP,
       h('button', { class: 'pb', type: 'button', 'aria-label': 'Next', onclick: musicNext }, ic('next')),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Add to a playlist', title: 'Add to a playlist', onclick: () => openPlaylistSheet(radioNow && radioNow.t) }, ic('plus')),
       h('button', { class: 'pb', type: 'button', 'aria-label': 'Stop', onclick: stopRadio }, ic('close')));
     paintMusicTime();
   }
@@ -1002,7 +1025,7 @@
   onAudio('timeupdate', paintMusicTime);
   onAudio('play', paintMusicTime);
   onAudio('pause', paintMusicTime);
-  onAudio('ended', () => { if (radioNow && radioNow.music) { scrobble(radioNow.t); musicNext(); } });
+  onAudio('ended', () => { if (radioNow && radioNow.music) { scrobble(radioNow.t); if (SLEEP.end) { sleepNow(); return; } if (REQ.list.length) playRequest(reqOrder()[0]); else musicNext(); } });
 
   function albumCard(m) {
     return h('a', { class: 'pc sq', href: '#/music/album/' + enc(m.ratingKey) },
@@ -1034,7 +1057,10 @@
           h('button', { class: 'btn ghost', type: 'button', onclick: () => playMusic(tracks(), 0, true) }, ic('shuffle'), 'Shuffle'))));
   }
   function musicView(root, [sec, a, b]) {
-    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, /^(album|artist|playlist|search)$/.test(sec || '') ? subNav('#/music') : null, h('h1', { text: 'Music' })), audioSwitch('music')));
+    // The title, the Radio/Podcasts/Music switch, search and the tabs stay pinned
+    // under the top menu while the music scrolls beneath.
+    const head = h('div', { class: 'stickyhead' }); root.appendChild(head);
+    head.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, /^(album|artist|playlist|search)$/.test(sec || '') ? subNav('#/music') : null, h('h1', { text: 'Music' })), audioSwitch('music')));
     if (!plex.auth) {
       root.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Your music, from Plex' }),
         h('p', { text: 'Sign in with Plex to play the music library on your server.' }), h('a', { class: 'btn red', href: '#/signin', text: 'Sign in with Plex' })));
@@ -1054,7 +1080,7 @@
           body.appendChild(musicHero(mArt(m.composite || m.thumb, 600), m.title || '', sec === 'album' ? [m.parentTitle, m.year].filter(Boolean).join(' · ') : tracks.length + ' songs', () => tracks));
           body.appendChild(h('div', { class: 'pad podeps' }, tracks.map((t, i) => trackRow(t, i, tracks, sec === 'playlist' || t.artist !== m.parentTitle))));
           markPlayingCards();
-          if (b === 'play' && !(radioNow && radioNow.music && MQ.list === tracks)) playMusic(tracks, 0);
+          if (b === 'play' && !(radioNow && radioNow.music && MQ.list === tracks)) playMusic(tracks, 0, false, true);
         }).catch(fail);
       }
       if (sec === 'artist') {
@@ -1106,7 +1132,7 @@
       const input = h('input', { type: 'text', placeholder: 'Search artists, albums, songs', value: sec === 'search' ? (a || '') : '', autocomplete: 'off', spellcheck: 'false' });
       const submit = () => { const v = input.value.trim(); go(v ? '#/music/search/' + enc(v) : '#/music'); };
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-      body.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }),
+      head.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }),
         h('button', { class: 'btn ghost', type: 'button', onclick: () =>
           pget('/library/sections/' + sk + '/all?type=10&sort=random&X-Plex-Container-Start=0&X-Plex-Container-Size=150')
             .then((d) => playMusic(MC(d).Metadata || [], 0)).catch((e) => toast('Couldn’t shuffle: ' + e.message)) }, ic('shuffle'), 'Shuffle all'))));
@@ -1139,7 +1165,7 @@
       }
       // Three tabs: For you (recent + suggestions), every artist, every album (both with A–Z).
       const tab = sec === 'artists' || sec === 'albums' || sec === 'get' ? sec : 'foryou';
-      body.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: 'For you', icon: 'sparkle' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' },
+      head.appendChild(h('div', { class: 'pad' }, chips([{ id: 'foryou', label: 'For you', icon: 'sparkle' }, { id: 'artists', label: 'Artists' }, { id: 'albums', label: 'Albums' },
         { id: 'get', label: 'Get list' + (getList().length ? ' (' + getList().length + ')' : ''), icon: 'bag' }],
         tab, (c) => c.id === 'foryou' ? '#/music' : '#/music/' + c.id)));
       const hubCard = (m) => m.type === 'artist' ? artistCard(m) : m.type === 'playlist' ? playlistCard(m) : albumCard(m);
@@ -1177,8 +1203,9 @@
         return;
       }
       if (tab === 'foryou') {
-        const sRecent = h('div'), sHubs = h('div'), sRandom = h('div'), sPl = h('div'), sNew = h('div');
-        body.append(sRecent, sHubs, sRandom, sPl, sNew);
+        const sRecent = h('div'), sMood = h('div'), sHubs = h('div'), sRandom = h('div'), sPl = h('div'), sNew = h('div');
+        body.append(sRecent, sPl, sMood, sHubs, sRandom, sNew);
+        moodRow(sk, sMood);
         // Recently played: albums of the songs played last, newest first (fills as you listen).
         pget('/library/sections/' + sk + '/all?type=10&sort=lastViewedAt:desc&viewCount>>=1&X-Plex-Container-Start=0&X-Plex-Container-Size=150').then((d) => {
           const seen = {}, l = (MC(d).Metadata || []).filter((t) => t.parentRatingKey && !seen[t.parentRatingKey] && (seen[t.parentRatingKey] = 1))
@@ -1219,14 +1246,16 @@
         list.forEach((m) => { const el = tab === 'artists' ? artistCard(m) : albumCard(m); const L = letterOf(m); if (!first[L]) { first[L] = el; } g.appendChild(el); });
         const jump = (L) => {
           const el = first[L]; if (!el) return;
-          const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight;
+          // land just below the pinned header (title, search, tabs)
+          const sh = root.querySelector('.stickyhead');
+          const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight + (sh ? sh.offsetHeight : 0);
           const top = el.getBoundingClientRect().top + window.scrollY - navH - 14;
           window.scrollTo({ top, behavior: 'auto' });
           // covers above may still be loading and shifting things: check again
           setTimeout(() => { const t2 = el.getBoundingClientRect().top + window.scrollY - navH - 14; if (Math.abs(t2 - window.scrollY) > 30) window.scrollTo(0, t2); }, 500);
         };
-        root.appendChild(h('div', { class: 'azbar', role: 'navigation', 'aria-label': 'Jump to letter' },
-          ['#'].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')).map((L) => h('button', { type: 'button', text: L, class: first[L] ? '' : 'off', onclick: () => jump(L) }))));
+        root.appendChild(pinAzBar(h('div', { class: 'azbar', role: 'navigation', 'aria-label': 'Jump to letter' },
+          ['#'].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')).map((L) => h('button', { type: 'button', text: L, class: first[L] ? '' : 'off', onclick: () => jump(L) }))), g));
         if (!list.length) g.replaceWith(h('div', { class: 'empty', text: 'Nothing here yet.' }));
       }).catch(fail);
     }).catch((e) => { wait.remove(); body.appendChild(msg('Couldn’t reach Plex: ' + e.message, true)); });
@@ -1274,6 +1303,9 @@
       const tl = h('span', { class: 'np-tl' }), tr = h('span', { class: 'np-tr' });
       const song = h('div', { class: 'np-song' });
       const btn = (icon, label, fn, extra) => h('button', { class: 'np-b', type: 'button', 'aria-label': label, onclick: fn }, ic(icon), extra || null);
+      const sleepBtn = h('button', { class: 'np-tool' + (SLEEP.at || SLEEP.end ? ' on' : ''), type: 'button', onclick: cycleSleep }, ic('moon'), h('span', { text: sleepLabel() }));
+      const lyrBox = h('div', { class: 'np-lyr' });
+      if (lyricsOn && !n.pod) fillLyrics(lyrBox, n);
       const ctrls = n.music ? [btn('prev', 'Previous', musicPrev), pp, btn('next', 'Next', musicNext)]
         : n.pod ? [btn('back', 'Back 15 seconds', () => podSkip(-15), h('small', { text: '15' })), pp, btn('fwd', 'Forward 30 seconds', () => podSkip(30), h('small', { text: '30' }))]
         : [btn('plus', 'Add this song to your Get list', () => addToGetList(null)), pp, btn('close', 'Stop', () => { stopRadio(); closeNowPlaying(); })];
@@ -1283,39 +1315,210 @@
         h('div', { class: 'np-top' },
           h('button', { class: 'np-x', type: 'button', 'aria-label': 'Close', onclick: closeNowPlaying }, ic('down')),
           h('div', { class: 'np-kind' }, ic(n.music ? 'music' : n.pod ? 'mic' : 'radio'), n.music ? 'Music' : n.pod ? 'Podcast' : 'Radio'),
-          h('span', { style: { width: '52px' } })),
-        h('div', { class: 'np-main' },
-          h('div', { class: 'np-art' + (n.music || n.pod ? '' : ' logo') }, art ? h('img', { src: art, alt: '' }) : phBox(title)),
+          h('div', { class: 'np-tools' },
+            n.music ? h('button', { class: 'np-tool', type: 'button', onclick: () => openPlaylistSheet(n.t) }, ic('plus'), 'Playlist') : null,
+            n.pod ? null : h('button', { class: 'np-tool' + (lyricsOn ? ' on' : ''), type: 'button', onclick: () => { lyricsOn = !lyricsOn; store.set('dm_lyrics', lyricsOn); npFor = null; } }, ic('lyrics'), 'Lyrics'),
+            sleepBtn)),
+        h('div', { class: 'np-main' + (lyricsOn && !n.pod ? ' lyr' : '') },
+          lyricsOn && !n.pod ? lyrBox : h('div', { class: 'np-art' + (n.music || n.pod ? '' : ' logo') }, art ? h('img', { src: art, alt: '' }) : phBox(title)),
           h('div', { class: 'np-info' },
             h('div', { class: 'np-title', text: title }),
             h('div', { class: 'np-sub', text: sub }),
             song,
             n.music || n.pod ? h('div', { class: 'np-prog' }, seek, h('div', { class: 'np-times' }, tl, tr)) : h('div', { class: 'np-live' }, h('i'), 'LIVE'),
             h('div', { class: 'np-ctrls' }, ...ctrls))));
-      npEl._pp = pp; npEl._seek = seek; npEl._tl = tl; npEl._tr = tr; npEl._song = song;
+      npEl._pp = pp; npEl._seek = seek; npEl._tl = tl; npEl._tr = tr; npEl._song = song; npEl._sleep = sleepBtn; npEl._lyr = lyricsOn && !n.pod ? lyrBox : null; npEl._lyrFor = radioSong ? radioSong.song : '';
     }
     npEl._pp.replaceChildren(ic(radio.paused ? 'play' : 'pause'));
     if (dur && document.activeElement !== npEl._seek) npEl._seek.value = Math.round(1000 * pos / dur);
     npEl._tl.textContent = dur ? E.fmt(pos) : ''; npEl._tr.textContent = dur ? '−' + E.fmt(Math.max(0, dur - pos)) : '';
     const s = !n.music && !n.pod && radioSong ? '♪ ' + [radioSong.artist, radioSong.song].filter(Boolean).join(' – ') : '';
     if (npEl._song.textContent !== s) npEl._song.textContent = s;
+    const sl = npEl._sleep && npEl._sleep.querySelector('span'); if (sl && sl.textContent !== sleepLabel()) sl.textContent = sleepLabel();
+    if (npEl._lyr) {
+      if (!n.music && radioSong && npEl._lyrFor !== radioSong.song) { npEl._lyrFor = radioSong.song; fillLyrics(npEl._lyr, n); }
+      tickLyrics(npEl._lyr);
+    }
+  }
+
+  /* ---------- Sleep timer: stops whatever's playing after a while ----------
+     Off → 15 → 30 → 60 min → end of this song/episode → off. Fades out over 6 s. */
+  const SLEEP = { at: 0, end: false };
+  function sleepLabel() {
+    if (SLEEP.end) return 'End of ' + (radioNow && radioNow.pod ? 'episode' : 'song');
+    if (SLEEP.at) return Math.max(1, Math.ceil((SLEEP.at - Date.now()) / 60000)) + ' min';
+    return 'Sleep';
+  }
+  function cycleSleep() {
+    const steps = [0, 15, 30, 60];
+    const canEnd = radioNow && (radioNow.music || radioNow.pod);
+    if (SLEEP.end) { SLEEP.end = false; SLEEP.at = 0; }
+    else {
+      const cur = SLEEP.at ? Math.round((SLEEP.at - Date.now()) / 60000) : 0;
+      const nextMin = steps.find((m) => m > cur + 1);
+      if (nextMin) SLEEP.at = Date.now() + nextMin * 60000;
+      else if (canEnd) { SLEEP.at = 0; SLEEP.end = true; }
+      else SLEEP.at = 0;
+    }
+    toast(SLEEP.end ? 'Sleep: stops at the end of this ' + (radioNow.pod ? 'episode' : 'song') : SLEEP.at ? 'Sleep in ' + sleepLabel() : 'Sleep timer off');
+    if (npEl) npFor = null;
+  }
+  function sleepNow() {
+    SLEEP.at = 0; SLEEP.end = false;
+    const el = radio, v0 = el.volume; let k = 0;
+    const fade = setInterval(() => {
+      k++; el.volume = Math.max(0, v0 * (1 - k / 30));
+      if (playerOpen && S.gain) S.gain.gain.value = Math.max(0, 1 - k / 30);
+      if (k >= 30) {
+        clearInterval(fade);
+        if (radioNow) stopRadio();
+        if (playerOpen && S.playing) $('btnPlay').click();
+        el.volume = v0; if (S.gain) S.gain.gain.value = S.muted ? 0 : 1;
+        closeNowPlaying(); toast('Sleep timer: stopped. Good night.');
+      }
+    }, 200);
+  }
+  setInterval(() => { if (SLEEP.at && Date.now() >= SLEEP.at) sleepNow(); }, 1000);
+
+  /* ---------- Lyrics (LRCLIB, free) on Now Playing ----------
+     Timed lyrics scroll with the song; radio songs get the plain words. */
+  const lyrCache = new Map();
+  let lyricsOn = store.get('dm_lyrics', false);
+  function lyricsFor(artist, title, album, dur) {
+    const k = (artist + '|' + title).toLowerCase();
+    if (lyrCache.has(k)) return lyrCache.get(k);
+    const q = 'artist_name=' + enc(artist) + '&track_name=' + enc(title) + (album ? '&album_name=' + enc(album) : '') + (dur ? '&duration=' + Math.round(dur) : '');
+    const p = fetch('https://lrclib.net/api/get?' + q).then((r) => r.ok ? r.json() : fetch('https://lrclib.net/api/get?artist_name=' + enc(artist) + '&track_name=' + enc(title)).then((r2) => r2.ok ? r2.json() : null))
+      .then((d) => {
+        if (!d) return null;
+        const lines = [];
+        String(d.syncedLyrics || '').split('\n').forEach((ln) => { const m = ln.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s?(.*)$/); if (m) lines.push({ t: +m[1] * 60 + +m[2], s: m[3] }); });
+        if (lines.length) return { timed: true, lines };
+        const plain = String(d.plainLyrics || '').split('\n');
+        return plain.some((x) => x.trim()) ? { timed: false, lines: plain.map((s) => ({ t: -1, s })) } : null;
+      }).catch(() => null);
+    lyrCache.set(k, p);
+    return p;
+  }
+  function fillLyrics(box, n) {
+    box.replaceChildren(h('div', { class: 'np-lyr-msg', text: 'Finding the words…' }));
+    const who = n.music ? n.t.artist : radioSong ? radioSong.artist : '';
+    const what = n.music ? n.t.title : radioSong ? radioSong.song : '';
+    if (!what) { box.replaceChildren(h('div', { class: 'np-lyr-msg', text: n.pod ? 'Podcasts don’t have lyrics.' : 'This station isn’t saying which song is on.' })); return; }
+    lyricsFor(who, what, n.music ? n.t.album : '', n.music ? n.t.dur : 0).then((L) => {
+      if (!L) { box.replaceChildren(h('div', { class: 'np-lyr-msg', text: 'No lyrics found for this song.' })); return; }
+      box._timed = L.timed; box._lines = L.lines; box.classList.toggle('plain', !L.timed);
+      box.replaceChildren(...L.lines.map((x) => h('div', { class: 'np-lyr-l' + (x.s.trim() ? '' : ' gap'), text: x.s || ' ' })));
+      box._cur = -1;
+    });
+  }
+  function tickLyrics(box) {
+    if (!box || !box._timed || !box._lines) return;
+    const t = (radio.currentTime || 0) + 0.3;
+    let i = -1; box._lines.forEach((x, j) => { if (x.t <= t) i = j; });
+    if (i === box._cur) return;
+    box._cur = i;
+    [...box.children].forEach((el, j) => el.classList.toggle('on', j === i));
+    const el = box.children[i];
+    if (el) box.scrollTo({ top: el.offsetTop - box.clientHeight * 0.38, behavior: 'smooth' });
+  }
+
+  /* ---------- Playlists: add the song that's playing to a playlist (real Plex
+     playlists, so they show in Plexamp too), and make new ones by mood. ---------- */
+  let plexMachineId = '';
+  function trackUri(rk) {
+    return (plexMachineId ? Promise.resolve(plexMachineId) : pget('/identity').then((d) => (plexMachineId = MC(d).machineIdentifier)))
+      .then((mid) => enc('server://' + mid + '/com.plexapp.plugins.library/library/metadata/' + rk));
+  }
+  function openPlaylistSheet(t) {
+    if (!t || !t.rk) return;
+    const list = h('div', { class: 'pl-list' }, h('div', { class: 'msg', text: 'Loading your playlists…' }));
+    const name = h('input', { type: 'text', placeholder: 'New playlist name', maxlength: '60', autocapitalize: 'words' });
+    const close = () => shade.remove();
+    const create = (title) => {
+      title = String(title || '').trim(); if (!title) { name.focus(); return; }
+      trackUri(t.rk).then((uri) => pwrite('POST', '/playlists?type=audio&smart=0&title=' + enc(title) + '&uri=' + uri))
+        .then(() => { toast('Made “' + title + '” with ' + t.title); invalidate('music'); close(); })
+        .catch((e) => toast('Couldn’t make the playlist: ' + e.message));
+    };
+    const box = h('div', { class: 'pl-box' },
+      h('div', { class: 'pl-h' }, h('div', null, h('h2', { text: 'Add to playlist' }), h('div', { class: 'pl-song', text: t.title + (t.artist ? ' · ' + t.artist : '') })),
+        h('button', { class: 'np-x', type: 'button', 'aria-label': 'Close', onclick: close }, ic('close'))),
+      list,
+      h('div', { class: 'pl-new' }, h('div', { class: 'lbl', text: 'New playlist' }),
+        h('div', { class: 'field' }, name, h('button', { class: 'btn red', type: 'button', onclick: () => create(name.value) }, ic('plus'), 'Create'))));
+    name.addEventListener('keydown', (e) => { if (e.key === 'Enter') create(name.value); });
+    const shade = h('div', { class: 'pairshade pl-shade', onclick: (e) => { if (e.target === shade) close(); } }, box);
+    document.body.appendChild(shade);
+    pget('/playlists?playlistType=audio').then((d) => {
+      const pls = (MC(d).Metadata || []).filter((p) => !p.smart);
+      if (!pls.length) { list.replaceChildren(h('div', { class: 'msg', text: 'No playlists yet. Name your first one below.' })); return; }
+      list.replaceChildren(...pls.map((p) => {
+        const mark = h('span', { class: 'pl-mark' });
+        let itemId = null;
+        const row = h('button', { type: 'button', class: 'plist-row' }, h('div', { class: 'pl-art', style: { background: grad(p.title) } }, p.composite ? h('img', { src: mArt(p.composite, 120), alt: '' }) : null),
+          h('div', { class: 'pl-t' }, h('div', { class: 't', text: p.title }), h('div', { class: 's', text: (p.leafCount || 0) + ' songs' })), mark);
+        const paint = () => { row.classList.toggle('in', !!itemId); mark.replaceChildren(ic(itemId ? 'check' : 'plus')); };
+        paint();
+        // already in this playlist? (tap again to take it out)
+        pget('/playlists/' + p.ratingKey + '/items').then((d2) => { const hit = (MC(d2).Metadata || []).find((x) => String(x.ratingKey) === String(t.rk)); itemId = hit ? hit.playlistItemID : null; paint(); }).catch(() => {});
+        row.onclick = () => {
+          if (itemId) {
+            pwrite('DELETE', '/playlists/' + p.ratingKey + '/items/' + itemId).then(() => { itemId = null; paint(); toast('Took it out of ' + p.title); invalidate('music'); }).catch((e) => toast('Couldn’t change it: ' + e.message));
+          } else {
+            trackUri(t.rk).then((uri) => pwrite('PUT', '/playlists/' + p.ratingKey + '/items?uri=' + uri))
+              .then(() => pget('/playlists/' + p.ratingKey + '/items')).then((d2) => {
+                const hit = (MC(d2).Metadata || []).find((x) => String(x.ratingKey) === String(t.rk)); itemId = hit ? hit.playlistItemID : 'x'; paint();
+                toast('Added to ' + p.title); invalidate('music');
+              }).catch((e) => toast('Couldn’t add it: ' + e.message));
+          }
+        };
+        return row;
+      }));
+    }).catch((e) => list.replaceChildren(msg('Couldn’t load playlists: ' + e.message, true)));
+  }
+
+  /* ---------- Mood mixes: made from the moods Plex has tagged on your albums ---------- */
+  // Plex's own mood names, picked for the car (each covers lots of albums).
+  const MOOD_ORDER = ['Laid-Back/Mellow', 'Energetic', 'Fun', 'Rousing', 'Celebratory', 'Romantic', 'Playful', 'Warm', 'Reflective', 'Swaggering', 'Calm/Peaceful', 'Brooding', 'Melancholy', 'Intense', 'Aggressive', 'Sentimental'];
+  const moodName = (t) => String(t).split('/')[0];
+  function moodMix(sk, mood) {
+    toast('Making your ' + moodName(mood.title) + ' mix…');
+    pget('/library/sections/' + sk + '/all?type=9&mood=' + enc(mood.key) + '&X-Plex-Container-Start=0&X-Plex-Container-Size=200').then((d) => {
+      const albums = shuffled(MC(d).Metadata || []).slice(0, 12);
+      if (!albums.length) throw new Error('no albums with that mood');
+      return Promise.all(albums.map((al) => pget('/library/metadata/' + al.ratingKey + '/children').then((d2) => shuffled(MC(d2).Metadata || []).slice(0, 4)).catch(() => [])));
+    }).then((parts) => playMusic([].concat(...parts), 0, true)).catch((e) => toast('Couldn’t make that mix: ' + e.message));
+  }
+  function moodRow(sk, into) {
+    pget('/library/sections/' + sk + '/mood').then((d) => {
+      const moods = (MC(d).Directory || []).map((m) => ({ key: m.key, title: m.title }));
+      if (!moods.length) return;
+      const rank = (m) => { const i = MOOD_ORDER.indexOf(m.title); return i < 0 ? 99 : i; };
+      const pick = moods.filter((m) => rank(m) < 99).sort((x, y) => rank(x) - rank(y)).slice(0, 5);
+      if (!pick.length) return;
+      const r = row('Mood mixes');
+      pick.forEach((m) => r.scroller.appendChild(h('button', { type: 'button', class: 'pc sq mood', onclick: () => moodMix(sk, m) },
+        artBox('', moodName(m.title) + ' mix', [h('div', { class: 'play' }, ic('shuffle'))]), h('div', { class: 't', text: moodName(m.title) + ' mix' }), h('div', { class: 's', text: 'Shuffled from your albums' }))));
+      into.appendChild(r.sec);
+    }).catch(() => {});
   }
 
   function audioSwitch(cur) {
     return h('div', { class: 'seg' },
+      h('a', { href: '#/music', class: cur === 'music' ? 'on' : '' }, ic('music'), 'Music'),
       h('a', { href: '#/radio', class: cur === 'radio' ? 'on' : '' }, ic('radio'), 'Radio'),
-      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '' }, ic('mic'), 'Podcasts'),
-      h('a', { href: '#/music', class: cur === 'music' ? 'on' : '' }, ic('music'), 'Music'));
+      h('a', { href: '#/podcasts', class: cur === 'podcasts' ? 'on' : '' }, ic('mic'), 'Podcasts'));
   }
   function podcastsView(root, [sec, a]) {
     if (sec === 'show') { root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, subNav('#/podcasts'), h('h1', { text: 'Podcasts' })), audioSwitch('podcasts'))); podShowPage(root, a); return; }
     const input = h('input', { type: 'text', placeholder: 'Search podcasts', value: sec === 'search' ? (a || '') : '', autocomplete: 'off', spellcheck: 'false' });
     const submit = () => { const v = input.value.trim(); if (v) go('#/podcasts/search/' + enc(v)); };
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
-    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, sec === 'search' ? subNav('#/podcasts') : null, h('h1', { text: 'Podcasts' })), audioSwitch('podcasts')));
-    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }))));
     const cur = sec === 'genre' ? 'g' + a : sec ? '' : 'g';
-    root.appendChild(chips(POD_GENRES.map(([id, label]) => ({ id: 'g' + id, label })), cur, (c) => c.id === 'g' ? '#/podcasts' : '#/podcasts/genre/' + c.id.slice(1)));
+    pinHead(root, h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, sec === 'search' ? subNav('#/podcasts') : null, h('h1', { text: 'Podcasts' })), audioSwitch('podcasts')),
+      h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: submit }))),
+      chips(POD_GENRES.map(([id, label]) => ({ id: 'g' + id, label })), cur, (c) => c.id === 'g' ? '#/podcasts' : '#/podcasts/genre/' + c.id.slice(1)));
     const body = h('div'); root.appendChild(body);
     if (sec === 'search' && a) {
       body.appendChild(msg('Searching…'));
@@ -1501,11 +1704,38 @@
     const TITLES = { home: '', movies: 'Movies', tv: 'TV Shows', library: 'Library', live: 'Live TV', youtube: 'YouTube',
       radio: 'Radio', traffic: 'Traffic', remote: 'Remote', search: 'Search', settings: 'Settings', signin: 'Sign in', profiles: 'Who’s watching', item: '' };
     document.title = (TITLES[r.name] ? TITLES[r.name] + ' · ' : '') + 'Nate’s Theater';
-    if (!['settings', 'signin', 'profiles', 'remote'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
+    if (!['settings', 'signin', 'profiles', 'remote', 'movies', 'tv'].includes(r.name)) cache.set(r.key, { node, y: 0, at: Date.now() });
     if (cache.size > 20) cache.delete(cache.keys().next().value);
     try { fn(node, r.args); } catch (e) { node.appendChild(msg('Something went wrong on this page: ' + e.message, true)); }
   }
   window.addEventListener('hashchange', route);
+  // The gear opens Settings; tapping it again while in Settings closes it (back to where you were).
+  $('meBtn').addEventListener('click', (e) => {
+    if (parse().name !== 'settings') return;
+    e.preventDefault();
+    go(lastPageBeforeSettings || '#/home');
+  });
+  let lastPageBeforeSettings = '';
+  // The magnifier in the top bar opens a search box right next to it.
+  (() => {
+    const btn = $('searchBtn'); if (!btn) return;
+    const input = h('input', { type: 'search', class: 'navsearch-in', placeholder: 'Search movies, shows, music, channels…', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
+    const box = h('div', { class: 'navsearch', hidden: true }, ic('search'), input);
+    btn.parentNode.insertBefore(box, btn);
+    const open = () => { box.hidden = false; requestAnimationFrame(() => { box.classList.add('open'); input.focus(); input.select(); }); };
+    const close = () => { box.classList.remove('open'); setTimeout(() => { if (!box.classList.contains('open')) box.hidden = true; }, 200); };
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!box.hidden && input.value.trim()) { go('#/search/' + enc(input.value.trim())); close(); return; }
+      if (box.hidden) open(); else close();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && input.value.trim()) { go('#/search/' + enc(input.value.trim())); input.blur(); close(); }
+      if (e.key === 'Escape') close();
+    });
+    input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input && !input.value.trim()) close(); }, 150));
+  })();
+  window.addEventListener('hashchange', (e) => { const from = (e.oldURL || '').split('#')[1]; if (from && !/^\/settings/.test(from) && parse().name === 'settings') lastPageBeforeSettings = '#' + from; });
   function updateMe() {
     // Always a clear gear; the Plex profile shows as a small badge on it.
     const me = $('meBtn');
@@ -1615,6 +1845,7 @@
       ensurePlex().then(getSections).then((secs) => {
         const mine = secs.filter((s) => s.type === type);
         if (!mine.length) { root.replaceChildren(h('div', { class: 'empty', text: `No ${type === 'movie' ? 'movie' : 'TV'} libraries on your server.` })); return; }
+        if (parse().name !== (type === 'movie' ? 'movies' : 'tv')) return;   // you've moved on: don't pull you back
         go('#/library/' + mine[0].key + '/' + type, true);
       }).catch((e) => root.replaceChildren(signinOrError(e)));
     };
@@ -1630,10 +1861,10 @@
       const sec = secs.find((s) => String(s.key) === String(key));
       if (!sec) throw new Error('that library is not on this server.');
       const same = secs.filter((s) => s.type === sec.type);
-      root.replaceChildren(...[
-        h('div', { class: 'page-h' }, h('h1', { text: sec.title })),
+      root.replaceChildren();
+      pinHead(root, h('div', { class: 'page-h' }, h('h1', { text: sec.title })),
         same.length > 1 ? chips(same.map((s) => ({ id: String(s.key), label: s.title })), String(key), (c) => `#/library/${c.id}/${type}`) : null,
-        chips(SORTS, sort, (c) => `#/library/${key}/${type}/${c.id}`)].filter(Boolean));
+        chips(SORTS, sort, (c) => `#/library/${key}/${type}/${c.id}`));
       const grid = h('div', { class: 'grid posters' }); root.appendChild(grid);
       const status = msg(''); root.appendChild(status);
       const moreWrap = h('div', { class: 'more' }); root.appendChild(moreWrap);
@@ -1677,7 +1908,8 @@
               const cards = grid.querySelectorAll('.pc');
               const el = cards[p.at];
               if (!el) return false;
-              const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight;
+              const sh = root.querySelector('.stickyhead');
+              const navH = (document.querySelector('.nav') || { offsetHeight: 0 }).offsetHeight + (sh ? sh.offsetHeight : 0);
               const top = el.getBoundingClientRect().top + window.scrollY - navH - 14;
               window.scrollTo({ top, behavior: Math.abs(top - window.scrollY) < window.innerHeight * 2 ? 'smooth' : 'auto' });
               // posters above may still be settling: check once more
@@ -1688,8 +1920,8 @@
             const wait = () => busy ? setTimeout(wait, 150) : more(p.at).then(go2);
             wait();
           };
-          root.appendChild(h('div', { class: 'azbar', role: 'navigation', 'aria-label': 'Jump to letter' },
-            letters.map((L) => h('button', { type: 'button', text: L, class: pos[L] && pos[L].n ? '' : 'off', onclick: () => jump(L) }))));
+          root.appendChild(pinAzBar(h('div', { class: 'azbar', role: 'navigation', 'aria-label': 'Jump to letter' },
+            letters.map((L) => h('button', { type: 'button', text: L, class: pos[L] && pos[L].n ? '' : 'off', onclick: () => jump(L) }))), grid));
         }).catch(() => {});
       }
     }).catch((e) => root.replaceChildren(signinOrError(e)));
@@ -1862,8 +2094,8 @@
     src = src === 'fav' ? 'fav' : 'plex';
     const viewMode = store.get('dm_live_view', 'grid');
     const modeBtn = (m, icon, label) => h('a', { href: '#', class: viewMode === m ? 'on' : '', onclick: (e) => { e.preventDefault(); store.set('dm_live_view', m); invalidate('live'); currentKey = null; route(); } }, ic(icon), label);
-    root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' }), h('div', { class: 'seg' }, modeBtn('grid', 'grid', 'Channels'), modeBtn('guide', 'list', 'Guide'))));
-    root.appendChild(chips([{ id: 'plex', label: 'All channels', icon: 'tv' }, { id: 'fav', label: 'Favorites', icon: 'star' }], src, (c) => '#/live/' + c.id));
+    const head = pinHead(root, h('div', { class: 'page-h' }, h('h1', { text: 'Live TV' }), h('div', { class: 'seg' }, modeBtn('grid', 'grid', 'Channels'), modeBtn('guide', 'list', 'Guide'))),
+      chips([{ id: 'plex', label: 'All channels', icon: 'tv' }, { id: 'fav', label: 'Favorites', icon: 'star' }], src, (c) => '#/live/' + c.id));
     const body = h('div'); root.appendChild(body);
     if (src === 'plex' && !plex.auth) {
       body.appendChild(h('div', { class: 'center-card' }, h('h1', { text: 'Free live TV with Plex' }),
@@ -1876,9 +2108,9 @@
     p.then((list) => {
       loading.remove();
       if (!list.length) { body.appendChild(h('div', { class: 'empty', text: src === 'fav' ? 'No favorites yet. Tap the star on any channel to keep it here.' : 'No channels in this list.' })); return; }
-      const cats = [...new Set(list.map((c) => c.cat || 'Other'))];
+      const cats = [...new Set(list.map((c) => c.cat || 'Other'))].filter((c) => !(src === 'plex' && c === 'More'));   // the odds and ends stay under All
       if (cats.length > 1 && list.length > 12) {
-        body.appendChild(chips([{ id: '', label: 'All' }].concat(cats.map((c) => ({ id: c, label: c }))), cat || '', (c) => '#/live/' + src + (c.id ? '/' + enc(c.id) : '')));
+        head.appendChild(chips([{ id: '', label: 'All' }].concat(cats.map((c) => ({ id: c, label: c }))), cat || '', (c) => '#/live/' + src + (c.id ? '/' + enc(c.id) : '')));
       }
       const shown = src === 'plex' ? (cat ? list.filter((c) => c.cat === cat) : list) : sortByHealth(cat ? list.filter((c) => (c.cat || 'Other') === cat) : list);
       const guide = viewMode === 'guide';
@@ -1951,10 +2183,10 @@
     const input = h('input', { type: 'text', value: q, placeholder: 'Find a station (name, city, show…)', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const doSearch = () => go(href(cc, tag === '★' ? '' : tag, input.value.trim()));
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
-    root.appendChild(h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, (tag || q) ? subNav('#/radio') : null, h('h1', { text: 'Radio' })), audioSwitch('radio')));
-    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
-    root.appendChild(chips([{ id: '', label: 'Popular' }, { id: '★', label: '★ Your stations' }].concat(RADIO_TAGS.map(([id, label]) => ({ id, label }))),
-      tag, (c) => href(cc, c.id, '')));
+    pinHead(root, h('div', { class: 'page-h' }, h('div', { class: 'mhead' }, (tag || q) ? subNav('#/radio') : null, h('h1', { text: 'Radio' })), audioSwitch('radio')),
+      h('div', { class: 'pad' }, h('div', { class: 'field' }, input, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))),
+      chips([{ id: '', label: 'Popular' }, { id: '★', label: 'Your stations', icon: 'star' }].concat(RADIO_TAGS.map(([id, label]) => ({ id, label }))),
+        tag, (c) => href(cc, c.id, '')));
     const body = h('div'); root.appendChild(body);
     if (tag === '★') {
       const f = radioFavs();
@@ -1995,7 +2227,7 @@
     const doSearch = () => { const v = box.value.trim(); if (v) go('#/search/' + enc(v)); };
     box.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
     root.appendChild(h('div', { class: 'page-h' }, h('h1', { text: q ? `Results for “${q}”` : 'Search' })));
-    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, box, h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
+    root.appendChild(h('div', { class: 'pad' }, h('div', { class: 'field' }, h('div', { class: 'bigsearch' }, ic('search'), box), h('button', { class: 'btn red', type: 'button', text: 'Search', onclick: doSearch }))));
     if (!q) { setTimeout(() => box.focus(), 50); return; }
     const slots = [h('div'), h('div'), h('div'), h('div')]; slots.forEach((s) => root.appendChild(s));
     const ql = q.toLowerCase();
@@ -2438,12 +2670,24 @@
     if (q !== 'auto') return q;
     return plex.conn && plex.conn.relay ? '480' : '720';
   }
+  // Plex plays whichever sound track is selected for the title; pick the English one
+  // (most channels, never commentary) before the stream starts.
+  const isEngStream = (s) => /^(en|eng)$/i.test(s.languageCode || s.languageTag || '') || /^english/i.test(s.language || '');
+  function pickTracks(m) {
+    const part = (((m.Media || [])[0] || {}).Part || [])[0];
+    const auds = ((part && part.Stream) || []).filter((s) => s.streamType === 2);
+    if (!part || auds.length < 2) return Promise.resolve();
+    const text = (s) => ((s.title || '') + ' ' + (s.displayTitle || '') + ' ' + (s.extendedDisplayTitle || '')).toLowerCase();
+    const eng = auds.filter((s) => isEngStream(s) && !/comment/.test(text(s))).sort((x, y) => (y.channels || 0) - (x.channels || 0))[0];
+    if (!eng || eng.selected) return Promise.resolve();
+    return ensurePlex().then((c) => fetch(c.base + '/library/parts/' + part.id + '?audioStreamID=' + eng.id + '&allParts=1&' + plexQS(c.token), { method: 'PUT' })).catch(() => {});
+  }
   function playPlex(rk, startAt, auto) {
     endPlex();
     openPlayerShell('Loading…', '');
     E.teardown();
     S.loading = true; refreshOverlay();
-    pget('/library/metadata/' + rk).then((d) => {
+    pget('/library/metadata/' + rk + '?includeMarkers=1').then((d) => {
       const m = (MC(d).Metadata || [])[0];
       if (!m) throw new Error('that title is not on the server.');
       if (watchKey === null || !watchKey.startsWith('plex/' + rk)) return;
@@ -2453,7 +2697,8 @@
       $('plTitle').textContent = isEp ? m.grandparentTitle : m.title;
       $('plSub').textContent = isEp ? `${epCode(m)} — ${m.title}` : (m.year ? String(m.year) : '');
       P = { rk: String(rk), meta: m, duration: (m.duration || 0) / 1000, level: startLevel(), stalls: [], sid: null, offset: off };
-      startPlexAt(off, auto);
+      // Always English sound when the title has it (and never a commentary track), then start.
+      pickTracks(m).then(() => { if (watchKey !== null && watchKey.startsWith('plex/' + rk)) startPlexAt(off, auto); });
       if (off > 0) toast('Resuming at ' + E.fmt(off));
     }).catch((e) => { S.loading = false; E.setStatus('Could not start that title: ' + e.message, true); refreshOverlay(); });
   }
@@ -2519,6 +2764,30 @@
     }
   };
 
+
+  /* ---------- Skip intro / Skip credits (Plex marks where they are) ---------- */
+  const skipBtn = h('button', { class: 'skipbtn', type: 'button', hidden: true });
+  player.appendChild(skipBtn);
+  let skipFor = null;
+  setInterval(() => {
+    if (!P || !S.started || !playerOpen) { skipBtn.hidden = true; return; }
+    const marks = (P.meta && P.meta.Marker) || [];
+    const t = plexPos() * 1000;
+    const mk = marks.find((x) => (x.type === 'intro' || x.type === 'credits') && t >= x.startTimeOffset && t < x.endTimeOffset - 2500);
+    if (!mk) { skipBtn.hidden = true; skipFor = null; return; }
+    if (skipFor === mk) return;
+    skipFor = mk;
+    const atEnd = mk.type === 'credits' && mk.endTimeOffset >= (P.duration * 1000) - 5000;
+    const isEp = P.meta.type === 'episode';
+    skipBtn.replaceChildren(ic(atEnd && isEp ? 'next' : 'fwd'), mk.type === 'intro' ? 'Skip intro' : atEnd && isEp ? 'Next episode' : 'Skip credits');
+    skipBtn.onclick = (e) => {
+      e.stopPropagation(); skipBtn.hidden = true;
+      if (atEnd && isEp) { E.hooks.onSeekRequest(Math.max(0, P.duration - 1)); return; }   // ends -> Up next plays the next episode
+      if (atEnd) { $('plBack').click(); return; }
+      E.hooks.onSeekRequest(mk.endTimeOffset / 1000);
+    };
+    skipBtn.hidden = false;
+  }, 1000);
   E.hooks.onSeekRequest = (pos) => {
     if (P) { timeline('paused', pos); startPlexAt(pos, S.playing || !S.started); }
     else E.seekTo(pos);
@@ -2753,6 +3022,81 @@
     postSlot('now', Object.assign({}, st, { seen: serverNow() }));
   }
   setInterval(() => { if (REM.room) publishNow(true); }, 20000);
+
+  /* ---------- Passenger requests (car side) ----------
+     Phones send requests and votes; the car keeps the list, decides what's
+     next and shares the list with every phone (the "queue" slot).
+     Votes: most votes first, then oldest. Fair turns: one per phone in turn. */
+  const REQ = { list: [], mode: store.get('dm_req_mode', 'votes'), lastBy: '', seq: 0, liveReqAt: 0 };
+  function reqItem(it) {
+    if (!it || typeof it !== 'object' || typeof it.t !== 'string') return null;
+    const out = { t: it.t.slice(0, 160), s: String(it.s || '').slice(0, 160), img: typeof it.img === 'string' && /^(data:image\/|https:\/\/)/.test(it.img) ? it.img.slice(0, 1500) : null };
+    if (it.st && typeof it.st === 'object' && okUrl(it.st.url_resolved || '')) out.st = it.st;
+    else if (it.pod && typeof it.pod === 'object' && okUrl(it.pod.url_resolved || '')) out.pod = it.pod;
+    else if (typeof it.go === 'string' && SAFE_HASH.test(it.go)) out.go = it.go;
+    else return null;
+    return out;
+  }
+  const reqKey = (it) => it.st ? 'st:' + it.st.stationuuid : it.pod ? 'pod:' + it.pod.guid : 'go:' + it.go;
+  function reqOrder() {
+    const l = REQ.list.slice().sort((x, y) => x.at - y.at);
+    if (REQ.mode !== 'fair') return l.sort((x, y) => y.votes.length - x.votes.length || x.at - y.at);
+    const by = []; l.forEach((x) => { if (!by.includes(x.by)) by.push(x.by); });
+    const q = {}; by.forEach((p) => { q[p] = l.filter((x) => x.by === p); });
+    const order = []; let i = Math.max(0, by.indexOf(REQ.lastBy) + 1);
+    while (order.length < l.length) { const p = by[i % by.length]; if (q[p].length) order.push(q[p].shift()); i++; }
+    return order;
+  }
+  function publishQueue() {
+    paintReqPill();
+    if (!REM.room) return;
+    postSlot('queue', { mode: REQ.mode, items: reqOrder().map((x) => ({ id: x.id, t: x.it.t, s: x.it.s, img: x.it.img, by: x.by, name: x.name, votes: x.votes })) });
+  }
+  function addRequest(c) {
+    const it = reqItem(c.it), pid = String(c.pid || '').slice(0, 60), name = String(c.name || 'Phone').slice(0, 24);
+    if (!it || !pid) return;
+    const same = REQ.list.find((x) => reqKey(x.it) === reqKey(it));
+    if (same) { if (!same.votes.includes(pid)) same.votes.push(pid); publishQueue(); return; }
+    if (REQ.list.filter((x) => x.by === pid).length >= 2) return;   // two waiting per phone
+    REQ.list.push({ id: 'r' + (++REQ.seq) + Date.now().toString(36), it, by: pid, name, at: Date.now(), votes: [pid] });
+    toast(name + ' requested ' + it.t);
+    publishQueue(); reqTick();
+  }
+  function playRequest(x) {
+    if (!x) return;
+    REQ.list = REQ.list.filter((y) => y !== x); REQ.lastBy = x.by;
+    const it = x.it;
+    toast('Request from ' + x.name + ': ' + it.t);
+    REM.autoUntil = Date.now() + 8000;
+    // A requested station or live channel gets a fair run before the next request takes over.
+    REQ.liveReqAt = it.st || /^#\/watch\/(plexlive|live)\//.test(it.go || '') ? Date.now() : 0;
+    if (it.st) playRadio(it.st); else if (it.pod) playPodcast(it.pod); else if (it.go) go(it.go);
+    publishQueue();
+  }
+  // A request starts when nothing is playing, when a song / episode / video ends,
+  // or right away over live radio or live TV (they never "end").
+  function reqTick() {
+    if (!REQ.list.length) return;
+    const liveRadio = radioNow && !radioNow.pod && !radioNow.music;
+    const liveTv = playerOpen && !P && S.isLive;
+    const idle = !playerOpen && !radioNow;
+    const videoDone = playerOpen && S.ended;
+    const liveWaiting = (liveRadio || liveTv) && REQ.liveReqAt && Date.now() - REQ.liveReqAt < 3 * 60 * 1000;
+    if (((liveRadio || liveTv) && !liveWaiting) || idle || videoDone) { if (videoDone) clearUpNext(); playRequest(reqOrder()[0]); }
+  }
+  setInterval(reqTick, 2000);
+  // Little "Up next" note on the car, with skip.
+  let reqPill = null;
+  function paintReqPill() {
+    const top = reqOrder()[0];
+    if (!top || !REM.room) { if (reqPill) reqPill.hidden = true; return; }
+    if (!reqPill) { reqPill = h('div', { class: 'reqpill' }); document.body.appendChild(reqPill); }
+    reqPill.hidden = false;
+    reqPill.replaceChildren(
+      h('div', { class: 'rq-t' }, h('b', { text: 'Up next' }), ' ' + top.it.t, h('span', { text: '  ·  ' + top.name + (top.votes.length > 1 ? ' · ' + top.votes.length + ' votes' : '') + (REQ.list.length > 1 ? ' · +' + (REQ.list.length - 1) + ' more' : '') })),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Play it now', onclick: () => playRequest(top) }, ic('play')),
+      h('button', { class: 'pb', type: 'button', 'aria-label': 'Skip this request', onclick: () => { REQ.list = REQ.list.filter((y) => y !== top); publishQueue(); } }, ic('close')));
+  }
   const SAFE_HASH = /^#\/(watch\/(plex|plexlive|live|yt|url|site)\/|item\/|home$|movies$|tv$|live|youtube|radio|podcasts|music|traffic$|search\/)/;
   function handleRemoteCmd(c) {
     REM.phoneSeenAt = Date.now();
@@ -2763,6 +3107,11 @@
     if (t === 'hello') { publishNow(true); return; }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
     else if (t === 'getsong' && radioNow && !radioNow.pod && !radioNow.music) addToGetList();
+    else if (t === 'req') addRequest(c);
+    else if (t === 'vote' && typeof c.id === 'string' && c.pid) { const x = REQ.list.find((y) => y.id === c.id); if (x) { x.votes = x.votes.includes(c.pid) ? x.votes.filter((p) => p !== c.pid) : x.votes.concat(String(c.pid).slice(0, 60)); publishQueue(); } }
+    else if (t === 'unreq' && typeof c.id === 'string') { REQ.list = REQ.list.filter((y) => !(y.id === c.id && y.by === c.pid)); publishQueue(); }
+    else if (t === 'reqmode' && (c.mode === 'fair' || c.mode === 'votes')) { REQ.mode = c.mode; store.set('dm_req_mode', c.mode); publishQueue(); }
+    else if (t === 'queue') publishQueue();
     else if (t === 'mnext' && radioNow && radioNow.music) musicNext();
     else if (t === 'mprev' && radioNow && radioNow.music) musicPrev();
     else if (t === 'skip' && radioNow && radioNow.pod) podSkip(Math.max(-600, Math.min(600, +c.s || 0)));
@@ -3215,7 +3564,49 @@
     };
     search.addEventListener('keydown', (e) => { if (e.key === 'Enter') doFind(); });
     search.addEventListener('search', () => { if (!search.value.trim()) resultsEl.replaceChildren(); });
-    const pick = (it) => { if (it.st) send({ type: 'radio', st: it.st }); else if (it.pod) send({ type: 'pod', ep: it.pod }); else if (it.go) send({ type: 'go', hash: it.go }); toast('Playing on the car: ' + it.t); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    // Tap a card to play it now, or (in Request mode) to add it to the shared Up next list.
+    let tapMode = store.get('dm_req_tap', 'play');
+    const myName = () => store.get('dm_phone_name', '') || (/iPhone/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : 'Phone');
+    const pick = (it) => {
+      if (tapMode === 'req') {
+        const mine = queue ? queue.items.filter((x) => x.by === phoneId()).length : 0;
+        if (mine >= 2) { toast('You have 2 requests waiting — let one play first.'); return; }
+        send({ type: 'req', pid: phoneId(), name: myName(), it: { t: it.t, s: it.s || '', img: it.img || null, st: it.st, pod: it.pod, go: it.go } });
+        toast('Requested: ' + it.t); return;
+      }
+      if (it.st) send({ type: 'radio', st: it.st }); else if (it.pod) send({ type: 'pod', ep: it.pod }); else if (it.go) send({ type: 'go', hash: it.go });
+      toast('Playing on the car: ' + it.t); window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    // Up next: the shared request list, with votes.
+    let queue = null;
+    const queueEl = h('div', { class: 'rm-queue' });
+    const tapSeg = h('div', { class: 'rm-tap' });
+    function drawTap() {
+      tapSeg.replaceChildren(h('span', { text: 'Tap a pick to' }),
+        h('button', { type: 'button', class: tapMode === 'play' ? 'on' : '', onclick: () => { tapMode = 'play'; store.set('dm_req_tap', 'play'); drawTap(); } }, ic('play'), 'Play now'),
+        h('button', { type: 'button', class: tapMode === 'req' ? 'on' : '', onclick: () => { tapMode = 'req'; store.set('dm_req_tap', 'req'); drawTap(); } }, ic('plus'), 'Request'));
+    }
+    function drawQueue() {
+      const items = (queue && queue.items) || [];
+      if (!items.length && tapMode !== 'req') { queueEl.replaceChildren(); return; }
+      const nameIn = h('input', { class: 'rm-name', type: 'text', value: myName(), maxlength: '20', 'aria-label': 'Your name', onchange: (e) => store.set('dm_phone_name', e.target.value.trim().slice(0, 20)) });
+      const mode = (queue && queue.mode) || 'votes';
+      queueEl.replaceChildren(
+        h('div', { class: 'rm-qh' }, h('div', { class: 'rm-rh', text: 'Up next' }),
+          h('div', { class: 'rm-qmode' },
+            h('button', { type: 'button', class: mode === 'votes' ? 'on' : '', onclick: () => send({ type: 'reqmode', mode: 'votes' }) }, 'Votes'),
+            h('button', { type: 'button', class: mode === 'fair' ? 'on' : '', onclick: () => send({ type: 'reqmode', mode: 'fair' }) }, 'Fair turns'))),
+        items.length ? h('div', { class: 'rm-qlist' }, items.map((x, i) => {
+          const mineVote = x.votes.includes(phoneId());
+          return h('div', { class: 'rm-qi' + (i === 0 ? ' first' : '') },
+            h('div', { class: 'rm-qart', style: x.img ? null : { background: grad(x.t) } }, x.img ? h('img', { src: x.img, alt: '' }) : null),
+            h('div', { class: 'rm-qt' }, h('div', { class: 'rm-t', text: x.t }), h('div', { class: 'rm-s', text: (i === 0 ? 'Plays next · ' : '') + 'from ' + x.name })),
+            h('button', { type: 'button', class: 'rm-vote' + (mineVote ? ' on' : ''), 'aria-label': 'Vote', onclick: () => send({ type: 'vote', id: x.id, pid: phoneId() }) }, ic('up'), String(x.votes.length)),
+            x.by === phoneId() ? h('button', { type: 'button', class: 'rm-qx', 'aria-label': 'Remove my request', onclick: () => send({ type: 'unreq', id: x.id, pid: phoneId() }) }, ic('close')) : null);
+        })) : h('div', { class: 'rm-qempty', text: 'Nothing requested yet. Switch to Request and tap songs, shows or stations below.' }),
+        h('label', { class: 'rm-qname' }, 'Your name ', nameIn));
+    }
+    drawTap();
     function skelCards(n, shape) { return Array.from({ length: n }, () => h('div', { class: 'rm-card ' + shape + ' skel' }, h('div', { class: 'rm-art' }))); }
     function card(it, shape) {
       const art = h('div', { class: 'rm-art', style: it.img ? null : { background: grad(it.t || '?') } });
@@ -3304,6 +3695,7 @@
         h('div', { class: 'rm-head' }, icon, h('div', { class: 'rm-titles' }, title, sub), close),
         bar, h('div', { class: 'rm-times' }, tl, tr),
         h('div', { class: 'rm-ctrls' }, back10, pp, fwd30), watchHere, phonesBtn),
+      tapSeg, queueEl,
       h('div', { class: 'rm-searchrow' }, search, pasteBtn),
       linkPanel,
       h('a', { class: 'rm-phonelink', href: '#/home', text: 'Watch on this device instead' }),
@@ -3343,6 +3735,7 @@
           }
         }
         if (sl.lists) { lists = sl.lists; drawRows(); }
+        if (sl.queue) { queue = sl.queue; drawQueue(); }
         if (sl.results) { results = sl.results; drawResults(); }
         if (sl.mirror && sl.mirror.req && sl.mirror.req === mirrorReq) { mirrorReq = 0; watchHere.replaceChildren(ic('cast'), 'Watch here too'); mirrorStart(sl.mirror, now); }
         setTimeout(poll, 100);
@@ -3460,5 +3853,5 @@
   })();
   startProfileReset();
   // Test hook (only when a tester sets dm_debug on this device): read the player clock from outside.
-  if (store.get('dm_debug', false)) window.__T = { E, S, mir: () => MIR, now: () => serverNow() };
+  if (store.get('dm_debug', false)) window.__T = { E, S, mir: () => MIR, now: () => serverNow(), pinAzBar };
 })();
