@@ -1453,7 +1453,11 @@
   let currentKey = null, sawAppView = false;
   const cache = new Map(); // key -> {node, y, at}
   function invalidate(prefix) { if (!prefix) cache.clear(); else [...cache.keys()].forEach((k) => k.startsWith(prefix) && cache.delete(k)); }
-  function go(hash, replace) { if (replace) location.replace(hash); else location.hash = hash; }
+  // Going somewhere new (a link, a tab, a card) starts at the top of the page;
+  // only Back / Forward put you back where you were on that page.
+  let freshNavAt = 0;
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('a[href^="#"]')) freshNavAt = Date.now(); }, true);
+  function go(hash, replace) { if (!replace) freshNavAt = Date.now(); if (replace) location.replace(hash); else location.hash = hash; }
   function parse() {
     const raw = location.hash.replace(/^#\/?/, '');
     const parts = raw.split('/');
@@ -1486,7 +1490,8 @@
     const hit = cache.get(r.key);
     if (hit && Date.now() - hit.at < 10 * 60 * 1000) {
       view.replaceChildren(hit.node);
-      requestAnimationFrame(() => window.scrollTo(0, hit.y || 0));
+      const y = Date.now() - freshNavAt < 1500 ? 0 : hit.y || 0;
+      requestAnimationFrame(() => window.scrollTo(0, y));
       return;
     }
     const node = h('div', { class: 'fresh' });
