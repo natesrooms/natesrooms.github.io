@@ -1361,8 +1361,8 @@
         .catch((e) => toast('Couldn’t make the playlist: ' + e.message));
     };
     // Clear feedback right in the panel: what happened, then it closes by itself.
-    const note = h('div', { class: 'pl-note', hidden: true });
-    const done = (text, ok, closeAfter) => { note.hidden = false; note.className = 'pl-note' + (ok ? ' ok' : ''); note.replaceChildren(ic(ok ? 'check' : 'close'), text); if (closeAfter) setTimeout(close, 1300); };
+    const note = h('div', { class: 'plsheet-note', hidden: true });
+    const done = (text, ok, closeAfter) => { note.hidden = false; note.className = 'plsheet-note' + (ok ? ' ok' : ''); note.replaceChildren(ic(ok ? 'check' : 'close'), text); if (closeAfter) setTimeout(close, 1300); };
     const box = h('div', { class: 'pl-box' },
       h('div', { class: 'pl-h' }, h('div', null, h('h2', { text: 'Add to playlist' }), h('div', { class: 'pl-song', text: t.title + (t.artist ? ' · ' + t.artist : '') })),
         h('button', { class: 'np-x', type: 'button', 'aria-label': 'Close', onclick: close }, ic('close'))),

@@ -647,8 +647,8 @@
   .np-tools { display: flex; gap: 8px; }
   .pl-shade { z-index: 500; }
   .pl-hint { color: var(--dim); font-size: 13px; margin: 0 0 8px; }
-  .pl-note { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg3); font-weight: 800; margin-bottom: 10px; animation: stPopNote .3s var(--ease) both; }
-  .pl-note.ok { background: #1e8449; } .pl-note .ic { width: 20px; height: 20px; }
+  .plsheet-note { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg3); font-weight: 800; margin-bottom: 10px; animation: stPopNote .3s var(--ease) both; }
+  .plsheet-note.ok { background: #1e8449; } .plsheet-note .ic { width: 20px; height: 20px; }
   @keyframes stPopNote { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
   .pl-box { background: var(--bg2); border: 1px solid var(--line); border-radius: 20px; width: min(560px, 94vw); max-height: 86vh; overflow-y: auto; padding: 20px; text-align: left; box-shadow: var(--shadow); }
   .pl-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
@@ -4319,8 +4319,8 @@ var MiniQR = (function () {
         .catch((e) => toast('Couldn’t make the playlist: ' + e.message));
     };
     // Clear feedback right in the panel: what happened, then it closes by itself.
-    const note = h('div', { class: 'pl-note', hidden: true });
-    const done = (text, ok, closeAfter) => { note.hidden = false; note.className = 'pl-note' + (ok ? ' ok' : ''); note.replaceChildren(ic(ok ? 'check' : 'close'), text); if (closeAfter) setTimeout(close, 1300); };
+    const note = h('div', { class: 'plsheet-note', hidden: true });
+    const done = (text, ok, closeAfter) => { note.hidden = false; note.className = 'plsheet-note' + (ok ? ' ok' : ''); note.replaceChildren(ic(ok ? 'check' : 'close'), text); if (closeAfter) setTimeout(close, 1300); };
     const box = h('div', { class: 'pl-box' },
       h('div', { class: 'pl-h' }, h('div', null, h('h2', { text: 'Add to playlist' }), h('div', { class: 'pl-song', text: t.title + (t.artist ? ' · ' + t.artist : '') })),
         h('button', { class: 'np-x', type: 'button', 'aria-label': 'Close', onclick: close }, ic('close'))),
@@ -6455,7 +6455,7 @@ var MiniQR = (function () {
 
   /* Auto-update: when a newer version is published, reload by itself -
      but never during a movie, a podcast, or while typing; it waits. */
-  const APP_BUILD = 'fbc0a157d375';
+  const APP_BUILD = '9f0bcb32f0ee';
   let updateReady = false;
   function checkUpdate() {
     if (APP_BUILD.charAt(0) === '_' || updateReady) return;
