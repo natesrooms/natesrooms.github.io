@@ -5963,7 +5963,12 @@ var MiniQR = (function () {
     if (saved && saved.room === REM.room && Date.now() - (saved.used || 0) > 60000) store.set('dm_remote_car', Object.assign(saved, { used: Date.now() }));
     updateRemoteBtn();
     const t = c && c.type;
-    if (t === 'hello') { publishNow(true); return; }
+    if (t === 'hello') {
+      // a phone just joined: take the pairing code off the screen
+      const pair = document.querySelector('.pairshade');
+      if (pair) { pair.remove(); toast('Phone connected'); }
+      publishNow(true); return;
+    }
     if (t === 'toggle') { if (playerOpen) $('btnPlay').click(); else if (radioNow) { radio.paused ? radio.play() : radio.pause(); } }
     else if (t === 'req') addRequest(c);
     else if (t === 'vote' && typeof c.id === 'string' && c.pid) { const x = REQ.list.find((y) => y.id === c.id); if (x) { x.votes = x.votes.includes(c.pid) ? x.votes.filter((p) => p !== c.pid) : x.votes.concat(String(c.pid).slice(0, 60)); publishQueue(); } }
@@ -6437,7 +6442,10 @@ var MiniQR = (function () {
       title.textContent = idle ? 'Nothing playing' : (n.title || '');
       sub.textContent = idle ? 'Pick something below to play it on the car.' : (n.sub || '');
       pp.replaceChildren(ic(n && n.playing ? 'pause' : 'play'));
-      dur = (n && n.dur) || 0;
+      // A live channel you can't rewind: show LIVE, not a position bar counting a buffer
+      const liveOnly = !!(n && n.live && !n.seek);
+      dur = liveOnly ? 0 : (n && n.dur) || 0;
+      bar.hidden = liveOnly;
       const seek = !!(n && n.seek && dur);
       bar.disabled = !seek; back10.disabled = fwd30.disabled = !seek && !mus; pp.disabled = idle; close.hidden = idle;
       watchHere.hidden = idle || !(n && n.mirrorable) || !!MIR;
@@ -6531,7 +6539,7 @@ var MiniQR = (function () {
 
   /* Auto-update: when a newer version is published, reload by itself -
      but never during a movie, a podcast, or while typing; it waits. */
-  const APP_BUILD = '246b3964333c';
+  const APP_BUILD = '353d2f7eed5b';
   let updateReady = false;
   function checkUpdate() {
     if (APP_BUILD.charAt(0) === '_' || updateReady) return;
