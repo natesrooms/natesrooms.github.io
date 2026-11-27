@@ -542,6 +542,10 @@ var Engine = (function () {
     fetchRead(seg.uri, 'bytes', 20000, { cache: 'no-store' }).then(function (ab) {
       if (gen !== S.gen) return;
       var buf = new Uint8Array(ab);
+      if (S.startJump && seq === S.startJump.seq) {
+        if (buf.length < 4000 && S.startJump.seq > (track.firstSeq || 0)) { undoStartJump(); return; }
+        S.startJump = null;
+      }
       if (seg.disc || track.rebaseNext) {
         // New timeline: finish the old demuxer's pending data, then start
         // a clean one so half-built access units can't straddle the cut.
@@ -769,7 +773,7 @@ var Engine = (function () {
     S.loaded = false; S.loading = false; S.started = false; S.playing = false; S.ended = false; S.autoplay = false;
     if (S.buffering) { S.buffering = false; }
     if (S.ctx && S.ctx.state === 'suspended') { try { S.ctx.resume(); } catch (e) {} }
-    S.mode = null; S.isLive = false; S.isEvent = false; S.duration = 0; S.view = null; S.firstFrameAt = 0;
+    S.mode = null; S.isLive = false; S.isEvent = false; S.duration = 0; S.view = null; S.firstFrameAt = 0; S.startJump = null;
     S.tracks = []; S.mp4 = null; S.mp4VIdx = 0; S.mp4AIdx = 0;
     vSamples = []; aSamples = []; S.audioPtsQueue = [];
     closeFrames();
@@ -944,6 +948,22 @@ var Engine = (function () {
     S.mediaTarget = first ? first.start : t;
     S.dropAudioBefore = S.mediaTarget;
     if (S.view) S.view.offset = 0;
+    // Remember the jump: if that segment comes back empty, the server numbered
+    // its segments from the start point instead (see fetchSegment).
+    S.startJump = { t: t, seq: S.tracks[0] ? S.tracks[0].nextSeq : -1 };
+  }
+  /* Plex lists the whole title and marks the start point when it only
+     repackages the video, but when it fully converts it (e.g. 10-bit HEVC)
+     the stream really begins at segment 0 = the start point, and the
+     segments the mark points at stay empty. Fall back to that. */
+  function undoStartJump() {
+    var t = S.startJump.t; S.startJump = null;
+    for (var i = 0; i < S.tracks.length; i++) {
+      var tr = S.tracks[i];
+      tr.nextSeq = tr.firstSeq || 0; tr.demuxSeq = tr.nextSeq; tr.rebaseNext = true;
+    }
+    S.mediaTarget = 0; S.dropAudioBefore = 0;
+    if (S.view) S.view.offset = t;
   }
 
   function readyUp(label) {

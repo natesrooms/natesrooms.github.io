@@ -1357,15 +1357,20 @@
     const create = (title) => {
       title = String(title || '').trim(); if (!title) { name.focus(); return; }
       trackUri(t.rk).then((uri) => pwrite('POST', '/playlists?type=audio&smart=0&title=' + enc(title) + '&uri=' + uri))
-        .then(() => { toast('Made “' + title + '” with ' + t.title); invalidate('music'); close(); })
+        .then(() => { done('Made “' + title + '” with ' + t.title, true, true); invalidate('music'); })
         .catch((e) => toast('Couldn’t make the playlist: ' + e.message));
     };
+    // Clear feedback right in the panel: what happened, then it closes by itself.
+    const note = h('div', { class: 'pl-note', hidden: true });
+    const done = (text, ok, closeAfter) => { note.hidden = false; note.className = 'pl-note' + (ok ? ' ok' : ''); note.replaceChildren(ic(ok ? 'check' : 'close'), text); if (closeAfter) setTimeout(close, 1300); };
     const box = h('div', { class: 'pl-box' },
       h('div', { class: 'pl-h' }, h('div', null, h('h2', { text: 'Add to playlist' }), h('div', { class: 'pl-song', text: t.title + (t.artist ? ' · ' + t.artist : '') })),
         h('button', { class: 'np-x', type: 'button', 'aria-label': 'Close', onclick: close }, ic('close'))),
-      list,
+      h('div', { class: 'pl-hint', text: 'Tap a playlist to add this song. A tick means it’s already in it — tap again to take it out.' }),
+      list, note,
       h('div', { class: 'pl-new' }, h('div', { class: 'lbl', text: 'New playlist' }),
-        h('div', { class: 'field' }, name, h('button', { class: 'btn red', type: 'button', onclick: () => create(name.value) }, ic('plus'), 'Create'))));
+        h('div', { class: 'field' }, name, h('button', { class: 'btn red', type: 'button', onclick: () => create(name.value) }, ic('plus'), 'Create'))),
+      h('div', { class: 'btns', style: { marginTop: '14px', justifyContent: 'flex-end' } }, h('button', { class: 'btn ghost', type: 'button', onclick: close }, 'Done')));
     name.addEventListener('keydown', (e) => { if (e.key === 'Enter') create(name.value); });
     const shade = h('div', { class: 'pairshade pl-shade', onclick: (e) => { if (e.target === shade) close(); } }, box);
     document.body.appendChild(shade);
@@ -1383,12 +1388,12 @@
         pget('/playlists/' + p.ratingKey + '/items').then((d2) => { const hit = (MC(d2).Metadata || []).find((x) => String(x.ratingKey) === String(t.rk)); itemId = hit ? hit.playlistItemID : null; paint(); }).catch(() => {});
         row.onclick = () => {
           if (itemId) {
-            pwrite('DELETE', '/playlists/' + p.ratingKey + '/items/' + itemId).then(() => { itemId = null; paint(); toast('Took it out of ' + p.title); invalidate('music'); }).catch((e) => toast('Couldn’t change it: ' + e.message));
+            pwrite('DELETE', '/playlists/' + p.ratingKey + '/items/' + itemId).then(() => { itemId = null; paint(); done('Took it out of ' + p.title, false, false); invalidate('music'); }).catch((e) => toast('Couldn’t change it: ' + e.message));
           } else {
             trackUri(t.rk).then((uri) => pwrite('PUT', '/playlists/' + p.ratingKey + '/items?uri=' + uri))
               .then(() => pget('/playlists/' + p.ratingKey + '/items')).then((d2) => {
                 const hit = (MC(d2).Metadata || []).find((x) => String(x.ratingKey) === String(t.rk)); itemId = hit ? hit.playlistItemID : 'x'; paint();
-                toast('Added to ' + p.title); invalidate('music');
+                done('Added to ' + p.title, true, true); invalidate('music');
               }).catch((e) => toast('Couldn’t add it: ' + e.message));
           }
         };
@@ -2116,7 +2121,7 @@
     // Welcome screen: the first thing a new screen sees. Signing in once is
     // enough - it's remembered on this device from then on.
     root.appendChild(h('div', { class: 'center-card welcome' },
-      h('div', { class: 'wl-logo' }, 'Nate’s ', h('span', { text: 'Theater' })),
+      h('div', { class: 'wl-logo' }, h('span', { class: 'brand-n', text: 'Nate’s' }), ' ', h('span', { text: 'Theater' })),
       h('h1', { text: 'Sign in with Plex to start' }),
       h('div', { class: 'wl-list' },
         h('div', { text: '🎬 Your movies and TV shows' }), h('div', { text: '🎵 Your music' }),
@@ -3214,7 +3219,7 @@
     const gen = ++REM.gen;
     const alive = () => gen === REM.gen && parse().name === 'remote';
     const brand = (right) => h('div', { class: 'rm-top' },
-      h('div', { class: 'rm-brand' }, 'Nate’s ', h('b', { text: 'Theater' })), right || h('span', { class: 'rm-pill', text: 'Remote' }));
+      h('div', { class: 'rm-brand' }, h('span', { class: 'brand-n', text: 'Nate’s' }), ' ', h('b', { text: 'Theater' })), right || h('span', { class: 'rm-pill', text: 'Remote' }));
 
     // One-time tip: on iPhone, a web page can't hide Safari's bars, but a
     // Home Screen app can - show how, once, and never inside the app itself.
@@ -3575,5 +3580,5 @@
   })();
   startProfileReset();
   // Test hook (only when a tester sets dm_debug on this device): read the player clock from outside.
-  if (store.get('dm_debug', false)) window.__T = { E, S, mir: () => MIR, now: () => serverNow(), pinAzBar };
+  if (store.get('dm_debug', false)) window.__T = { E, S, mir: () => MIR, now: () => serverNow(), pinAzBar, plexP: () => P };
 })();
